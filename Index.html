@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitDealFinder</title>
+<style>
+body{font-family:Arial;margin:0;background:#f5f7f6;color:#17201b}
+header{background:white;padding:20px;border-bottom:1px solid #ddd}
+.logo{font-size:25px;font-weight:bold}.logo span{color:#18a558}
+main{max-width:900px;margin:auto;padding:50px 20px}
+h1{font-size:42px}
+.search{display:flex;gap:10px;margin:30px 0}
+input{flex:1;padding:16px;border:1px solid #ccc;border-radius:10px;font-size:16px}
+button{background:#18a558;color:white;border:0;border-radius:10px;padding:16px 25px;font-weight:bold}
+.card{background:white;padding:20px;border-radius:15px;margin:15px 0;border:1px solid #ddd}
+.price{font-size:24px;font-weight:bold}
+.green{color:#18a558;font-weight:bold}
+</style>
+</head>
+<body>
+
+<header>
+<div class="logo">FitDeal<span>Finder</span></div>
+</header>
+
+<main>
+<h1>Vind de beste deal voor jouw fitnessdoel.</h1>
+
+<p>Vergelijk fitnessproducten, supplementen en fit maaltijden op prijs en waarde.</p>
+
+<div class="search">
+<input id="search" placeholder="Zoek bijvoorbeeld Clear Whey of creatine">
+<button onclick="zoek()">Zoeken</button>
+</div>
+
+<div id="resultaat">
+
+<div class="card">
+<h2>Clear Whey</h2>
+<p>DEMO-product</p>
+<div class="price">€29,99</div>
+<p>€5,00 / 100 g</p>
+<p class="green">20 g eiwit per portie</p>
+</div>
+
+<div class="card">
+<h2>Creatine Monohydraat</h2>
+<p>DEMO-product</p>
+<div class="price">€19,99</div>
+<p>€4,00 / 100 g</p>
+<p class="green">100 porties</p>
+</div>
+
+</div>
+</main>
+
+<script>
+function zoek(){
+let zoekterm=document.getElementById("search").value.toLowerCase();
+let kaarten=document.querySelectorAll(".card");
+
+kaarten.forEach(kaart=>{
+kaart.style.display=
+kaart.innerText.toLowerCase().includes(zoekterm)
+?"block":"none";
+});
+}
+</script>
+
+</body>
+</html>
