@@ -2,175 +2,216 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FitDealFinder.nl</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FitDealFinder.nl - De beste fitnessdeal</title>
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#f5f7fa;
-  color:#17202a;
-}
-header{
-  background:#111827;
-  color:white;
-  padding:18px 20px;
-}
-.logo{
-  font-size:24px;
-  font-weight:bold;
-}
-.logo span{color:#22c55e}
-.hero{
-  background:#111827;
-  color:white;
-  padding:45px 20px;
-  text-align:center;
-}
-.hero h1{
-  font-size:38px;
-  margin:0 0 12px;
-}
-.hero p{
-  font-size:18px;
-  margin:0 auto 25px;
-  max-width:600px;
-  color:#d1d5db;
-}
-.search{
-  width:100%;
-  max-width:650px;
-  padding:16px;
-  border:0;
-  border-radius:12px;
-  font-size:16px;
-}
-main{
-  max-width:1100px;
-  margin:auto;
-  padding:35px 20px;
-}
-h2{margin-bottom:20px}
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-  gap:20px;
-}
-.card{
-  background:white;
-  border-radius:16px;
-  padding:22px;
-  box-shadow:0 4px 15px rgba(0,0,0,.08);
-}
-.badge{
-  display:inline-block;
-  background:#dcfce7;
-  color:#166534;
-  padding:6px 10px;
-  border-radius:20px;
-  font-size:12px;
-  font-weight:bold;
-}
-.card h3{margin:15px 0 8px}
-.price{
-  font-size:25px;
-  font-weight:bold;
-}
-.info{
-  color:#6b7280;
-  margin:8px 0 18px;
-}
-button{
-  width:100%;
-  padding:13px;
-  border:0;
-  border-radius:10px;
-  background:#22c55e;
-  color:white;
-  font-size:15px;
-  font-weight:bold;
-}
-footer{
-  text-align:center;
-  padding:30px;
-  color:#6b7280;
-}
+body{margin:0;font-family:Arial,sans-serif;background:#f4f7f5;color:#17202a}
+header{background:#111827;color:white;padding:18px 5%;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:24px;font-weight:bold}.logo span{color:#22c55e}
+nav a{color:white;text-decoration:none;margin-left:20px;font-size:14px}
+.hero{background:#111827;color:white;text-align:center;padding:55px 20px}
+.hero h1{font-size:40px;margin:0 0 12px}.hero p{color:#d1d5db;font-size:18px}
+.search{width:100%;max-width:650px;padding:17px;border:0;border-radius:12px;font-size:16px;margin-top:15px}
+main{max-width:1150px;margin:auto;padding:40px 20px}
+h2{margin-top:0}.intro{text-align:center;margin-bottom:35px;color:#64748b}
+.goalgrid,.productgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.goal{background:white;border-radius:16px;padding:25px;text-align:center;box-shadow:0 4px 15px #00000012;cursor:pointer}
+.goal:hover{transform:translateY(-3px)}.goal .icon{font-size:35px}.goal h3{margin:10px 0 5px}.goal p{color:#64748b;font-size:14px}
+.section{margin-top:50px}
+.card{background:white;border-radius:16px;padding:20px;box-shadow:0 4px 15px #00000012}
+.badge{display:inline-block;background:#dcfce7;color:#166534;padding:6px 10px;border-radius:20px;font-size:11px;font-weight:bold}
+.card h3{margin:14px 0 7px}.price{font-size:25px;font-weight:bold}
+.meta{color:#64748b;font-size:14px;margin:8px 0}
+.score{font-weight:bold;margin:12px 0;color:#15803d}
+button{border:0;background:#22c55e;color:white;padding:12px;border-radius:9px;font-weight:bold;width:100%;cursor:pointer}
+button:hover{background:#16a34a}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px}
+.feature{background:#fff;padding:22px;border-radius:15px}.feature strong{display:block;margin-bottom:7px}
+.cta{background:#111827;color:white;text-align:center;border-radius:20px;padding:40px 20px;margin-top:50px}
+.cta button{max-width:250px}
+footer{text-align:center;padding:35px;color:#64748b;font-size:13px}
+.hidden{display:none}
+@media(max-width:600px){.hero h1{font-size:30px}nav a{margin-left:8px;font-size:12px}}
 </style>
 </head>
 
 <body>
 
 <header>
-  <div class="logo">FitDeal<span>Finder</span>.nl</div>
+<div class="logo">FitDeal<span>Finder</span>.nl</div>
+<nav>
+<a href="#doelen">Doelen</a>
+<a href="#deals">Deals</a>
+<a href="#werking">Zo werkt het</a>
+</nav>
 </header>
 
 <section class="hero">
-  <h1>Vind de beste fitnessdeal</h1>
-  <p>Vergelijk supplementen en fit maaltijden op prijs, hoeveelheid en dealwaarde.</p>
-  <input
-    class="search"
-    id="search"
-    type="text"
-    placeholder="Zoek bijvoorbeeld whey, creatine of maaltijden..."
-  >
+<h1>Vind de beste fitnessdeal</h1>
+<p>Vergelijk supplementen en fit maaltijden op prijs, hoeveelheid en dealwaarde.</p>
+<input id="search" class="search" placeholder="Zoek whey, creatine, maaltijden...">
 </section>
 
 <main>
-  <h2>Populaire deals</h2>
 
-  <div class="grid" id="products">
+<section id="doelen">
+<h2>🎯 Kies jouw doel</h2>
+<p class="intro">Ontdek producten en deals die passen bij jouw fitnessdoel.</p>
 
-    <div class="card" data-name="clear whey">
-      <span class="badge">SUPPLEMENT</span>
-      <h3>Clear Whey</h3>
-      <div class="price">€29,99</div>
-      <div class="info">500 g · 20 porties</div>
-      <button onclick="alert('Binnenkort beschikbaar via FitDealFinder')">
-        Bekijk deal
-      </button>
-    </div>
+<div class="goalgrid">
 
-    <div class="card" data-name="creatine monohydraat">
-      <span class="badge">SUPPLEMENT</span>
-      <h3>Creatine Monohydraat</h3>
-      <div class="price">€19,99</div>
-      <div class="info">500 g · 100 porties</div>
-      <button onclick="alert('Binnenkort beschikbaar via FitDealFinder')">
-        Bekijk deal
-      </button>
-    </div>
+<div class="goal" onclick="filterGoal('cut')">
+<div class="icon">🔥</div>
+<h3>Cut</h3>
+<p>Focus op eiwitrijke en slimme keuzes tijdens het afvallen.</p>
+</div>
 
-    <div class="card" data-name="chicken piri piri fit maaltijd">
-      <span class="badge">FIT MAALTIJD</span>
-      <h3>Chicken Piri Piri</h3>
-      <div class="price">€6,29</div>
-      <div class="info">378 kcal · 37,4 g eiwit</div>
-      <button onclick="alert('Binnenkort beschikbaar via FitDealFinder')">
-        Bekijk deal
-      </button>
-    </div>
+<div class="goal" onclick="filterGoal('bulk')">
+<div class="icon">💪</div>
+<h3>Bulk</h3>
+<p>Meer calorieën en eiwit voor spiermassa en groei.</p>
+</div>
 
-  </div>
+<div class="goal" onclick="filterGoal('lean')">
+<div class="icon">⚖️</div>
+<h3>Lean Bulk</h3>
+<p>Spiermassa opbouwen met aandacht voor je calorieën.</p>
+</div>
+
+<div class="goal" onclick="showAll()">
+<div class="icon">🎯</div>
+<h3>Alle producten</h3>
+<p>Bekijk het volledige aanbod en vergelijk zelf.</p>
+</div>
+
+</div>
+</section>
+
+<section class="section" id="deals">
+<h2>🔥 Populaire deals</h2>
+
+<div class="productgrid" id="products">
+
+<div class="card product" data-name="clear whey whey supplement cut lean">
+<span class="badge">SUPPLEMENT</span>
+<h3>Clear Whey</h3>
+<div class="price">€29,99</div>
+<div class="meta">500 g · 20 porties · 20 g eiwit</div>
+<div class="score">⭐ Deal Score 8,7/10</div>
+<button onclick="deal('Clear Whey')">Bekijk deal</button>
+</div>
+
+<div class="card product" data-name="creatine monohydraat creatine supplement bulk lean">
+<span class="badge">SUPPLEMENT</span>
+<h3>Creatine Monohydraat</h3>
+<div class="price">€19,99</div>
+<div class="meta">500 g · 100 porties</div>
+<div class="score">⭐ Deal Score 9,1/10</div>
+<button onclick="deal('Creatine Monohydraat')">Bekijk deal</button>
+</div>
+
+<div class="card product" data-name="whey protein whey supplement bulk lean">
+<span class="badge">SUPPLEMENT</span>
+<h3>Whey Protein</h3>
+<div class="price">€34,99</div>
+<div class="meta">1 kg · 33 porties · 23 g eiwit</div>
+<div class="score">⭐ Deal Score 8,9/10</div>
+<button onclick="deal('Whey Protein')">Bekijk deal</button>
+</div>
+
+<div class="card product" data-name="chicken piri piri maaltijd cut">
+<span class="badge">FIT MAALTIJD</span>
+<h3>Chicken Piri Piri</h3>
+<div class="price">€6,29</div>
+<div class="meta">378 kcal · 37,4 g eiwit</div>
+<div class="score">⭐ Deal Score 8,8/10</div>
+<button onclick="deal('Chicken Piri Piri')">Bekijk deal</button>
+</div>
+
+<div class="card product" data-name="chicken teriyaki maaltijd cut bulk">
+<span class="badge">FIT MAALTIJD</span>
+<h3>Chicken Teriyaki</h3>
+<div class="price">€6,49</div>
+<div class="meta">555 kcal · 35,3 g eiwit</div>
+<div class="score">⭐ Deal Score 8,5/10</div>
+<button onclick="deal('Chicken Teriyaki')">Bekijk deal</button>
+</div>
+
+<div class="card product" data-name="protein snack snack cut lean bulk">
+<span class="badge">PROTEIN SNACK</span>
+<h3>Protein Snack</h3>
+<div class="price">€2,49</div>
+<div class="meta">60 g · 15 g eiwit</div>
+<div class="score">⭐ Deal Score 8,4/10</div>
+<button onclick="deal('Protein Snack')">Bekijk deal</button>
+</div>
+
+</div>
+</section>
+
+<section class="section" id="werking">
+<h2>💡 Zo werkt FitDealFinder</h2>
+
+<div class="features">
+<div class="feature">
+<strong>🔎 1. Zoek</strong>
+Vind whey, creatine, maaltijden en meer.
+</div>
+<div class="feature">
+<strong>💰 2. Vergelijk</strong>
+Vergelijk prijzen, hoeveelheden en waarde.
+</div>
+<div class="feature">
+<strong>📊 3. Check de Deal Score</strong>
+Zie snel welke deal interessant is.
+</div>
+<div class="feature">
+<strong>🛒 4. Bouw je pakket</strong>
+Combineer producten voor jouw doel en budget.
+</div>
+</div>
+
+<div class="cta">
+<h2>Jouw fitnessboodschappen slimmer geregeld.</h2>
+<p>Van supplementen tot complete fit maaltijden.</p>
+<button onclick="document.getElementById('deals').scrollIntoView()">Bekijk deals</button>
+</div>
+
+</section>
+
 </main>
 
 <footer>
-  © 2026 FitDealFinder.nl · Vergelijk slim. Bespaar meer.
+© 2026 FitDealFinder.nl · Vergelijk slim. Bespaar meer.
 </footer>
 
 <script>
 const search=document.getElementById("search");
-const cards=document.querySelectorAll(".card");
+const products=document.querySelectorAll(".product");
 
 search.addEventListener("input",function(){
-  const term=this.value.toLowerCase();
-
-  cards.forEach(card=>{
-    card.style.display=
-      card.dataset.name.includes(term) ? "block" : "none";
-  });
+let q=this.value.toLowerCase();
+products.forEach(p=>{
+p.classList.toggle("hidden",!p.dataset.name.includes(q));
 });
+});
+
+function filterGoal(goal){
+products.forEach(p=>{
+p.classList.toggle("hidden",!p.dataset.name.includes(goal));
+});
+document.getElementById("deals").scrollIntoView();
+}
+
+function showAll(){
+products.forEach(p=>p.classList.remove("hidden"));
+document.getElementById("deals").scrollIntoView();
+}
+
+function deal(name){
+alert(name+" wordt binnenkort gekoppeld aan de echte webshopdeal.");
+}
 </script>
 
 </body>
