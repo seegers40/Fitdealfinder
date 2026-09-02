@@ -3,195 +3,112 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FitDealFinder - De beste fitnessdeals</title>
+  <title>FitDealFinder — Vind de beste fitnessdeal</title>
+  <meta name="description" content="Vergelijk fitnessproducten, supplementen en fit maaltijden. Vind de beste deal voor jouw fitnessdoel.">
 
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    * { box-sizing: border-box; }
+
+    :root {
+      --dark: #202638;
+      --dark-2: #30394f;
+      --accent: #ff8a3d;
+      --accent-2: #ffb347;
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #202638;
+      --muted: #697386;
+      --border: #e5e9f0;
+      --success: #18864b;
     }
 
     body {
-      font-family: Arial, sans-serif;
-      background: #f5f7fa;
-      color: #111827;
+      margin: 0;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background: var(--bg);
     }
 
     header {
-      background: #111827;
+      background: var(--dark);
       color: white;
-      padding: 18px 20px;
-      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 14px rgba(20,25,40,.14);
     }
 
-    .logo {
-      font-size: 28px;
-      font-weight: bold;
-    }
-
-    .hero {
-      text-align: center;
-      padding: 55px 20px;
-      background: white;
-    }
-
-    .hero h1 {
-      font-size: 38px;
-      margin-bottom: 15px;
-    }
-
-    .hero p {
-      font-size: 18px;
-      color: #6b7280;
-      margin-bottom: 25px;
-    }
-
-    .search {
-      width: 100%;
-      max-width: 600px;
-      padding: 16px;
-      border: 1px solid #d1d5db;
-      border-radius: 12px;
-      font-size: 16px;
-    }
-
-    .categories {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      padding: 25px 20px;
-    }
-
-    .category {
-      background: #111827;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 10px;
-      font-weight: bold;
-    }
-
-    .products {
-      max-width: 1000px;
+    .nav {
+      max-width: 1180px;
       margin: auto;
-      padding: 20px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      min-height: 70px;
+      padding: 0 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 20px;
     }
 
-    .card {
-      background: white;
-      border-radius: 16px;
-      padding: 22px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -.5px;
     }
 
-    .card h2 {
-      margin-bottom: 10px;
+    .logo-mark {
+      width: 35px;
+      height: 35px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      font-size: 20px;
     }
 
-    .price {
-      font-size: 25px;
-      font-weight: bold;
-      margin: 12px 0;
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      font-size: 14px;
     }
 
-    .info {
-      color: #6b7280;
-      margin-bottom: 15px;
+    .nav-links a {
+      color: #eef1f7;
+      text-decoration: none;
     }
 
-    button {
-      width: 100%;
-      padding: 13px;
-      border: none;
-      border-radius: 10px;
-      background: #111827;
+    .nav-links a:hover {
+      color: var(--accent-2);
+    }
+
+    .hero {
+      background:
+        radial-gradient(circle at 80% 10%, rgba(255,179,71,.20), transparent 30%),
+        linear-gradient(135deg, #202638 0%, #35405a 100%);
       color: white;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
+      padding: 72px 20px 82px;
     }
 
-    footer {
+    .hero-inner {
+      max-width: 920px;
+      margin: auto;
       text-align: center;
-      padding: 35px 20px;
-      color: #6b7280;
     }
-  </style>
-</head>
 
-<body>
-
-  <header>
-    <div class="logo">💪 FitDealFinder</div>
-  </header>
-
-  <section class="hero">
-    <h1>Vind de beste fitnessdeal</h1>
-    <p>Vergelijk fitnessproducten, supplementen en fit maaltijden.</p>
-
-    <input
-      type="text"
-      id="search"
-      class="search"
-      placeholder="Zoek bijvoorbeeld whey of creatine..."
-    >
-  </section>
-
-  <div class="categories">
-    <div class="category">🥤 Supplementen</div>
-    <div class="category">🥗 Fit Maaltijden</div>
-    <div class="category">🔥 Cut</div>
-    <div class="category">💪 Bulk</div>
-  </div>
-
-  <section class="products" id="products">
-
-    <div class="card" data-name="clear whey">
-      <h2>Clear Whey</h2>
-      <p class="info">500g · 20 porties · 20g eiwit per portie</p>
-      <div class="price">€29,99</div>
-      <button onclick="showDemo()">Bekijk deal</button>
-    </div>
-
-    <div class="card" data-name="creatine monohydraat creatine">
-      <h2>Creatine Monohydraat</h2>
-      <p class="info">500g · 100 porties</p>
-      <div class="price">€19,99</div>
-      <button onclick="showDemo()">Bekijk deal</button>
-    </div>
-
-  </section>
-
-  <footer>
-    © 2026 FitDealFinder.nl · Vergelijk fitnessdeals
-  </footer>
-
-  <script>
-    const search = document.getElementById("search");
-    const products = document.querySelectorAll(".card");
-
-    search.addEventListener("input", function() {
-      const query = search.value.toLowerCase();
-
-      products.forEach(product => {
-        const name = product.dataset.name;
-
-        if (name.includes(query)) {
-          product.style.display = "block";
-        } else {
-          product.style.display = "none";
-        }
-      });
-    });
-
-    function showDemo() {
-      alert("De echte affiliate-deal wordt binnenkort toegevoegd.");
+    .eyebrow {
+      display: inline-block;
+      padding: 7px 13px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.14);
+      font-size: 13px;
+      margin-bottom: 18px;
     }
-  </script>
 
-</body>
-</html>
+    h1 {
+      margin: 0;
+     
+    
