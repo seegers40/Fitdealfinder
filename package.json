@@ -1,8 +1,8 @@
 {
-  "name": "fitdealfinder-products",
+  "name": "fitdealfinder",
   "version": "1.0.0",
   "private": true,
-  "description": "Secure FitDealFinder products and affiliate backend",
+  "description": "FitDealFinder.nl - fitness deals, producten en affiliate backend",
   "main": "dist/fitdealfinder-products.js",
   "scripts": {
     "dev": "tsx fitdealfinder-products.ts",
