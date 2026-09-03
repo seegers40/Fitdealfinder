@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>FitDealFinder.nl — Slim besparen op fitness</title>
+
+  <meta
+    name="description"
+    content="Vergelijk fitnessproducten op prijs, categorie en doel. Vind slimme fitnessdeals voor Cut, Bulk en Lean Bulk."
+  >
+
+  <meta name="theme-color" content="#0b1020">
+
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="/" aria-label="FitDealFinder.nl home">
+        FitDealFinder<span>.nl</span>
+      </a>
+
+      <nav class="main-nav" aria-label="Hoofdnavigatie">
+        <a href="#deals">Deals</a>
+        <a href="#planner">Jouw doel</a>
+        <a href="#hoe-werkt-het">Hoe werkt het?</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-content">
+        <div class="eyebrow">Fitness • Voeding • Slim besparen</div>
+
+        <h1>Vind de beste fitnessdeal voor jouw doel.</h1>
+
+        <p class="hero-text">
+          Vergelijk fitnessproducten op prijs, categorie en doel.
+          Stel eenvoudig jouw boodschappenlijst samen voor Cut, Bulk
+          of Lean Bulk.
+        </p>
+
+        <div class="goal-buttons" aria-label="Kies je doel">
+          <button
+            class="goal-button active"
+            type="button"
+            data-goal-button="cut"
+          >
+            Cut
+          </button>
+
+          <button
+            class="goal-button"
+            type="button"
+            data-goal-button="bulk"
+          >
+            Bulk
+          </button>
+
+          <button
+            class="goal-button"
+            type="button"
+            data-goal-button="lean-bulk"
+          >
+            Lean Bulk
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="planner-section" id="planner">
+      <div class="container">
+        <div class="planner-card">
+          <div class="section-heading">
+            <div>
+              <span class="section-label">Jouw plan</span>
+              <h2>Maak jouw boodschappenlijst</h2>
+            </div>
+
+            <p>
+              Kies je doel en budget. FitDealFinder zoekt een passend
+              pakket uit de beschikbare producten.
+            </p>
+          </div>
+
+          <div class="planner-grid">
+            <div class="form-group">
+              <label for="goal-select">Doel</label>
+
+              <select id="goal-select">
+                <option value="cut">Cut</option>
+                <option value="bulk">Bulk</option>
+                <option value="lean-bulk">Lean Bulk</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="budget-input">Budget</label>
+
+              <div class="input-with-prefix">
+                <span>€</span>
+                <input
+                  id="budget-input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value="60"
+                  inputmode="decimal"
+                >
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="period-select">Periode</label>
+
+              <select id="period-select">
+                <option value="week">Per week</option>
+                <option value="month">Per maand</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="protein-input">Min. eiwit per dag</label>
+
+              <div class="input-with-suffix">
+                <input
+                  id="protein-input"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value="160"
+                  inputmode="numeric"
+                >
+                <span>g</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            class="primary-button"
+            id="make-plan-button"
+            type="button"
+          >
+            Maak mijn boodschappenlijst
+          </button>
+
+          <p class="planner-note">
+            De planner gebruikt de huidige productprijzen en maakt een
+            eenvoudig pakket binnen je budget.
+          </p>
+
+          <div
+            class="planner-result"
+            id="planner-result"
+            aria-live="polite"
+          ></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="products-section" id="deals">
+      <div class="container">
+        <div class="section-heading products-heading">
+          <div>
+            <span class="section-label">Deals</span>
+            <h2>Fitnessproducten vergelijken</h2>
+          </div>
+
+          <p>
+            Zoek op product of merk en filter op categorie.
+          </p>
+        </div>
+
+        <div class="product-filters">
+          <div class="search-wrapper">
+            <label class="sr-only" for="search-input">
+              Zoek producten
+            </label>
+
+            <input
+              id="search-input"
+              type="search"
+              placeholder="Zoek op product of merk..."
+              autocomplete="off"
+            >
+          </div>
+
+          <div>
+            <label class="sr-only" for="category-select">
+              Kies een categorie
+            </label>
+
+            <select id="category-select">
+              <option value="">Alle categorieën</option>
+              <option value="whey">Whey</option>
+              <option value="creatine">Creatine</option>
+              <option value="snacks">Snacks</option>
+              <option value="meals">Maaltijden</option>
+              <option value="preworkout">Pre-workout</option>
+              <option value="vitamins">Vitamines</option>
+              <option value="gainer">Gainer</option>
+            </select>
+          </div>
+        </div>
+
+        <div
+          class="products-status"
+          id="products-status"
+          aria-live="polite"
+        ></div>
+
+        <div
+          class="product-grid"
+          id="product-grid"
+        ></div>
+      </div>
+    </section>
+
+    <section class="how-section" id="hoe-werkt-het">
+      <div class="container">
+        <div class="section-heading">
+          <div>
+            <span class="section-label">Zo werkt het</span>
+            <h2>Van doel naar deal</h2>
+          </div>
+        </div>
+
+        <div class="steps-grid">
+          <article class="step-card">
+            <div class="step-number">1</div>
+
+            <h3>Kies je doel</h3>
+
+            <p>
+              Geef aan of je wilt cutten, bulken of lean bulken.
+            </p>
+          </article>
+
+          <article class="step-card">
+            <div class="step-number">2</div>
+
+            <h3>Stel je budget in</h3>
+
+            <p>
+              Bepaal hoeveel je ongeveer wilt uitgeven per week of maand.
+            </p>
+          </article>
+
+          <article class="step-card">
+            <div class="step-number">3</div>
+
+            <h3>Vergelijk deals</h3>
+
+            <p>
+              Bekijk producten, prijzen en aanbieders en kies de deal
+              die bij jou past.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div>
+        <strong>FitDealFinder<span>.nl</span></strong>
+
+        <p>
+          Slim fitnessproducten vergelijken en besparen.
+        </p>
+      </div>
+
+      <div class="footer-links">
+        <a href="#deals">Deals</a>
+        <a href="#planner">Jouw doel</a>
+        <a href="#hoe-werkt-het">Hoe werkt het?</a>
+      </div>
+    </div>
+
+    <div class="container footer-bottom">
+      <p>
+        © <span id="current-year">2026</span> FitDealFinder.nl
+      </p>
+
+      <p>
+        Prijzen kunnen wijzigen bij de aanbieder.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
