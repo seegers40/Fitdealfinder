@@ -75,4 +75,19 @@ const products = [
   servings: 1,
   url: ""
 },
-];
+{
+  id: 6,
+
+  
+  name: "Protein Bar Chocolate",
+  category: "snacks",
+  goal: ["cut", "bulk", "lean-bulk"],
+  brand: "Voorbeeld",
+  store: "Voorbeeldwinkel",
+  price: 2.19,
+  weight: 60,
+  protein: 20,
+  calories: 200,
+  servings: 1,
+  url: ""
+},
