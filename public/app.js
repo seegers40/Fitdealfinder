@@ -476,17 +476,18 @@ function getFilteredProducts() {
 }
 
 function getProductLink(product) {
-  if (
-    product.id !== undefined &&
-    product.id !== null &&
-    product.id !== ""
-  ) {
-    return `/go/${encodeURIComponent(String(product.id))}`;
+  const hasApiProductId =
+    typeof product.id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      product.id
+    );
+
+  if (hasApiProductId) {
+    return `/go/${encodeURIComponent(product.id)}`;
   }
 
   return product.productUrl || "#";
 }
-
 function renderProducts() {
   const products = getFilteredProducts();
 
