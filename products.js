@@ -91,3 +91,17 @@ const products = [
   servings: 1,
   url: ""
 },
+{
+  id: 7,
+  name: "Whey Protein 1000g",
+  category: "whey",
+  goal: ["cut", "bulk", "lean-bulk"],
+  brand: "Voorbeeld",
+  store: "Voorbeeldwinkel",
+  price: 34.99,
+  weight: 1000,
+  protein: 23,
+  calories: 120,
+  servings: 33,
+  url: ""
+},
