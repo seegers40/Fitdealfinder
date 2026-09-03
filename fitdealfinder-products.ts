@@ -25,7 +25,6 @@ import { Pool } from "pg";
 import { z } from "zod";
 import crypto from "node:crypto";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 const app = express();
 
@@ -66,7 +65,7 @@ app.use(
         frameAncestors: ["'none'"],
         formAction: ["'self'"],
         imgSrc: ["'self'", "https:", "data:"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'"],
         scriptSrc: ["'self'"],
         connectSrc: ["'self'"],
       },
@@ -92,10 +91,6 @@ const database = new Pool({
   max: 10,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
-  ssl:
-    process.env.NODE_ENV === "production"
-      ? { rejectUnauthorized: true }
-      : undefined,
 });
 
 async function db<T = any>(
@@ -118,6 +113,9 @@ async function createDatabase() {
 
       brand TEXT,
       category TEXT,
+
+      goals TEXT[] NOT NULL
+        DEFAULT ARRAY['cut', 'bulk', 'lean-bulk']::text[],
 
       price NUMERIC(12,2) NOT NULL
         CHECK (price >= 0),
@@ -162,6 +160,11 @@ async function createDatabase() {
     );
 
     ALTER TABLE products
+      ADD COLUMN IF NOT EXISTS goals TEXT[]
+      NOT NULL
+      DEFAULT ARRAY['cut', 'bulk', 'lean-bulk']::text[];
+
+    ALTER TABLE products
       ALTER COLUMN affiliate_url DROP NOT NULL;
 
     CREATE INDEX IF NOT EXISTS products_category_idx
@@ -178,6 +181,9 @@ async function createDatabase() {
 
     CREATE INDEX IF NOT EXISTS products_active_idx
       ON products(active);
+
+    CREATE INDEX IF NOT EXISTS products_goals_idx
+      ON products USING GIN(goals);
 
     CREATE UNIQUE INDEX IF NOT EXISTS products_network_external_idx
       ON products(network, external_id)
@@ -215,10 +221,26 @@ async function createDatabase() {
 /* VALIDATION                                                                  */
 /* -------------------------------------------------------------------------- */
 
-const productSchema = z.object({
-  externalId: z.string().trim().min(1).max(200).nullable().optional(),
+const goalSchema = z.enum([
+  "cut",
+  "bulk",
+  "lean-bulk",
+]);
 
-  name: z.string().trim().min(1).max(300),
+const productSchema = z.object({
+  externalId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .nullable()
+    .optional(),
+
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(300),
 
   description: z
     .string()
@@ -227,11 +249,34 @@ const productSchema = z.object({
     .nullable()
     .optional(),
 
-  brand: z.string().trim().max(200).nullable().optional(),
+  brand: z
+    .string()
+    .trim()
+    .max(200)
+    .nullable()
+    .optional(),
 
-  category: z.string().trim().max(200).nullable().optional(),
+  category: z
+    .string()
+    .trim()
+    .max(200)
+    .nullable()
+    .optional(),
 
-  price: z.number().finite().nonnegative(),
+  goals: z
+    .array(goalSchema)
+    .min(1)
+    .max(3)
+    .default([
+      "cut",
+      "bulk",
+      "lean-bulk",
+    ]),
+
+  price: z
+    .number()
+    .finite()
+    .nonnegative(),
 
   oldPrice: z
     .number()
@@ -244,7 +289,9 @@ const productSchema = z.object({
     .string()
     .trim()
     .length(3)
-    .transform((value) => value.toUpperCase()),
+    .transform((value) =>
+      value.toUpperCase()
+    ),
 
   imageUrl: z
     .string()
@@ -265,7 +312,11 @@ const productSchema = z.object({
     .nullable()
     .optional(),
 
-  merchantName: z.string().trim().min(1).max(200),
+  merchantName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200),
 
   merchantId: z
     .string()
@@ -295,10 +346,14 @@ const productSchema = z.object({
     .nullable()
     .optional(),
 
-  inStock: z.boolean().default(true),
+  inStock: z
+    .boolean()
+    .default(true),
 });
 
-type ProductInput = z.infer<typeof productSchema>;
+type ProductInput = z.infer<
+  typeof productSchema
+>;
 
 /* -------------------------------------------------------------------------- */
 /* URL SECURITY                                                                */
@@ -308,15 +363,21 @@ function httpsUrl(value: string): URL {
   const url = new URL(value);
 
   if (url.protocol !== "https:") {
-    throw new Error("Only HTTPS URLs are allowed.");
+    throw new Error(
+      "Only HTTPS URLs are allowed."
+    );
   }
 
   return url;
 }
 
-function isSafeAwinUrl(value: string): boolean {
+function isSafeAwinUrl(
+  value: string
+): boolean {
   try {
-    const host = httpsUrl(value).hostname.toLowerCase();
+    const host = httpsUrl(value)
+      .hostname
+      .toLowerCase();
 
     return (
       host === "awin.com" ||
@@ -335,7 +396,9 @@ function isSafeAwinUrl(value: string): boolean {
 /* PRODUCT HELPERS                                                             */
 /* -------------------------------------------------------------------------- */
 
-function slugify(value: string): string {
+function slugify(
+  value: string
+): string {
   return value
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -345,11 +408,17 @@ function slugify(value: string): string {
     .slice(0, 180);
 }
 
-async function makeUniqueSlug(base: string): Promise<string> {
-  const clean = slugify(base) || "product";
+async function makeUniqueSlug(
+  base: string
+): Promise<string> {
+  const clean =
+    slugify(base) || "product";
 
   for (let i = 0; i < 100; i++) {
-    const slug = i === 0 ? clean : `${clean}-${i + 1}`;
+    const slug =
+      i === 0
+        ? clean
+        : `${clean}-${i + 1}`;
 
     const existing = await db(
       `
@@ -366,14 +435,20 @@ async function makeUniqueSlug(base: string): Promise<string> {
     }
   }
 
-  return `${clean}-${crypto.randomUUID().slice(0, 8)}`;
+  return `${clean}-${crypto
+    .randomUUID()
+    .slice(0, 8)}`;
 }
 
 function discountPercentage(
   price: number,
   oldPrice?: number | null
 ): number | null {
-  if (!oldPrice || oldPrice <= price || oldPrice <= 0) {
+  if (
+    !oldPrice ||
+    oldPrice <= price ||
+    oldPrice <= 0
+  ) {
     return null;
   }
 
@@ -381,7 +456,11 @@ function discountPercentage(
     100,
     Math.max(
       0,
-      Math.round(((oldPrice - price) / oldPrice) * 100)
+      Math.round(
+        ((oldPrice - price) /
+          oldPrice) *
+          100
+      )
     )
   );
 }
@@ -396,25 +475,35 @@ function dealScore(product: {
     return 0;
   }
 
-  const discount = discountPercentage(
-    product.price,
-    product.oldPrice
-  );
+  const discount =
+    discountPercentage(
+      product.price,
+      product.oldPrice
+    );
 
   let score = 0;
 
   if (discount !== null) {
-    score += Math.min(60, Math.round(discount * 1.5));
+    score += Math.min(
+      60,
+      Math.round(discount * 1.5)
+    );
   }
 
   if (
     product.commission !== null &&
     product.commission !== undefined
   ) {
-    score += Math.min(20, Math.round(product.commission));
+    score += Math.min(
+      20,
+      Math.round(product.commission)
+    );
   }
 
-  if (product.price > 0 && product.price < 50) {
+  if (
+    product.price > 0 &&
+    product.price < 50
+  ) {
     score += 10;
   }
 
@@ -425,44 +514,62 @@ function dealScore(product: {
     score += 5;
   }
 
-  return Math.min(100, Math.max(0, score));
+  return Math.min(
+    100,
+    Math.max(0, score)
+  );
 }
 
-function normalizeProduct(input: ProductInput) {
-  const productUrl = httpsUrl(input.productUrl);
+function normalizeProduct(
+  input: ProductInput
+) {
+  const productUrl =
+    httpsUrl(input.productUrl);
 
-  let affiliateUrl: string | null = null;
+  let affiliateUrl:
+    | string
+    | null = null;
 
   if (input.affiliateUrl) {
-    if (!isSafeAwinUrl(input.affiliateUrl)) {
+    if (
+      !isSafeAwinUrl(
+        input.affiliateUrl
+      )
+    ) {
       throw new Error(
         "Affiliate URL must be a valid approved Awin URL."
       );
     }
 
-    affiliateUrl = httpsUrl(
-      input.affiliateUrl
-    ).toString();
+    affiliateUrl =
+      httpsUrl(
+        input.affiliateUrl
+      ).toString();
   }
 
-  const discount = discountPercentage(
-    input.price,
-    input.oldPrice
-  );
+  const discount =
+    discountPercentage(
+      input.price,
+      input.oldPrice
+    );
 
-  const score = dealScore({
-    price: input.price,
-    oldPrice: input.oldPrice,
-    commission: input.commission,
-    inStock: input.inStock,
-  });
+  const score =
+    dealScore({
+      price: input.price,
+      oldPrice: input.oldPrice,
+      commission: input.commission,
+      inStock: input.inStock,
+    });
 
   return {
     ...input,
-    productUrl: productUrl.toString(),
+    productUrl:
+      productUrl.toString(),
     affiliateUrl,
-    discountPercent: discount,
-    dealScore: score,
+    discountPercent:
+      discount,
+    dealScore:
+      score,
   };
 }
 
@@ -475,39 +582,60 @@ type RateBucket = {
   resetAt: number;
 };
 
-const rateBuckets = new Map<string, RateBucket>();
+const rateBuckets =
+  new Map<string, RateBucket>();
 
-function rateLimit(maxRequests: number, windowMs: number) {
+function rateLimit(
+  maxRequests: number,
+  windowMs: number
+) {
   return (
     req: Request,
     res: Response,
     next: NextFunction
   ) => {
-    const ip = req.ip || "unknown";
+    const ip =
+      req.ip || "unknown";
+
     const now = Date.now();
 
-    const bucket = rateBuckets.get(ip);
+    const bucket =
+      rateBuckets.get(ip);
 
-    if (!bucket || bucket.resetAt <= now) {
+    if (
+      !bucket ||
+      bucket.resetAt <= now
+    ) {
       rateBuckets.set(ip, {
         count: 1,
-        resetAt: now + windowMs,
+        resetAt:
+          now + windowMs,
       });
 
       return next();
     }
 
-    if (bucket.count >= maxRequests) {
+    if (
+      bucket.count >=
+      maxRequests
+    ) {
       res.setHeader(
         "Retry-After",
         String(
-          Math.ceil((bucket.resetAt - now) / 1000)
+          Math.ceil(
+            (bucket.resetAt -
+              now) /
+              1000
+          )
         )
       );
 
-      return res.status(429).json({
-        error: "Too many requests.",
-      });
+      return res
+        .status(429)
+        .json({
+          error:
+            "Too many requests.",
+        });
     }
 
     bucket.count += 1;
@@ -519,8 +647,15 @@ function rateLimit(maxRequests: number, windowMs: number) {
 setInterval(() => {
   const now = Date.now();
 
-  for (const [key, bucket] of rateBuckets) {
-    if (bucket.resetAt <= now) {
+  for (
+    const [
+      key,
+      bucket,
+    ] of rateBuckets
+  ) {
+    if (
+      bucket.resetAt <= now
+    ) {
       rateBuckets.delete(key);
     }
   }
@@ -535,27 +670,42 @@ function requireAdmin(
   res: Response,
   next: NextFunction
 ) {
-  const supplied = req.header("x-admin-secret");
+  const supplied =
+    req.header(
+      "x-admin-secret"
+    );
 
   if (!supplied) {
-    return res.status(401).json({
-      error: "Unauthorized.",
-    });
+    return res
+      .status(401)
+      .json({
+        error:
+          "Unauthorized.",
+      });
   }
 
-  const suppliedBuffer = Buffer.from(supplied);
-  const expectedBuffer = Buffer.from(ADMIN_SECRET!);
+  const suppliedBuffer =
+    Buffer.from(supplied);
+
+  const expectedBuffer =
+    Buffer.from(
+      ADMIN_SECRET!
+    );
 
   if (
-    suppliedBuffer.length !== expectedBuffer.length ||
+    suppliedBuffer.length !==
+      expectedBuffer.length ||
     !crypto.timingSafeEqual(
       suppliedBuffer,
       expectedBuffer
     )
   ) {
-    return res.status(401).json({
-      error: "Unauthorized.",
-    });
+    return res
+      .status(401)
+      .json({
+        error:
+          "Unauthorized.",
+      });
   }
 
   return next();
@@ -567,23 +717,27 @@ function requireAdmin(
 
 async function saveProduct(
   input: ProductInput
-): Promise<"inserted" | "updated"> {
-  const product = normalizeProduct(input);
+): Promise<
+  "inserted" | "updated"
+> {
+  const product =
+    normalizeProduct(input);
 
   if (product.externalId) {
-    const existing = await db<{ id: string }>(
-      `
-      SELECT id
-      FROM products
-      WHERE network = $1
-        AND external_id = $2
-      LIMIT 1
-      `,
-      [
-        product.network,
-        product.externalId,
-      ]
-    );
+    const existing =
+      await db<{ id: string }>(
+        `
+        SELECT id
+        FROM products
+        WHERE network = $1
+          AND external_id = $2
+        LIMIT 1
+        `,
+        [
+          product.network,
+          product.externalId,
+        ]
+      );
 
     if (existing.length > 0) {
       await db(
@@ -594,39 +748,48 @@ async function saveProduct(
           description = $2,
           brand = $3,
           category = $4,
-          price = $5,
-          old_price = $6,
-          currency = $7,
-          image_url = $8,
-          product_url = $9,
-          affiliate_url = $10,
-          merchant_name = $11,
-          merchant_id = $12,
-          commission = $13,
-          commission_type = $14,
-          in_stock = $15,
-          deal_score = $16,
-          discount_percent = $17,
+          goals = $5,
+          price = $6,
+          old_price = $7,
+          currency = $8,
+          image_url = $9,
+          product_url = $10,
+          affiliate_url = $11,
+          merchant_name = $12,
+          merchant_id = $13,
+          commission = $14,
+          commission_type = $15,
+          in_stock = $16,
+          deal_score = $17,
+          discount_percent = $18,
           active = TRUE,
           last_synced_at = NOW(),
           updated_at = NOW()
-        WHERE id = $18::uuid
+        WHERE id = $19::uuid
         `,
         [
           product.name,
-          product.description ?? null,
+          product.description ??
+            null,
           product.brand ?? null,
-          product.category ?? null,
+          product.category ??
+            null,
+          product.goals,
           product.price,
-          product.oldPrice ?? null,
+          product.oldPrice ??
+            null,
           product.currency,
-          product.imageUrl ?? null,
+          product.imageUrl ??
+            null,
           product.productUrl,
           product.affiliateUrl,
           product.merchantName,
-          product.merchantId ?? null,
-          product.commission ?? null,
-          product.commissionType ?? null,
+          product.merchantId ??
+            null,
+          product.commission ??
+            null,
+          product.commissionType ??
+            null,
           product.inStock,
           product.dealScore,
           product.discountPercent,
@@ -638,9 +801,13 @@ async function saveProduct(
     }
   }
 
-  const id = crypto.randomUUID();
+  const id =
+    crypto.randomUUID();
 
-  const slug = await makeUniqueSlug(product.name);
+  const slug =
+    await makeUniqueSlug(
+      product.name
+    );
 
   await db(
     `
@@ -652,6 +819,7 @@ async function saveProduct(
       description,
       brand,
       category,
+      goals,
       price,
       old_price,
       currency,
@@ -691,29 +859,39 @@ async function saveProduct(
       $19,
       $20,
       $21,
+      $22,
       TRUE,
       NOW()
     )
     `,
     [
       id,
-      product.externalId ?? null,
+      product.externalId ??
+        null,
       product.name,
       slug,
-      product.description ?? null,
+      product.description ??
+        null,
       product.brand ?? null,
-      product.category ?? null,
+      product.category ??
+        null,
+      product.goals,
       product.price,
-      product.oldPrice ?? null,
+      product.oldPrice ??
+        null,
       product.currency,
-      product.imageUrl ?? null,
+      product.imageUrl ??
+        null,
       product.productUrl,
       product.affiliateUrl,
       product.merchantName,
-      product.merchantId ?? null,
+      product.merchantId ??
+        null,
       product.network,
-      product.commission ?? null,
-      product.commissionType ?? null,
+      product.commission ??
+        null,
+      product.commissionType ??
+        null,
       product.inStock,
       product.dealScore,
       product.discountPercent,
@@ -730,21 +908,34 @@ async function saveProduct(
 app.get(
   "/api/products",
   rateLimit(120, 60_000),
-  async (req: Request, res: Response) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
     try {
-      let limit = Number(req.query.limit ?? 100);
-      let offset = Number(req.query.offset ?? 0);
+      let limit = Number(
+        req.query.limit ?? 100
+      );
+
+      let offset = Number(
+        req.query.offset ?? 0
+      );
 
       if (!Number.isFinite(limit)) {
         limit = 100;
       }
 
-      if (!Number.isFinite(offset)) {
+      if (
+        !Number.isFinite(offset)
+      ) {
         offset = 0;
       }
 
       limit = Math.min(
-        Math.max(Math.floor(limit), 1),
+        Math.max(
+          Math.floor(limit),
+          1
+        ),
         100
       );
 
@@ -754,69 +945,79 @@ app.get(
       );
 
       const category =
-        typeof req.query.category === "string"
-          ? req.query.category.trim().slice(0, 200)
+        typeof req.query.category ===
+        "string"
+          ? req.query.category
+              .trim()
+              .slice(0, 200)
           : null;
 
       const search =
-        typeof req.query.search === "string"
-          ? req.query.search.trim().slice(0, 200)
+        typeof req.query.search ===
+        "string"
+          ? req.query.search
+              .trim()
+              .slice(0, 200)
           : null;
 
       const sort =
-        req.query.sort === "price_asc"
+        req.query.sort ===
+        "price_asc"
           ? "price ASC"
-          : req.query.sort === "price_desc"
+          : req.query.sort ===
+              "price_desc"
             ? "price DESC"
-            : req.query.sort === "newest"
+            : req.query.sort ===
+                "newest"
               ? "created_at DESC"
               : "deal_score DESC";
 
-      const products = await db(
-        `
-        SELECT
-          id,
-          name,
-          slug,
-          description,
-          brand,
-          category,
-          price,
-          old_price AS "oldPrice",
-          currency,
-          image_url AS "imageUrl",
-          product_url AS "productUrl",
-          affiliate_url AS "affiliateUrl",
-          merchant_name AS "merchantName",
-          network,
-          in_stock AS "inStock",
-          deal_score AS "dealScore",
-          discount_percent AS "discountPercent"
-        FROM products
-        WHERE active = TRUE
+      const products =
+        await db(
+          `
+          SELECT
+            id,
+            name,
+            slug,
+            description,
+            brand,
+            category,
+            goals,
+            price,
+            old_price AS "oldPrice",
+            currency,
+            image_url AS "imageUrl",
+            product_url AS "productUrl",
+            merchant_name AS "merchantName",
+            network,
+            in_stock AS "inStock",
+            deal_score AS "dealScore",
+            discount_percent AS "discountPercent"
+          FROM products
+          WHERE active = TRUE
 
-        AND (
-          $1::text IS NULL
-          OR category = $1
-        )
+          AND (
+            $1::text IS NULL
+            OR category = $1
+          )
 
-        AND (
-          $2::text IS NULL
-          OR name ILIKE '%' || $2 || '%'
-          OR brand ILIKE '%' || $2 || '%'
-        )
+          AND (
+            $2::text IS NULL
+            OR name ILIKE '%' || $2 || '%'
+            OR brand ILIKE '%' || $2 || '%'
+          )
 
-        ORDER BY ${sort}
-        LIMIT $3
-        OFFSET $4
-        `,
-        [
-          category,
-          search,
-          limit,
-          offset,
-        ]
-      );
+          ORDER BY ${sort}
+          LIMIT $3
+          OFFSET $4
+          `,
+          [
+            category,
+            search,
+            limit,
+            offset,
+          ]
+        );
 
       return res.json({
         products,
@@ -824,11 +1025,17 @@ app.get(
         offset,
       });
     } catch (error) {
-      console.error("Products error:", error);
+      console.error(
+        "Products error:",
+        error
+      );
 
-      return res.status(500).json({
-        error: "Internal server error.",
-      });
+      return res
+        .status(500)
+        .json({
+          error:
+            "Internal server error.",
+        });
     }
   }
 );
@@ -840,56 +1047,73 @@ app.get(
 app.get(
   "/api/products/:slug",
   rateLimit(120, 60_000),
-  async (req: Request, res: Response) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
     try {
-      const slug = String(req.params.slug)
-        .trim()
-        .slice(0, 200);
+      const slug =
+        String(
+          req.params.slug
+        )
+          .trim()
+          .slice(0, 200);
 
-      const products = await db(
-        `
-        SELECT
-          id,
-          name,
-          slug,
-          description,
-          brand,
-          category,
-          price,
-          old_price AS "oldPrice",
-          currency,
-          image_url AS "imageUrl",
-          product_url AS "productUrl",
-          affiliate_url AS "affiliateUrl",
-          merchant_name AS "merchantName",
-          network,
-          in_stock AS "inStock",
-          deal_score AS "dealScore",
-          discount_percent AS "discountPercent"
-        FROM products
-        WHERE slug = $1
-          AND active = TRUE
-        LIMIT 1
-        `,
-        [slug]
-      );
+      const products =
+        await db(
+          `
+          SELECT
+            id,
+            name,
+            slug,
+            description,
+            brand,
+            category,
+            goals,
+            price,
+            old_price AS "oldPrice",
+            currency,
+            image_url AS "imageUrl",
+            product_url AS "productUrl",
+            merchant_name AS "merchantName",
+            network,
+            in_stock AS "inStock",
+            deal_score AS "dealScore",
+            discount_percent AS "discountPercent"
+          FROM products
+          WHERE slug = $1
+            AND active = TRUE
+          LIMIT 1
+          `,
+          [slug]
+        );
 
-      if (products.length === 0) {
-        return res.status(404).json({
-          error: "Product not found.",
-        });
+      if (
+        products.length === 0
+      ) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Product not found.",
+          });
       }
 
-      return res.json(products[0]);
+      return res.json(
+        products[0]
+      );
     } catch (error) {
       console.error(
         "Product detail error:",
         error
       );
 
-      return res.status(500).json({
-        error: "Internal server error.",
-      });
+      return res
+        .status(500)
+        .json({
+          error:
+            "Internal server error.",
+        });
     }
   }
 );
@@ -901,36 +1125,47 @@ app.get(
 app.get(
   "/go/:id",
   rateLimit(60, 60_000),
-  async (req: Request, res: Response) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
     try {
-      const id = String(req.params.id);
+      const id =
+        String(req.params.id);
 
       if (
-        !/^[0-9a-f-]{36}$/i.test(id)
+        !/^[0-9a-f-]{36}$/i.test(
+          id
+        )
       ) {
         return res
           .status(400)
-          .send("Invalid product.");
+          .send(
+            "Invalid product."
+          );
       }
 
-      const products = await db<{
-        id: string;
-        product_url: string;
-        affiliate_url: string | null;
-        active: boolean;
-      }>(
-        `
-        SELECT
-          id,
-          product_url,
-          affiliate_url,
-          active
-        FROM products
-        WHERE id = $1::uuid
-        LIMIT 1
-        `,
-        [id]
-      );
+      const products =
+        await db<{
+          id: string;
+          product_url: string;
+          affiliate_url:
+            | string
+            | null;
+          active: boolean;
+        }>(
+          `
+          SELECT
+            id,
+            product_url,
+            affiliate_url,
+            active
+          FROM products
+          WHERE id = $1::uuid
+          LIMIT 1
+          `,
+          [id]
+        );
 
       if (
         products.length === 0 ||
@@ -938,22 +1173,31 @@ app.get(
       ) {
         return res
           .status(404)
-          .send("Product not found.");
+          .send(
+            "Product not found."
+          );
       }
 
-      const product = products[0];
+      const product =
+        products[0];
 
-      let destination = product.product_url;
+      let destination =
+        product.product_url;
 
       if (
         product.affiliate_url &&
-        isSafeAwinUrl(product.affiliate_url)
+        isSafeAwinUrl(
+          product.affiliate_url
+        )
       ) {
-        destination = product.affiliate_url;
+        destination =
+          product.affiliate_url;
       }
 
       const safeDestination =
-        httpsUrl(destination).toString();
+        httpsUrl(
+          destination
+        ).toString();
 
       await db(
         `
@@ -992,21 +1236,31 @@ app.post(
   "/api/admin/products",
   rateLimit(30, 60_000),
   requireAdmin,
-  async (req: Request, res: Response) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
     try {
       const parsed =
-        productSchema.safeParse(req.body);
+        productSchema.safeParse(
+          req.body
+        );
 
       if (!parsed.success) {
-        return res.status(400).json({
-          error: "Invalid product.",
-          details:
-            parsed.error.flatten(),
-        });
+        return res
+          .status(400)
+          .json({
+            error:
+              "Invalid product.",
+            details:
+              parsed.error.flatten(),
+          });
       }
 
       const action =
-        await saveProduct(parsed.data);
+        await saveProduct(
+          parsed.data
+        );
 
       return res
         .status(
@@ -1024,12 +1278,14 @@ app.post(
         error
       );
 
-      return res.status(400).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Invalid product.",
-      });
+      return res
+        .status(400)
+        .json({
+          error:
+            error instanceof Error
+              ? error.message
+              : "Invalid product.",
+        });
     }
   }
 );
@@ -1042,16 +1298,25 @@ app.delete(
   "/api/admin/products/:id",
   rateLimit(30, 60_000),
   requireAdmin,
-  async (req: Request, res: Response) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
     try {
-      const id = String(req.params.id);
+      const id =
+        String(req.params.id);
 
       if (
-        !/^[0-9a-f-]{36}$/i.test(id)
+        !/^[0-9a-f-]{36}$/i.test(
+          id
+        )
       ) {
-        return res.status(400).json({
-          error: "Invalid product ID.",
-        });
+        return res
+          .status(400)
+          .json({
+            error:
+              "Invalid product ID.",
+          });
       }
 
       const result =
@@ -1066,10 +1331,15 @@ app.delete(
           [id]
         );
 
-      if (result.rowCount === 0) {
-        return res.status(404).json({
-          error: "Product not found.",
-        });
+      if (
+        result.rowCount === 0
+      ) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Product not found.",
+          });
       }
 
       return res.json({
@@ -1081,9 +1351,12 @@ app.delete(
         error
       );
 
-      return res.status(500).json({
-        error: "Internal server error.",
-      });
+      return res
+        .status(500)
+        .json({
+          error:
+            "Internal server error.",
+        });
     }
   }
 );
@@ -1135,7 +1408,8 @@ function toNumber(
     return null;
   }
 
-  const number = Number(value);
+  const number =
+    Number(value);
 
   return Number.isFinite(number)
     ? number
@@ -1152,7 +1426,8 @@ function toStringOrNull(
     return null;
   }
 
-  const result = String(value).trim();
+  const result =
+    String(value).trim();
 
   return result || null;
 }
@@ -1160,9 +1435,11 @@ function toStringOrNull(
 function mapAwinProduct(
   raw: AwinProduct
 ): ProductInput {
-  const price = toNumber(
-    raw.salePrice ?? raw.price
-  );
+  const price =
+    toNumber(
+      raw.salePrice ??
+        raw.price
+    );
 
   if (price === null) {
     throw new Error(
@@ -1188,6 +1465,21 @@ function mapAwinProduct(
   ) {
     throw new Error(
       "Awin product is missing a URL."
+    );
+  }
+
+  const currency =
+    String(
+      raw.currency ?? "EUR"
+    ).trim().toUpperCase();
+
+  if (
+    !/^[A-Z]{3}$/.test(
+      currency
+    )
+  ) {
+    throw new Error(
+      "Awin product has an invalid currency."
     );
   }
 
@@ -1223,15 +1515,16 @@ function mapAwinProduct(
     price,
 
     oldPrice:
-      raw.salePrice !== undefined &&
-      raw.price !== undefined
-        ? toNumber(raw.price)
+      raw.salePrice !==
+        undefined &&
+      raw.price !==
+        undefined
+        ? toNumber(
+            raw.price
+          )
         : null,
 
-    currency:
-      String(
-        raw.currency ?? "EUR"
-      ).slice(0, 3),
+    currency,
 
     imageUrl:
       toStringOrNull(
@@ -1271,8 +1564,9 @@ function mapAwinProduct(
   });
 }
 
-async function getAwinProducts():
-  Promise<AwinProduct[]> {
+async function getAwinProducts(): Promise<
+  AwinProduct[]
+> {
   if (!AWIN_API_KEY) {
     throw new Error(
       "AWIN_API_KEY is missing."
@@ -1320,7 +1614,9 @@ async function getAwinProducts():
   const data: unknown =
     await response.json();
 
-  if (!Array.isArray(data)) {
+  if (
+    !Array.isArray(data)
+  ) {
     throw new Error(
       "Unexpected Awin feed format."
     );
@@ -1340,10 +1636,12 @@ app.post(
     res: Response
   ) => {
     if (syncRunning) {
-      return res.status(409).json({
-        error:
-          "Awin synchronization is already running.",
-      });
+      return res
+        .status(409)
+        .json({
+          error:
+            "Awin synchronization is already running.",
+        });
     }
 
     syncRunning = true;
@@ -1352,21 +1650,31 @@ app.post(
     let updated = 0;
     let failed = 0;
 
-    const logs = await db<{ id: string }>(
-      `
-      INSERT INTO sync_logs (network)
-      VALUES ('AWIN')
-      RETURNING id
-      `
-    );
-
-    const logId = logs[0].id;
+    let logId: string | null =
+      null;
 
     try {
+      const logs =
+        await db<{ id: string }>(
+          `
+          INSERT INTO sync_logs (
+            network
+          )
+          VALUES ('AWIN')
+          RETURNING id
+          `
+        );
+
+      logId =
+        logs[0].id;
+
       const awinProducts =
         await getAwinProducts();
 
-      if (awinProducts.length > 100000) {
+      if (
+        awinProducts.length >
+        100000
+      ) {
         throw new Error(
           "Awin feed is larger than the allowed limit."
         );
@@ -1377,7 +1685,9 @@ app.post(
       ) {
         try {
           const product =
-            mapAwinProduct(raw);
+            mapAwinProduct(
+              raw
+            );
 
           const result =
             await saveProduct(
@@ -1385,7 +1695,8 @@ app.post(
             );
 
           if (
-            result === "inserted"
+            result ===
+            "inserted"
           ) {
             imported++;
           } else {
@@ -1431,38 +1742,45 @@ app.post(
           ? error.message
           : "Unknown error.";
 
-      await database.query(
-        `
-        UPDATE sync_logs
-        SET
-          finished_at = NOW(),
-          imported = $1,
-          updated = $2,
-          failed = $3,
-          error_message = $4
-        WHERE id = $5
-        `,
-        [
-          imported,
-          updated,
-          failed,
-          message.slice(0, 5000),
-          logId,
-        ]
-      );
+      if (logId) {
+        await database.query(
+          `
+          UPDATE sync_logs
+          SET
+            finished_at = NOW(),
+            imported = $1,
+            updated = $2,
+            failed = $3,
+            error_message = $4
+          WHERE id = $5
+          `,
+          [
+            imported,
+            updated,
+            failed,
+            message.slice(
+              0,
+              5000
+            ),
+            logId,
+          ]
+        );
+      }
 
       console.error(
         "Awin sync failed:",
         error
       );
 
-      return res.status(500).json({
-        error:
-          "Awin synchronization failed.",
-        imported,
-        updated,
-        failed,
-      });
+      return res
+        .status(500)
+        .json({
+          error:
+            "Awin synchronization failed.",
+          imported,
+          updated,
+          failed,
+        });
     } finally {
       syncRunning = false;
     }
@@ -1488,9 +1806,11 @@ app.get(
         ok: true,
       });
     } catch {
-      return res.status(503).json({
-        ok: false,
-      });
+      return res
+        .status(503)
+        .json({
+          ok: false,
+        });
     }
   }
 );
@@ -1499,15 +1819,9 @@ app.get(
 /* STATIC FRONTEND                                                             */
 /* -------------------------------------------------------------------------- */
 
-const __filename =
-  fileURLToPath(import.meta.url);
-
-const __dirname =
-  path.dirname(__filename);
-
 const publicDirectory =
   path.join(
-    __dirname,
+    process.cwd(),
     "public"
   );
 
@@ -1548,10 +1862,12 @@ app.use(
       error
     );
 
-    return res.status(500).json({
-      error:
-        "Internal server error.",
-    });
+    return res
+      .status(500)
+      .json({
+        error:
+          "Internal server error.",
+      });
   }
 );
 
@@ -1589,3 +1905,4 @@ main().catch(
     process.exit(1);
   }
 );
+
