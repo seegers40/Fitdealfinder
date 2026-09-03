@@ -1,51 +1,31 @@
-
 /**
- * FitDealFinder — Products module
+ * FITDEALFINDER
+ * PRODUCTS + AWIN BACKEND
  *
- * Security-first starter
+ * Single-file secure starter
  *
- * Stack:
- *   Node.js + TypeScript + PostgreSQL
+ * Install:
+ * npm install express pg zod helmet
+ * npm install -D typescript tsx @types/express @types/node
  *
- * Functionaliteit:
- *   - PostgreSQL product database
- *   - Productvalidatie met Zod
- *   - Awin import-laag
- *   - Veilige affiliate redirects
- *   - Rate limiting
- *   - Security headers
- *   - Admin-authenticatie
- *   - SQL-injection bescherming
- *   - XSS-basisbescherming
- *   - Deal score
- *   - Product zoeken/filteren/sorteren
- *   - Affiliate click tracking
- *   - Sync logging
- *   - Health check
+ * Environment:
  *
- * BELANGRIJK:
- *   Zet NOOIT echte wachtwoorden/API-keys in dit bestand.
+ * DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/fitdealfinder
+ * AWIN_API_KEY=YOUR_AWIN_KEY
+ * AWIN_PUBLISHER_ID=YOUR_PUBLISHER_ID
+ * AWIN_PRODUCT_FEED_URL=https://YOUR-AWIN-FEED-URL
+ * ADMIN_SECRET=CHANGE_THIS_TO_A_LONG_RANDOM_SECRET
+ * PORT=3000
+ * TRUST_PROXY=false
  *
- * Benodigde packages:
- *
- *   npm install express pg zod helmet
- *   npm install -D typescript tsx @types/express @types/node
- *
- * Environment variables:
- *
- *   DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/fitdealfinder
- *   AWIN_API_KEY=...
- *   AWIN_PUBLISHER_ID=...
- *   AWIN_PRODUCT_FEED_URL=...
- *   ADMIN_SECRET=een-heel-lang-random-geheim
- *   PORT=3000
- *   TRUST_PROXY=false
+ * NEVER put real secrets directly in this file.
+ * NEVER commit .env to GitHub.
  */
 
 import express, {
-  type NextFunction,
   type Request,
   type Response,
+  type NextFunction,
 } from "express";
 
 import helmet from "helmet";
@@ -54,12 +34,66 @@ import { z } from "zod";
 import crypto from "node:crypto";
 
 /* ========================================================================== */
-/* APP                                                                        */
+/* CONFIGURATION                                                              */
 /* ========================================================================== */
 
 const app = express();
 
-app.disable("x-powered-by");
+const PORT =
+  Number(process.env.PORT ?? 3000);
+
+const DATABASE_URL =
+  process.env.DATABASE_URL;
+
+const AWIN_API_KEY =
+  process.env.AWIN_API_KEY;
+
+const AWIN_PUBLISHER_ID =
+  process.env.AWIN_PUBLISHER_ID;
+
+const AWIN_PRODUCT_FEED_URL =
+  process.env.AWIN_PRODUCT_FEED_URL;
+
+const ADMIN_SECRET =
+  process.env.ADMIN_SECRET;
+
+const TRUST_PROXY =
+  process.env.TRUST_PROXY === "true";
+
+/* ========================================================================== */
+/* STARTUP VALIDATION                                                         */
+/* ========================================================================== */
+
+if (!DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL is missing."
+  );
+}
+
+if (!ADMIN_SECRET) {
+  throw new Error(
+    "ADMIN_SECRET is missing."
+  );
+}
+
+if (ADMIN_SECRET.length < 32) {
+  throw new Error(
+    "ADMIN_SECRET must contain at least 32 characters."
+  );
+}
+
+app.set(
+  "trust proxy",
+  TRUST_PROXY
+);
+
+/* ========================================================================== */
+/* SECURITY HEADERS                                                           */
+/* ========================================================================== */
+
+app.disable(
+  "x-powered-by"
+);
 
 app.use(
   helmet({
@@ -70,114 +104,88 @@ app.use(
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
         formAction: ["'self'"],
-        imgSrc: ["'self'", "https:", "data:"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        connectSrc: ["'self'"],
+
+        imgSrc: [
+          "'self'",
+          "https:",
+          "data:",
+        ],
+
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+        ],
+
+        scriptSrc: [
+          "'self'",
+        ],
+
+        connectSrc: [
+          "'self'",
+        ],
       },
     },
+
     referrerPolicy: {
-      policy: "strict-origin-when-cross-origin",
+      policy:
+        "strict-origin-when-cross-origin",
     },
-  }),
+  })
 );
 
 app.use(
   express.json({
     limit: "100kb",
-  }),
-);
-
-/* ========================================================================== */
-/* ENVIRONMENT                                                                */
-/* ========================================================================== */
-
-const envSchema = z.object({
-  DATABASE_URL: z.string().min(1),
-
-  AWIN_API_KEY: z.string().optional(),
-
-  AWIN_PUBLISHER_ID: z.string().optional(),
-
-  AWIN_PRODUCT_FEED_URL: z.string().url().optional(),
-
-  ADMIN_SECRET: z.string().min(32),
-
-  PORT: z.coerce.number().int().positive().default(3000),
-
-  TRUST_PROXY: z
-    .enum(["true", "false"])
-    .default("false"),
-});
-
-const env = envSchema.parse({
-  DATABASE_URL: process.env.DATABASE_URL,
-
-  AWIN_API_KEY: process.env.AWIN_API_KEY,
-
-  AWIN_PUBLISHER_ID:
-    process.env.AWIN_PUBLISHER_ID,
-
-  AWIN_PRODUCT_FEED_URL:
-    process.env.AWIN_PRODUCT_FEED_URL,
-
-  ADMIN_SECRET:
-    process.env.ADMIN_SECRET,
-
-  PORT:
-    process.env.PORT,
-
-  TRUST_PROXY:
-    process.env.TRUST_PROXY,
-});
-
-app.set(
-  "trust proxy",
-  env.TRUST_PROXY === "true",
+  })
 );
 
 /* ========================================================================== */
 /* DATABASE                                                                   */
 /* ========================================================================== */
 
-const pool = new Pool({
-  connectionString: env.DATABASE_URL,
+const database = new Pool({
+  connectionString:
+    DATABASE_URL,
 
   max: 10,
 
-  idleTimeoutMillis: 30_000,
+  idleTimeoutMillis:
+    30_000,
 
-  connectionTimeoutMillis: 5_000,
+  connectionTimeoutMillis:
+    5_000,
 
   ssl:
-    process.env.NODE_ENV === "production"
+    process.env.NODE_ENV ===
+    "production"
       ? {
-          rejectUnauthorized: true,
+          rejectUnauthorized:
+            true,
         }
       : undefined,
 });
 
-async function query<
-  T extends Record<string, unknown> = Record<string, unknown>,
->(
-  text: string,
-  params: unknown[] = [],
+async function db<T = any>(
+  sql: string,
+  params: unknown[] = []
 ): Promise<T[]> {
-  const result = await pool.query(
-    text,
-    params,
-  );
+  const result =
+    await database.query(
+      sql,
+      params
+    );
 
   return result.rows as T[];
 }
 
 /* ========================================================================== */
-/* DATABASE INITIALIZATION                                                    */
+/* DATABASE TABLES                                                            */
 /* ========================================================================== */
 
-async function initDatabase(): Promise<void> {
-  await query(`
+async function createDatabase() {
+  await db(`
     CREATE TABLE IF NOT EXISTS products (
+
       id UUID PRIMARY KEY,
 
       external_id TEXT,
@@ -201,7 +209,8 @@ async function initDatabase(): Promise<void> {
           OR old_price >= 0
         ),
 
-      currency CHAR(3) NOT NULL
+      currency CHAR(3)
+        NOT NULL
         DEFAULT 'EUR',
 
       image_url TEXT,
@@ -224,6 +233,9 @@ async function initDatabase(): Promise<void> {
       in_stock BOOLEAN NOT NULL
         DEFAULT TRUE,
 
+      active BOOLEAN NOT NULL
+        DEFAULT TRUE,
+
       deal_score INTEGER NOT NULL
         DEFAULT 0
         CHECK (
@@ -236,73 +248,84 @@ async function initDatabase(): Promise<void> {
           OR discount_percent BETWEEN 0 AND 100
         ),
 
-      active BOOLEAN NOT NULL
-        DEFAULT TRUE,
-
       last_synced_at TIMESTAMPTZ,
 
-      created_at TIMESTAMPTZ NOT NULL
+      created_at TIMESTAMPTZ
+        NOT NULL
         DEFAULT NOW(),
 
-      updated_at TIMESTAMPTZ NOT NULL
+      updated_at TIMESTAMPTZ
+        NOT NULL
         DEFAULT NOW()
     );
 
-    CREATE INDEX IF NOT EXISTS idx_products_category
+    CREATE INDEX IF NOT EXISTS
+      products_category_idx
       ON products(category);
 
-    CREATE INDEX IF NOT EXISTS idx_products_brand
+    CREATE INDEX IF NOT EXISTS
+      products_brand_idx
       ON products(brand);
 
-    CREATE INDEX IF NOT EXISTS idx_products_merchant
+    CREATE INDEX IF NOT EXISTS
+      products_merchant_idx
       ON products(merchant_name);
 
-    CREATE INDEX IF NOT EXISTS idx_products_deal_score
+    CREATE INDEX IF NOT EXISTS
+      products_score_idx
       ON products(deal_score DESC);
 
-    CREATE INDEX IF NOT EXISTS idx_products_active
+    CREATE INDEX IF NOT EXISTS
+      products_active_idx
       ON products(active);
 
     CREATE UNIQUE INDEX IF NOT EXISTS
-      idx_products_network_external
+      products_network_external_idx
       ON products(network, external_id)
       WHERE external_id IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS sync_logs (
+
       id BIGSERIAL PRIMARY KEY,
 
       network TEXT NOT NULL,
 
-      started_at TIMESTAMPTZ NOT NULL
+      started_at TIMESTAMPTZ
+        NOT NULL
         DEFAULT NOW(),
 
       finished_at TIMESTAMPTZ,
 
-      imported INTEGER NOT NULL
+      imported INTEGER
+        NOT NULL
         DEFAULT 0,
 
-      updated INTEGER NOT NULL
+      updated INTEGER
+        NOT NULL
         DEFAULT 0,
 
-      failed INTEGER NOT NULL
+      failed INTEGER
+        NOT NULL
         DEFAULT 0,
 
       error_message TEXT
     );
 
     CREATE TABLE IF NOT EXISTS affiliate_clicks (
+
       id BIGSERIAL PRIMARY KEY,
 
       product_id UUID NOT NULL
         REFERENCES products(id)
         ON DELETE CASCADE,
 
-      created_at TIMESTAMPTZ NOT NULL
+      created_at TIMESTAMPTZ
+        NOT NULL
         DEFAULT NOW()
     );
 
     CREATE INDEX IF NOT EXISTS
-      idx_affiliate_clicks_product_date
+      affiliate_clicks_product_idx
       ON affiliate_clicks(
         product_id,
         created_at
@@ -311,14 +334,14 @@ async function initDatabase(): Promise<void> {
 }
 
 /* ========================================================================== */
-/* PRODUCT VALIDATION                                                         */
+/* VALIDATION                                                                 */
 /* ========================================================================== */
 
-const productInputSchema =
+const productSchema =
   z.object({
+
     externalId:
-      z
-        .string()
+      z.string()
         .trim()
         .min(1)
         .max(200)
@@ -326,148 +349,131 @@ const productInputSchema =
         .optional(),
 
     name:
-      z
-        .string()
+      z.string()
         .trim()
         .min(1)
         .max(300),
 
     description:
-      z
-        .string()
+      z.string()
         .trim()
-        .max(10_000)
+        .max(10000)
         .nullable()
         .optional(),
 
     brand:
-      z
-        .string()
+      z.string()
         .trim()
         .max(200)
         .nullable()
         .optional(),
 
     category:
-      z
-        .string()
+      z.string()
         .trim()
         .max(200)
         .nullable()
         .optional(),
 
     price:
-      z
-        .number()
+      z.number()
         .finite()
         .nonnegative(),
 
     oldPrice:
-      z
-        .number()
+      z.number()
         .finite()
         .nonnegative()
         .nullable()
         .optional(),
 
     currency:
-      z
-        .string()
+      z.string()
         .trim()
         .length(3)
         .transform(
-          (value) =>
-            value.toUpperCase(),
+          value =>
+            value.toUpperCase()
         ),
 
     imageUrl:
-      z
-        .string()
+      z.string()
         .url()
         .max(2048)
         .nullable()
         .optional(),
 
     productUrl:
-      z
-        .string()
+      z.string()
         .url()
         .max(2048),
 
     affiliateUrl:
-      z
-        .string()
+      z.string()
         .url()
         .max(2048),
 
     merchantName:
-      z
-        .string()
+      z.string()
         .trim()
         .min(1)
         .max(200),
 
     merchantId:
-      z
-        .string()
+      z.string()
         .trim()
         .max(200)
         .nullable()
         .optional(),
 
     network:
-      z
-        .string()
+      z.string()
         .trim()
         .min(1)
         .max(50)
         .default("AWIN"),
 
     commission:
-      z
-        .number()
+      z.number()
         .finite()
         .nonnegative()
         .nullable()
         .optional(),
 
     commissionType:
-      z
-        .string()
+      z.string()
         .trim()
         .max(50)
         .nullable()
         .optional(),
 
     inStock:
-      z
-        .boolean()
+      z.boolean()
         .default(true),
   });
 
 type ProductInput =
   z.infer<
-    typeof productInputSchema
+    typeof productSchema
   >;
 
 /* ========================================================================== */
 /* URL SECURITY                                                               */
 /* ========================================================================== */
 
-/**
- * Alleen HTTPS.
- *
- * We accepteren geen http:// voor affiliate destinations.
- */
-
-function assertHttpsUrl(
-  value: string,
+function httpsUrl(
+  value: string
 ): URL {
-  const url = new URL(value);
 
-  if (url.protocol !== "https:") {
+  const url =
+    new URL(value);
+
+  if (
+    url.protocol !==
+    "https:"
+  ) {
     throw new Error(
-      "Only HTTPS URLs are allowed.",
+      "Only HTTPS URLs are allowed."
     );
   }
 
@@ -475,20 +481,21 @@ function assertHttpsUrl(
 }
 
 /**
- * Belangrijk:
+ * Alleen Awin URLs worden als affiliate destination
+ * geaccepteerd.
  *
- * De bezoeker mag NOOIT zelf de redirect URL bepalen.
- *
- * De URL komt uitsluitend uit onze eigen
- * database en wordt opnieuw gecontroleerd.
+ * Later kunnen we gecontroleerde merchant-domeinen
+ * toevoegen wanneer dat nodig is.
  */
 
-function isAllowedAffiliateUrl(
-  value: string,
+function isSafeAffiliateUrl(
+  value: string
 ): boolean {
+
   try {
+
     const url =
-      assertHttpsUrl(value);
+      httpsUrl(value);
 
     const host =
       url.hostname.toLowerCase();
@@ -498,95 +505,108 @@ function isAllowedAffiliateUrl(
       host === "www.awin.com" ||
       host === "awin1.com" ||
       host === "www.awin1.com" ||
-      host.endsWith(".awin.com") ||
-      host.endsWith(".awin1.com")
+      host.endsWith(
+        ".awin.com"
+      ) ||
+      host.endsWith(
+        ".awin1.com"
+      )
     );
+
   } catch {
+
     return false;
+
   }
 }
 
 /* ========================================================================== */
-/* SLUGS                                                                      */
+/* SLUG                                                                       */
 /* ========================================================================== */
 
 function slugify(
-  input: string,
+  value: string
 ): string {
-  return input
+
+  return value
     .normalize("NFKD")
     .replace(
       /[\u0300-\u036f]/g,
-      "",
+      ""
     )
     .toLowerCase()
     .replace(
       /[^a-z0-9]+/g,
-      "-",
+      "-"
     )
     .replace(
       /^-+|-+$/g,
-      "",
+      ""
     )
-    .slice(0, 180);
+    .slice(
+      0,
+      180
+    );
 }
 
-async function uniqueSlug(
-  base: string,
-  excludeId?: string,
+async function makeUniqueSlug(
+  base: string
 ): Promise<string> {
-  const safeBase =
-    base || "product";
+
+  const clean =
+    slugify(base) ||
+    "product";
 
   for (
     let i = 0;
     i < 100;
     i++
   ) {
-    const candidate =
-      i === 0
-        ? safeBase
-        : `${safeBase}-${i + 1}`;
 
-    const rows =
-      await query<{ id: string }>(
+    const slug =
+      i === 0
+        ? clean
+        : `${clean}-${i + 1}`;
+
+    const existing =
+      await db(
         `
         SELECT id
         FROM products
         WHERE slug = $1
-          AND (
-            $2::uuid IS NULL
-            OR id <> $2::uuid
-          )
         LIMIT 1
         `,
-        [
-          candidate,
-          excludeId ?? null,
-        ],
+        [slug]
       );
 
-    if (rows.length === 0) {
-      return candidate;
+    if (
+      existing.length === 0
+    ) {
+      return slug;
     }
   }
 
-  return `${safeBase}-${crypto
-    .randomUUID()
-    .slice(0, 8)}`;
+  return (
+    clean +
+    "-" +
+    crypto
+      .randomUUID()
+      .slice(0, 8)
+  );
 }
 
 /* ========================================================================== */
 /* DEAL CALCULATION                                                           */
 /* ========================================================================== */
 
-function calculateDiscount(
+function discountPercentage(
   price: number,
   oldPrice:
     | number
     | null
-    | undefined,
+    | undefined
 ): number | null {
+
   if (
     !oldPrice ||
     oldPrice <= price ||
@@ -600,15 +620,16 @@ function calculateDiscount(
     Math.max(
       0,
       Math.round(
-        ((oldPrice - price) /
-          oldPrice) *
-          100,
-      ),
-    ),
+        (
+          (oldPrice - price) /
+          oldPrice
+        ) * 100
+      )
+    )
   );
 }
 
-function calculateDealScore(
+function dealScore(
   product: {
     price: number;
 
@@ -621,26 +642,32 @@ function calculateDealScore(
       | null;
 
     inStock: boolean;
-  },
+  }
 ): number {
-  if (!product.inStock) {
+
+  if (
+    !product.inStock
+  ) {
     return 0;
   }
 
   const discount =
-    calculateDiscount(
+    discountPercentage(
       product.price,
-      product.oldPrice,
+      product.oldPrice
     );
 
   let score = 0;
 
-  if (discount !== null) {
+  if (
+    discount !== null
+  ) {
+
     score += Math.min(
       60,
       Math.round(
-        discount * 1.5,
-      ),
+        discount * 1.5
+      )
     );
   }
 
@@ -650,11 +677,12 @@ function calculateDealScore(
     product.commission !==
       undefined
   ) {
+
     score += Math.min(
       20,
       Math.round(
-        product.commission,
-      ),
+        product.commission
+      )
     );
   }
 
@@ -662,6 +690,7 @@ function calculateDealScore(
     product.price > 0 &&
     product.price < 50
   ) {
+
     score += 10;
   }
 
@@ -670,12 +699,16 @@ function calculateDealScore(
     product.oldPrice >
       product.price
   ) {
+
     score += 5;
   }
 
   return Math.min(
     100,
-    Math.max(0, score),
+    Math.max(
+      0,
+      score
+    )
   );
 }
 
@@ -684,36 +717,41 @@ function calculateDealScore(
 /* ========================================================================== */
 
 function normalizeProduct(
-  input: ProductInput,
+  input: ProductInput
 ) {
-  const productUrl =
-    assertHttpsUrl(
-      input.productUrl,
-    ).toString();
+
+  httpsUrl(
+    input.productUrl
+  );
 
   if (
-    !isAllowedAffiliateUrl(
-      input.affiliateUrl,
+    !isSafeAffiliateUrl(
+      input.affiliateUrl
     )
   ) {
+
     throw new Error(
-      "Affiliate URL is not an approved Awin destination.",
+      "Invalid or unapproved Awin affiliate URL."
     );
   }
 
-  const discountPercent =
-    calculateDiscount(
+  const discount =
+    discountPercentage(
       input.price,
-      input.oldPrice,
+      input.oldPrice
     );
 
-  const dealScore =
-    calculateDealScore({
-      price: input.price,
+  const score =
+    dealScore({
+      price:
+        input.price,
+
       oldPrice:
         input.oldPrice,
+
       commission:
         input.commission,
+
       inStock:
         input.inStock,
     });
@@ -721,32 +759,33 @@ function normalizeProduct(
   return {
     ...input,
 
-    productUrl,
-
-    affiliateUrl:
-      assertHttpsUrl(
-        input.affiliateUrl,
+    productUrl:
+      httpsUrl(
+        input.productUrl
       ).toString(),
 
-    discountPercent,
+    affiliateUrl:
+      httpsUrl(
+        input.affiliateUrl
+      ).toString(),
 
-    dealScore,
+    discountPercent:
+      discount,
+
+    dealScore:
+      score,
   };
 }
 
 /* ========================================================================== */
-/* AWIN TYPES                                                                 */
+/* AWIN TYPE                                                                  */
 /* ========================================================================== */
 
-/**
- * Awin kan afhankelijk van je account/feed
- * verschillende velden leveren.
- *
- * Daarom houden we Awin achter een adapter.
- */
+type AwinProduct = {
 
-type AwinRawProduct = {
-  id?: string | number;
+  id?:
+    | string
+    | number;
 
   productId?:
     | string
@@ -763,12 +802,12 @@ type AwinRawProduct = {
   category?: string;
 
   price?:
-    | number
-    | string;
+    | string
+    | number;
 
   salePrice?:
-    | number
-    | string;
+    | string
+    | number;
 
   currency?: string;
 
@@ -778,11 +817,11 @@ type AwinRawProduct = {
 
   productUrl?: string;
 
-  deepLink?: string;
-
   affiliateUrl?: string;
 
   awinLink?: string;
+
+  deepLink?: string;
 
   merchantName?: string;
 
@@ -791,8 +830,8 @@ type AwinRawProduct = {
     | number;
 
   commission?:
-    | number
-    | string;
+    | string
+    | number;
 
   commissionType?: string;
 
@@ -800,12 +839,13 @@ type AwinRawProduct = {
 };
 
 /* ========================================================================== */
-/* HELPER FUNCTIONS                                                           */
+/* AWIN HELPERS                                                               */
 /* ========================================================================== */
 
-function numberOrNull(
-  value: unknown,
+function toNumber(
+  value: unknown
 ): number | null {
+
   if (
     value === null ||
     value === undefined ||
@@ -818,15 +858,16 @@ function numberOrNull(
     Number(value);
 
   return Number.isFinite(
-    number,
+    number
   )
     ? number
     : null;
 }
 
-function stringOrNull(
-  value: unknown,
+function toStringOrNull(
+  value: unknown
 ): string | null {
+
   if (
     value === null ||
     value === undefined
@@ -834,43 +875,44 @@ function stringOrNull(
     return null;
   }
 
-  const string =
+  const result =
     String(value).trim();
 
-  return string
-    ? string
-    : null;
+  return result || null;
 }
 
 /* ========================================================================== */
-/* AWIN NORMALIZATION                                                         */
+/* AWIN PRODUCT MAPPING                                                       */
 /* ========================================================================== */
 
 function mapAwinProduct(
-  raw: AwinRawProduct,
+  raw: AwinProduct
 ): ProductInput {
+
   const price =
-    numberOrNull(
+    toNumber(
       raw.salePrice ??
-        raw.price,
+        raw.price
     );
 
-  if (price === null) {
+  if (
+    price === null
+  ) {
     throw new Error(
-      "Awin product has no valid price.",
+      "Product has no valid price."
     );
   }
 
   const productUrl =
-    stringOrNull(
-      raw.productUrl,
+    toStringOrNull(
+      raw.productUrl
     );
 
   const affiliateUrl =
-    stringOrNull(
+    toStringOrNull(
       raw.affiliateUrl ??
         raw.awinLink ??
-        raw.deepLink,
+        raw.deepLink
     );
 
   if (
@@ -878,143 +920,147 @@ function mapAwinProduct(
     !affiliateUrl
   ) {
     throw new Error(
-      "Awin product is missing a URL.",
+      "Product is missing a URL."
     );
   }
 
-  return productInputSchema.parse(
-    {
-      externalId:
-        stringOrNull(
-          raw.id ??
-            raw.productId,
-        ),
+  return productSchema.parse({
 
-      name:
-        String(
-          raw.name ??
-            raw.title ??
-            "",
-        ).trim(),
+    externalId:
+      toStringOrNull(
+        raw.id ??
+          raw.productId
+      ),
 
-      description:
-        stringOrNull(
-          raw.description,
-        ),
+    name:
+      String(
+        raw.name ??
+          raw.title ??
+          ""
+      ).trim(),
 
-      brand:
-        stringOrNull(
-          raw.brand,
-        ),
+    description:
+      toStringOrNull(
+        raw.description
+      ),
 
-      category:
-        stringOrNull(
-          raw.category,
-        ),
+    brand:
+      toStringOrNull(
+        raw.brand
+      ),
 
-      price,
+    category:
+      toStringOrNull(
+        raw.category
+      ),
 
-      oldPrice:
-        raw.salePrice !==
-          undefined &&
-        raw.price !==
-          undefined
-          ? numberOrNull(
-              raw.price,
-            )
-          : null,
+    price,
 
-      currency:
-        String(
-          raw.currency ??
-            "EUR",
-        ).slice(0, 3),
+    oldPrice:
+      raw.salePrice !==
+        undefined &&
+      raw.price !==
+        undefined
+        ? toNumber(
+            raw.price
+          )
+        : null,
 
-      imageUrl:
-        stringOrNull(
-          raw.imageUrl ??
-            raw.image,
-        ),
+    currency:
+      String(
+        raw.currency ??
+          "EUR"
+      ).slice(
+        0,
+        3
+      ),
 
-      productUrl,
+    imageUrl:
+      toStringOrNull(
+        raw.imageUrl ??
+          raw.image
+      ),
 
-      affiliateUrl,
+    productUrl,
 
-      merchantName:
-        String(
-          raw.merchantName ??
-            "Unknown merchant",
-        ).trim(),
+    affiliateUrl,
 
-      merchantId:
-        stringOrNull(
-          raw.merchantId,
-        ),
+    merchantName:
+      String(
+        raw.merchantName ??
+          "Unknown merchant"
+      ).trim(),
 
-      network:
-        "AWIN",
+    merchantId:
+      toStringOrNull(
+        raw.merchantId
+      ),
 
-      commission:
-        numberOrNull(
-          raw.commission,
-        ),
+    network:
+      "AWIN",
 
-      commissionType:
-        stringOrNull(
-          raw.commissionType,
-        ),
+    commission:
+      toNumber(
+        raw.commission
+      ),
 
-      inStock:
-        raw.inStock !== false,
-    },
-  );
+    commissionType:
+      toStringOrNull(
+        raw.commissionType
+      ),
+
+    inStock:
+      raw.inStock !== false,
+  });
 }
 
 /* ========================================================================== */
-/* AWIN FETCH                                                                 */
+/* AWIN FEED                                                                  */
 /* ========================================================================== */
 
 /**
- * Gebruik hier uitsluitend de exacte feed/API URL
- * die Awin aan jouw publisher-account verstrekt.
+ * Gebruik hier de echte feed URL die Awin voor jouw account geeft.
  *
- * We gokken NIET met een endpoint.
+ * We verzinnen geen Awin endpoint.
  */
 
-async function fetchAwinProducts(): Promise<
-  AwinRawProduct[]
-> {
-  if (!env.AWIN_API_KEY) {
+async function getAwinProducts():
+  Promise<AwinProduct[]> {
+
+  if (
+    !AWIN_API_KEY
+  ) {
     throw new Error(
-      "AWIN_API_KEY is not configured.",
+      "AWIN_API_KEY is missing."
     );
   }
 
   if (
-    !env.AWIN_PRODUCT_FEED_URL
+    !AWIN_PRODUCT_FEED_URL
   ) {
     throw new Error(
-      "AWIN_PRODUCT_FEED_URL is not configured.",
+      "AWIN_PRODUCT_FEED_URL is missing."
     );
   }
 
-  const feedUrl =
-    assertHttpsUrl(
-      env.AWIN_PRODUCT_FEED_URL,
+  const feed =
+    httpsUrl(
+      AWIN_PRODUCT_FEED_URL
     );
 
   const response =
     await fetch(
-      feedUrl,
+      feed,
       {
         method: "GET",
 
         headers: {
+
           Accept:
             "application/json",
 
           Authorization:
-            `Bearer ${env.AWIN_API_KEY}`,
+            `Bearer ${AWIN_API_KEY}`,
 
           "User-Agent":
             "FitDealFinder/1.0",
@@ -1022,187 +1068,190 @@ async function fetchAwinProducts(): Promise<
 
         signal:
           AbortSignal.timeout(
-            30_000,
+            30_000
           ),
-      },
+      }
     );
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
     throw new Error(
-      `Awin feed failed with HTTP ${response.status}.`,
+      `Awin returned HTTP ${response.status}.`
     );
   }
 
-  const data: unknown =
+  const data:
+    unknown =
     await response.json();
 
   if (
     !Array.isArray(data)
   ) {
     throw new Error(
-      "Awin feed response is not an array. Adapt the Awin adapter to the exact feed format.",
+      "Unexpected Awin feed format."
     );
   }
 
-  return data as AwinRawProduct[];
+  return data as AwinProduct[];
 }
 
 /* ========================================================================== */
-/* PRODUCT UPSERT                                                             */
+/* SAVE PRODUCT                                                               */
 /* ========================================================================== */
 
-async function upsertProduct(
-  input: ProductInput,
+async function saveProduct(
+  input: ProductInput
 ): Promise<
   "inserted" | "updated"
 > {
+
   const product =
     normalizeProduct(
-      input,
+      input
     );
-
-  const existing =
-    product.externalId
-      ? await query<{
-          id: string;
-        }>(
-          `
-          SELECT id
-          FROM products
-          WHERE network = $1
-            AND external_id = $2
-          LIMIT 1
-          `,
-          [
-            product.network,
-            product.externalId,
-          ],
-        )
-      : [];
-
-  /* ---------------------------------------------------------------------- */
-  /* UPDATE                                                                 */
-  /* ---------------------------------------------------------------------- */
 
   if (
-    existing.length > 0
+    product.externalId
   ) {
-    const id =
-      existing[0].id;
 
-    await query(
-      `
-      UPDATE products
-      SET
-        name = $1,
+    const existing =
+      await db<{
+        id: string;
+      }>(
+        `
+        SELECT id
+        FROM products
 
-        description = $2,
+        WHERE network = $1
 
-        brand = $3,
+        AND external_id = $2
 
-        category = $4,
+        LIMIT 1
+        `,
+        [
+          product.network,
 
-        price = $5,
+          product.externalId,
+        ]
+      );
 
-        old_price = $6,
+    if (
+      existing.length > 0
+    ) {
 
-        currency = $7,
+      await db(
+        `
+        UPDATE products
 
-        image_url = $8,
+        SET
 
-        product_url = $9,
+          name = $1,
 
-        affiliate_url = $10,
+          description = $2,
 
-        merchant_name = $11,
+          brand = $3,
 
-        merchant_id = $12,
+          category = $4,
 
-        commission = $13,
+          price = $5,
 
-        commission_type = $14,
+          old_price = $6,
 
-        in_stock = $15,
+          currency = $7,
 
-        deal_score = $16,
+          image_url = $8,
 
-        discount_percent = $17,
+          product_url = $9,
 
-        active = TRUE,
+          affiliate_url = $10,
 
-        last_synced_at = NOW(),
+          merchant_name = $11,
 
-        updated_at = NOW()
+          merchant_id = $12,
 
-      WHERE id = $18::uuid
-      `,
-      [
-        product.name,
+          commission = $13,
 
-        product.description ??
-          null,
+          commission_type = $14,
 
-        product.brand ??
-          null,
+          in_stock = $15,
 
-        product.category ??
-          null,
+          deal_score = $16,
 
-        product.price,
+          discount_percent = $17,
 
-        product.oldPrice ??
-          null,
+          active = TRUE,
 
-        product.currency,
+          last_synced_at = NOW(),
 
-        product.imageUrl ??
-          null,
+          updated_at = NOW()
 
-        product.productUrl,
+        WHERE id = $18::uuid
+        `,
+        [
 
-        product.affiliateUrl,
+          product.name,
 
-        product.merchantName,
+          product.description ??
+            null,
 
-        product.merchantId ??
-          null,
+          product.brand ??
+            null,
 
-        product.commission ??
-          null,
+          product.category ??
+            null,
 
-        product.commissionType ??
-          null,
+          product.price,
 
-        product.inStock,
+          product.oldPrice ??
+            null,
 
-        product.dealScore,
+          product.currency,
 
-        product.discountPercent,
+          product.imageUrl ??
+            null,
 
-        id,
-      ],
-    );
+          product.productUrl,
 
-    return "updated";
+          product.affiliateUrl,
+
+          product.merchantName,
+
+          product.merchantId ??
+            null,
+
+          product.commission ??
+            null,
+
+          product.commissionType ??
+            null,
+
+          product.inStock,
+
+          product.dealScore,
+
+          product.discountPercent,
+
+          existing[0].id,
+        ]
+      );
+
+      return "updated";
+    }
   }
-
-  /* ---------------------------------------------------------------------- */
-  /* INSERT                                                                 */
-  /* ---------------------------------------------------------------------- */
 
   const id =
     crypto.randomUUID();
 
   const slug =
-    await uniqueSlug(
-      slugify(
-        product.name,
-      ),
+    await makeUniqueSlug(
+      product.name
     );
 
-  await query(
+  await db(
     `
     INSERT INTO products (
+
       id,
 
       external_id,
@@ -1251,6 +1300,7 @@ async function upsertProduct(
     )
 
     VALUES (
+
       $1::uuid,
 
       $2,
@@ -1299,6 +1349,7 @@ async function upsertProduct(
     )
     `,
     [
+
       id,
 
       product.externalId ??
@@ -1349,44 +1400,40 @@ async function upsertProduct(
       product.dealScore,
 
       product.discountPercent,
-    ],
+    ]
   );
 
   return "inserted";
 }
 
 /* ========================================================================== */
-/* RATE LIMITER                                                               */
+/* RATE LIMITING                                                              */
 /* ========================================================================== */
 
-/**
- * Dit is een eenvoudige limiter voor één serverproces.
- *
- * Als FitDealFinder later meerdere servers/instances gebruikt,
- * vervangen we dit door Redis of een andere gedeelde limiter.
- */
+type RateBucket = {
 
-type Bucket = {
   count: number;
 
   resetAt: number;
 };
 
-const buckets =
+const rateBuckets =
   new Map<
     string,
-    Bucket
+    RateBucket
   >();
 
 function rateLimit(
   maxRequests: number,
-  windowMs: number,
+  windowMs: number
 ) {
+
   return (
     req: Request,
     res: Response,
-    next: NextFunction,
+    next: NextFunction
   ) => {
+
     const ip =
       req.ip ||
       "unknown";
@@ -1394,15 +1441,18 @@ function rateLimit(
     const now =
       Date.now();
 
-    const current =
-      buckets.get(ip);
+    const bucket =
+      rateBuckets.get(
+        ip
+      );
 
     if (
-      !current ||
-      current.resetAt <=
+      !bucket ||
+      bucket.resetAt <=
         now
     ) {
-      buckets.set(
+
+      rateBuckets.set(
         ip,
         {
           count: 1,
@@ -1410,92 +1460,94 @@ function rateLimit(
           resetAt:
             now +
             windowMs,
-        },
+        }
       );
 
       return next();
     }
 
     if (
-      current.count >=
+      bucket.count >=
       maxRequests
     ) {
-      const retryAfter =
-        Math.ceil(
-          (current.resetAt -
-            now) /
-            1000,
-        );
 
       res.setHeader(
         "Retry-After",
         String(
-          retryAfter,
-        ),
+          Math.ceil(
+            (
+              bucket.resetAt -
+              now
+            ) / 1000
+          )
+        )
       );
 
       return res
         .status(429)
         .json({
           error:
-            "Too many requests. Try again later.",
+            "Too many requests.",
         });
     }
 
-    current.count +=
-      1;
+    bucket.count += 1;
 
     return next();
   };
 }
 
 /* ========================================================================== */
-/* CLEAN RATE LIMITER MEMORY                                                  */
+/* CLEAN RATE LIMITER                                                         */
 /* ========================================================================== */
 
-setInterval(() => {
-  const now =
-    Date.now();
+setInterval(
+  () => {
 
-  for (
-    const [
-      key,
-      bucket,
-    ] of buckets
-  ) {
-    if (
-      bucket.resetAt <=
-      now
-    ) {
-      buckets.delete(
+    const now =
+      Date.now();
+
+    for (
+      const [
         key,
-      );
+        bucket,
+      ] of rateBuckets
+    ) {
+
+      if (
+        bucket.resetAt <=
+        now
+      ) {
+
+        rateBuckets.delete(
+          key
+        );
+      }
     }
-  }
-}, 60_000).unref();
+  },
+
+  60_000
+).unref();
 
 /* ========================================================================== */
-/* ADMIN AUTHENTICATION                                                       */
+/* ADMIN AUTH                                                                 */
 /* ========================================================================== */
-
-/**
- * Dit is expres simpel gehouden voor dit ene bestand.
- *
- * In de uiteindelijke website zou ik admin-authenticatie vervangen door
- * een echte login/session-oplossing met HttpOnly/Secure cookies en rollen.
- */
 
 function requireAdmin(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ) {
+
   const supplied =
     req.header(
-      "x-admin-secret",
+      "x-admin-secret"
     );
 
-  if (!supplied) {
+  if (
+    !supplied
+  ) {
+
     return res
       .status(401)
       .json({
@@ -1506,12 +1558,12 @@ function requireAdmin(
 
   const suppliedBuffer =
     Buffer.from(
-      supplied,
+      supplied
     );
 
   const expectedBuffer =
     Buffer.from(
-      env.ADMIN_SECRET,
+      ADMIN_SECRET!
     );
 
   if (
@@ -1519,9 +1571,10 @@ function requireAdmin(
       expectedBuffer.length ||
     !crypto.timingSafeEqual(
       suppliedBuffer,
-      expectedBuffer,
+      expectedBuffer
     )
   ) {
+
     return res
       .status(401)
       .json({
@@ -1534,7 +1587,7 @@ function requireAdmin(
 }
 
 /* ========================================================================== */
-/* PUBLIC PRODUCTS API                                                       */
+/* GET PRODUCTS                                                               */
 /* ========================================================================== */
 
 app.get(
@@ -1542,75 +1595,99 @@ app.get(
 
   rateLimit(
     120,
-    60_000,
+    60_000
   ),
 
   async (
     req: Request,
-    res: Response,
+    res: Response
   ) => {
+
     try {
-      const limit =
-        Math.min(
-          Math.max(
-            Number(
-              req.query
-                .limit ??
-                24,
-            ),
-            1,
-          ),
-          100,
+
+      let limit =
+        Number(
+          req.query.limit ??
+            24
         );
 
-      const offset =
-        Math.max(
-          Number(
-            req.query
-              .offset ??
-              0,
+      let offset =
+        Number(
+          req.query.offset ??
+            0
+        );
+
+      if (
+        !Number.isFinite(
+          limit
+        )
+      ) {
+        limit = 24;
+      }
+
+      if (
+        !Number.isFinite(
+          offset
+        )
+      ) {
+        offset = 0;
+      }
+
+      limit =
+        Math.min(
+          Math.max(
+            Math.floor(
+              limit
+            ),
+            1
           ),
-          0,
+          100
+        );
+
+      offset =
+        Math.max(
+          Math.floor(
+            offset
+          ),
+          0
         );
 
       const category =
-        typeof req.query
-          .category ===
+        typeof req.query.category ===
         "string"
           ? req.query.category
               .trim()
-              .slice(
-                0,
-                200,
-              )
+              .slice(0, 200)
           : null;
 
       const search =
-        typeof req.query
-          .search ===
+        typeof req.query.search ===
         "string"
           ? req.query.search
               .trim()
-              .slice(
-                0,
-                200,
-              )
+              .slice(0, 200)
           : null;
 
       const sort =
         req.query.sort ===
         "price_asc"
+
           ? "price ASC"
+
           : req.query.sort ===
             "price_desc"
+
             ? "price DESC"
+
             : req.query.sort ===
               "newest"
+
               ? "created_at DESC"
+
               : "deal_score DESC";
 
       const products =
-        await query(
+        await db(
           `
           SELECT
 
@@ -1640,26 +1717,28 @@ app.get(
 
             deal_score AS "dealScore",
 
-            discount_percent AS "discountPercent"
+            discount_percent
+              AS "discountPercent"
 
           FROM products
 
           WHERE active = TRUE
 
-            AND (
-              $1::text IS NULL
-              OR category = $1
-            )
+          AND (
+            $1::text IS NULL
+            OR category = $1
+          )
 
-            AND (
-              $2::text IS NULL
+          AND (
 
-              OR name ILIKE
-                '%' || $2 || '%'
+            $2::text IS NULL
 
-              OR brand ILIKE
-                '%' || $2 || '%'
-            )
+            OR name ILIKE
+              '%' || $2 || '%'
+
+            OR brand ILIKE
+              '%' || $2 || '%'
+          )
 
           ORDER BY ${sort}
 
@@ -1675,7 +1754,7 @@ app.get(
             limit,
 
             offset,
-          ],
+          ]
         );
 
       return res.json({
@@ -1685,10 +1764,12 @@ app.get(
 
         offset,
       });
+
     } catch (error) {
+
       console.error(
-        "GET /api/products:",
-        error,
+        "Products error:",
+        error
       );
 
       return res
@@ -1698,11 +1779,11 @@ app.get(
             "Internal server error.",
         });
     }
-  },
+  }
 );
 
 /* ========================================================================== */
-/* SINGLE PRODUCT                                                             */
+/* GET SINGLE PRODUCT                                                         */
 /* ========================================================================== */
 
 app.get(
@@ -1710,23 +1791,28 @@ app.get(
 
   rateLimit(
     120,
-    60_000,
+    60_000
   ),
 
   async (
     req: Request,
-    res: Response,
+    res: Response
   ) => {
-    try {
-      const slug =
-        req.params.slug
-          .slice(
-            0,
-            200,
-          );
 
-      const rows =
-        await query(
+    try {
+
+      const slug =
+        String(
+          req.params.slug
+        )
+        .trim()
+        .slice(
+          0,
+          200
+        );
+
+      const products =
+        await db(
           `
           SELECT
 
@@ -1756,25 +1842,27 @@ app.get(
 
             deal_score AS "dealScore",
 
-            discount_percent AS "discountPercent"
+            discount_percent
+              AS "discountPercent"
 
           FROM products
 
           WHERE slug = $1
 
-            AND active = TRUE
+          AND active = TRUE
 
           LIMIT 1
           `,
           [
             slug,
-          ],
+          ]
         );
 
       if (
-        rows.length ===
+        products.length ===
         0
       ) {
+
         return res
           .status(404)
           .json({
@@ -1784,12 +1872,14 @@ app.get(
       }
 
       return res.json(
-        rows[0],
+        products[0]
       );
+
     } catch (error) {
+
       console.error(
-        "GET /api/products/:slug:",
-        error,
+        "Product detail error:",
+        error
       );
 
       return res
@@ -1799,25 +1889,25 @@ app.get(
             "Internal server error.",
         });
     }
-  },
+  }
 );
 
 /* ========================================================================== */
-/* SAFE AFFILIATE REDIRECT                                                   */
+/* SAFE AFFILIATE CLICK                                                       */
 /* ========================================================================== */
 
 /**
- * NOOIT:
+ * NOOIT een URL van de bezoeker gebruiken.
+ *
+ * FOUT:
  *
  * /go?url=https://example.com
  *
- * De gebruiker mag geen bestemming meegeven.
- *
- * WEL:
+ * GOED:
  *
  * /go/<product-id>
  *
- * Vervolgens zoeken wij de affiliate URL op in onze eigen database.
+ * De server zoekt de affiliate URL zelf op.
  */
 
 app.get(
@@ -1825,36 +1915,43 @@ app.get(
 
   rateLimit(
     60,
-    60_000,
+    60_000
   ),
 
   async (
     req: Request,
-    res: Response,
+    res: Response
   ) => {
+
     try {
+
       const id =
-        req.params.id;
+        String(
+          req.params.id
+        );
 
       if (
         !/^[0-9a-f-]{36}$/i.test(
-          id,
+          id
         )
       ) {
+
         return res
           .status(400)
           .send(
-            "Invalid product.",
+            "Invalid product."
           );
       }
 
-      const rows =
-        await query<{
+      const products =
+        await db<{
           id: string;
 
-          affiliate_url: string;
+          affiliate_url:
+            string;
 
-          active: boolean;
+          active:
+            boolean;
         }>(
           `
           SELECT
@@ -1867,49 +1964,52 @@ app.get(
 
           FROM products
 
-          WHERE id = $1::uuid
+          WHERE id =
+            $1::uuid
 
           LIMIT 1
           `,
           [
             id,
-          ],
+          ]
         );
 
       if (
-        rows.length ===
+        products.length ===
           0 ||
-        !rows[0].active
+        !products[0].active
       ) {
+
         return res
           .status(404)
           .send(
-            "Product not found.",
+            "Product not found."
           );
       }
 
       const affiliateUrl =
-        rows[0]
+        products[0]
           .affiliate_url;
 
       if (
-        !isAllowedAffiliateUrl(
-          affiliateUrl,
+        !isSafeAffiliateUrl(
+          affiliateUrl
         )
       ) {
+
         console.error(
-          "Blocked invalid stored affiliate URL:",
-          id,
+          "Unsafe affiliate URL:",
+          id
         );
 
         return res
           .status(410)
           .send(
-            "Affiliate destination unavailable.",
+            "Affiliate destination unavailable."
           );
       }
 
-      await query(
+      await db(
         `
         INSERT INTO affiliate_clicks (
           product_id
@@ -1921,30 +2021,32 @@ app.get(
         `,
         [
           id,
-        ],
+        ]
       );
 
       return res.redirect(
         302,
-        affiliateUrl,
+        affiliateUrl
       );
+
     } catch (error) {
+
       console.error(
-        "GET /go/:id:",
-        error,
+        "Affiliate redirect error:",
+        error
       );
 
       return res
         .status(500)
         .send(
-          "Unable to process affiliate click.",
+          "Unable to process affiliate click."
         );
     }
-  },
+  }
 );
 
 /* ========================================================================== */
-/* ADMIN — CREATE / UPDATE PRODUCT                                            */
+/* ADMIN CREATE / UPDATE                                                      */
 /* ========================================================================== */
 
 app.post(
@@ -1952,27 +2054,31 @@ app.post(
 
   rateLimit(
     30,
-    60_000,
+    60_000
   ),
 
   requireAdmin,
 
   async (
     req: Request,
-    res: Response,
+    res: Response
   ) => {
+
     try {
+
       const parsed =
-        productInputSchema.safeParse(
-          req.body,
+        productSchema.safeParse(
+          req.body
         );
 
       if (
         !parsed.success
       ) {
+
         return res
           .status(400)
           .json({
+
             error:
               "Invalid product.",
 
@@ -1982,8 +2088,8 @@ app.post(
       }
 
       const action =
-        await upsertProduct(
-          parsed.data,
+        await saveProduct(
+          parsed.data
         );
 
       return res
@@ -1991,22 +2097,26 @@ app.post(
           action ===
             "inserted"
             ? 201
-            : 200,
+            : 200
         )
         .json({
+
           ok: true,
 
           action,
         });
+
     } catch (error) {
+
       console.error(
-        "POST /api/admin/products:",
-        error,
+        "Admin product error:",
+        error
       );
 
       return res
         .status(400)
         .json({
+
           error:
             error instanceof
             Error
@@ -2014,11 +2124,11 @@ app.post(
               : "Invalid product.",
         });
     }
-  },
+  }
 );
 
 /* ========================================================================== */
-/* ADMIN — DEACTIVATE PRODUCT                                                 */
+/* ADMIN DELETE / DEACTIVATE                                                  */
 /* ========================================================================== */
 
 app.delete(
@@ -2026,24 +2136,29 @@ app.delete(
 
   rateLimit(
     30,
-    60_000,
+    60_000
   ),
 
   requireAdmin,
 
   async (
     req: Request,
-    res: Response,
+    res: Response
   ) => {
+
     try {
+
       const id =
-        req.params.id;
+        String(
+          req.params.id
+        );
 
       if (
         !/^[0-9a-f-]{36}$/i.test(
-          id,
+          id
         )
       ) {
+
         return res
           .status(400)
           .json({
@@ -2053,7 +2168,7 @@ app.delete(
       }
 
       const result =
-        await pool.query(
+        await database.query(
           `
           UPDATE products
 
@@ -2061,20 +2176,22 @@ app.delete(
 
             active = FALSE,
 
-            updated_at = NOW()
+            updated_at =
+              NOW()
 
           WHERE id =
             $1::uuid
           `,
           [
             id,
-          ],
+          ]
         );
 
       if (
         result.rowCount ===
         0
       ) {
+
         return res
           .status(404)
           .json({
@@ -2086,10 +2203,12 @@ app.delete(
       return res.json({
         ok: true,
       });
+
     } catch (error) {
+
       console.error(
-        "DELETE /api/admin/products/:id:",
-        error,
+        "Delete product error:",
+        error
       );
 
       return res
@@ -2099,11 +2218,11 @@ app.delete(
             "Internal server error.",
         });
     }
-  },
+  }
 );
 
 /* ========================================================================== */
-/* ADMIN — AWIN SYNC                                                          */
+/* ADMIN AWIN SYNC                                                            */
 /* ========================================================================== */
 
 let syncRunning =
@@ -2114,21 +2233,24 @@ app.post(
 
   rateLimit(
     5,
-    60_000,
+    60_000
   ),
 
   requireAdmin,
 
   async (
     _req: Request,
-    res: Response,
+    res: Response
   ) => {
+
     if (
       syncRunning
     ) {
+
       return res
         .status(409)
         .json({
+
           error:
             "Awin synchronization is already running.",
         });
@@ -2137,8 +2259,17 @@ app.post(
     syncRunning =
       true;
 
-    const logRows =
-      await query<{
+    let imported =
+      0;
+
+    let updated =
+      0;
+
+    let failed =
+      0;
+
+    const logs =
+      await db<{
         id: string;
       }>(
         `
@@ -2151,92 +2282,91 @@ app.post(
         )
 
         RETURNING id
-        `,
+        `
       );
 
     const logId =
-      logRows[0].id;
-
-    let imported =
-      0;
-
-    let updated =
-      0;
-
-    let failed =
-      0;
+      logs[0].id;
 
     try {
-      const rawProducts =
-        await fetchAwinProducts();
 
-      /**
-       * Bescherming tegen een foutieve feed
-       * die bijvoorbeeld miljoenen producten bevat.
-       */
+      const awinProducts =
+        await getAwinProducts();
 
-      const MAX_PRODUCTS_PER_SYNC =
-        100_000;
+      const MAX_PRODUCTS =
+        100000;
 
       if (
-        rawProducts.length >
-        MAX_PRODUCTS_PER_SYNC
+        awinProducts.length >
+        MAX_PRODUCTS
       ) {
+
         throw new Error(
-          "Awin feed exceeds the configured maximum size.",
+          "Awin feed is larger than the allowed limit."
         );
       }
 
       for (
-        const raw of rawProducts
+        const raw
+        of awinProducts
       ) {
+
         try {
-          const input =
+
+          const product =
             mapAwinProduct(
-              raw,
+              raw
             );
 
           const result =
-            await upsertProduct(
-              input,
+            await saveProduct(
+              product
             );
 
           if (
             result ===
             "inserted"
           ) {
-            imported +=
-              1;
+
+            imported++;
+
           } else {
-            updated +=
-              1;
+
+            updated++;
+
           }
+
         } catch (error) {
-          failed +=
-            1;
+
+          failed++;
 
           console.error(
-            "Failed to import Awin product:",
-            error,
+            "Product import failed:",
+            error
           );
         }
       }
 
-      await pool.query(
+      await database.query(
         `
         UPDATE sync_logs
 
         SET
 
-          finished_at = NOW(),
+          finished_at =
+            NOW(),
 
-          imported = $1,
+          imported =
+            $1,
 
-          updated = $2,
+          updated =
+            $2,
 
-          failed = $3
+          failed =
+            $3
 
-        WHERE id = $4
+        WHERE id =
+          $4
         `,
         [
           imported,
@@ -2246,10 +2376,11 @@ app.post(
           failed,
 
           logId,
-        ],
+        ]
       );
 
       return res.json({
+
         ok: true,
 
         imported,
@@ -2258,30 +2389,38 @@ app.post(
 
         failed,
       });
+
     } catch (error) {
+
       const message =
         error instanceof
         Error
           ? error.message
-          : "Unknown sync error.";
+          : "Unknown error.";
 
-      await pool.query(
+      await database.query(
         `
         UPDATE sync_logs
 
         SET
 
-          finished_at = NOW(),
+          finished_at =
+            NOW(),
 
-          imported = $1,
+          imported =
+            $1,
 
-          updated = $2,
+          updated =
+            $2,
 
-          failed = $3,
+          failed =
+            $3,
 
-          error_message = $4
+          error_message =
+            $4
 
-        WHERE id = $5
+        WHERE id =
+          $5
         `,
         [
           imported,
@@ -2292,21 +2431,22 @@ app.post(
 
           message.slice(
             0,
-            5_000,
+            5000
           ),
 
           logId,
-        ],
+        ]
       );
 
       console.error(
         "Awin sync failed:",
-        error,
+        error
       );
 
       return res
         .status(500)
         .json({
+
           error:
             "Awin synchronization failed.",
 
@@ -2316,11 +2456,13 @@ app.post(
 
           failed,
         });
+
     } finally {
+
       syncRunning =
         false;
     }
-  },
+  }
 );
 
 /* ========================================================================== */
@@ -2329,26 +2471,50 @@ app.post(
 
 app.get(
   "/health",
+
   async (
     _req,
-    res,
+    res
   ) => {
+
     try {
-      await pool.query(
-        "SELECT 1",
+
+      await database.query(
+        "SELECT 1"
       );
 
       return res.json({
         ok: true,
       });
+
     } catch {
+
       return res
         .status(503)
         .json({
           ok: false,
         });
     }
-  },
+  }
+);
+
+/* ========================================================================== */
+/* 404                                                                        */
+/* ========================================================================== */
+
+app.use(
+  (
+    _req: Request,
+    res: Response
+  ) => {
+
+    return res
+      .status(404)
+      .json({
+        error:
+          "Not found.",
+      });
+  }
 );
 
 /* ========================================================================== */
@@ -2363,11 +2529,12 @@ app.use(
 
     res: Response,
 
-    _next: NextFunction,
+    _next: NextFunction
   ) => {
+
     console.error(
-      "Unhandled application error:",
-      error,
+      "Unhandled error:",
+      error
     );
 
     return res
@@ -2376,7 +2543,7 @@ app.use(
         error:
           "Internal server error.",
       });
-  },
+  }
 );
 
 /* ========================================================================== */
@@ -2384,25 +2551,44 @@ app.use(
 /* ========================================================================== */
 
 async function main() {
-  await initDatabase();
+
+  await createDatabase();
 
   app.listen(
-    env.PORT,
+    PORT,
     () => {
+
       console.log(
-        `FitDealFinder Products API running on port ${env.PORT}`,
+        `FitDealFinder Products API running on port ${PORT}`
       );
-    },
+
+      if (
+        AWIN_PUBLISHER_ID
+      ) {
+
+        console.log(
+          "Awin publisher configured."
+        );
+      } else {
+
+        console.log(
+          "Awin publisher ID not configured yet."
+        );
+      }
+    }
   );
 }
 
 main().catch(
-  (error) => {
+  error => {
+
     console.error(
       "Fatal startup error:",
-      error,
+      error
     );
 
-    process.exit(1);
-  },
+    process.exit(
+      1
+    );
+  }
 );
