@@ -62,4 +62,17 @@ const products = [
   servings: 1,
   url: ""
 },
+  id: 5,
+  name: "Protein Snack 60g",
+  category: "snacks",
+  goal: ["cut", "bulk", "lean-bulk"],
+  brand: "Voorbeeld",
+  store: "Voorbeeldwinkel",
+  price: 2.49,
+  weight: 60,
+  protein: 15,
+  calories: 220,
+  servings: 1,
+  url: ""
+},
 ];
