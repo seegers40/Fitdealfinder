@@ -1,24 +1,9 @@
-/**
- * FitDealFinder
- * Products API + PostgreSQL + toekomstige Awin-integratie
- *
- * Vereiste environment variables:
- * DATABASE_URL
- * ADMIN_SECRET
- *
- * Optioneel voor later:
- * AWIN_API_KEY
- * AWIN_PUBLISHER_ID
- * AWIN_PRODUCT_FEED_URL
- *
- * PORT=3000
- * TRUST_PROXY=false
- */
+
 
 import express, {
+  type NextFunction,
   type Request,
   type Response,
-  type NextFunction,
 } from "express";
 import helmet from "helmet";
 import { Pool } from "pg";
@@ -26,9 +11,8 @@ import { z } from "zod";
 import crypto from "node:crypto";
 import path from "node:path";
 
-const app = express();
-
 const PORT = Number(process.env.PORT ?? 3000);
+
 const DATABASE_URL = process.env.DATABASE_URL;
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
@@ -39,21 +23,24 @@ const AWIN_PRODUCT_FEED_URL = process.env.AWIN_PRODUCT_FEED_URL;
 const TRUST_PROXY = process.env.TRUST_PROXY === "true";
 
 if (!DATABASE_URL) {
-  throw new Error("DATABASE_URL is missing.");
+  throw new Error("DATABASE_URL is required");
 }
 
 if (!ADMIN_SECRET) {
-  throw new Error("ADMIN_SECRET is missing.");
+  throw new Error("ADMIN_SECRET is required");
 }
 
 if (ADMIN_SECRET.length < 32) {
-  throw new Error(
-    "ADMIN_SECRET must contain at least 32 characters."
-  );
+  throw new Error("ADMIN_SECRET must be at least 32 characters long");
+}
+
+const app = express();
+
+if (TRUST_PROXY) {
+  app.set("trust proxy", 1);
 }
 
 app.disable("x-powered-by");
-app.set("trust proxy", TRUST_PROXY);
 
 app.use(
   helmet({
@@ -68,915 +55,721 @@ app.use(
         styleSrc: ["'self'"],
         scriptSrc: ["'self'"],
         connectSrc: ["'self'"],
+        upgradeInsecureRequests: [],
       },
     },
     referrerPolicy: {
       policy: "strict-origin-when-cross-origin",
     },
-  })
+  }),
 );
 
-app.use(
-  express.json({
-    limit: "100kb",
-  })
-);
+app.use(express.json({ limit: "100kb" }));
 
-/* -------------------------------------------------------------------------- */
-/* DATABASE                                                                    */
-/* -------------------------------------------------------------------------- */
-
-const database = new Pool({
+const pool = new Pool({
   connectionString: DATABASE_URL,
   max: 10,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000,
 });
 
-async function db<T = any>(
-  sql: string,
-  params: unknown[] = []
-): Promise<T[]> {
-  const result = await database.query(sql, params);
-  return result.rows as T[];
-}
+type Goal = "cut" | "bulk" | "lean-bulk";
 
-async function createDatabase() {
-  await db(`
-    CREATE TABLE IF NOT EXISTS products (
-      id UUID PRIMARY KEY,
-      external_id TEXT,
+const VALID_GOALS: Goal[] = ["cut", "bulk", "lean-bulk"];
 
-      name TEXT NOT NULL,
-      slug TEXT NOT NULL UNIQUE,
-      description TEXT,
-
-      brand TEXT,
-      category TEXT,
-
-      goals TEXT[] NOT NULL
-        DEFAULT ARRAY['cut', 'bulk', 'lean-bulk']::text[],
-
-      price NUMERIC(12,2) NOT NULL
-        CHECK (price >= 0),
-
-      old_price NUMERIC(12,2)
-        CHECK (
-          old_price IS NULL
-          OR old_price >= 0
-        ),
-
-      currency CHAR(3) NOT NULL DEFAULT 'EUR',
-
-      image_url TEXT,
-      product_url TEXT NOT NULL,
-
-      affiliate_url TEXT,
-
-      merchant_name TEXT NOT NULL,
-      merchant_id TEXT,
-
-      network TEXT NOT NULL DEFAULT 'DIRECT',
-
-      commission NUMERIC(12,2),
-      commission_type TEXT,
-
-      in_stock BOOLEAN NOT NULL DEFAULT TRUE,
-      active BOOLEAN NOT NULL DEFAULT TRUE,
-
-      deal_score INTEGER NOT NULL DEFAULT 0
-        CHECK (deal_score BETWEEN 0 AND 100),
-
-      discount_percent INTEGER
-        CHECK (
-          discount_percent IS NULL
-          OR discount_percent BETWEEN 0 AND 100
-        ),
-
-      last_synced_at TIMESTAMPTZ,
-
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-
-    ALTER TABLE products
-      ADD COLUMN IF NOT EXISTS goals TEXT[]
-      NOT NULL
-      DEFAULT ARRAY['cut', 'bulk', 'lean-bulk']::text[];
-
-    ALTER TABLE products
-      ALTER COLUMN affiliate_url DROP NOT NULL;
-
-    CREATE INDEX IF NOT EXISTS products_category_idx
-      ON products(category);
-
-    CREATE INDEX IF NOT EXISTS products_brand_idx
-      ON products(brand);
-
-    CREATE INDEX IF NOT EXISTS products_merchant_idx
-      ON products(merchant_name);
-
-    CREATE INDEX IF NOT EXISTS products_score_idx
-      ON products(deal_score DESC);
-
-    CREATE INDEX IF NOT EXISTS products_active_idx
-      ON products(active);
-
-    CREATE INDEX IF NOT EXISTS products_goals_idx
-      ON products USING GIN(goals);
-
-    CREATE UNIQUE INDEX IF NOT EXISTS products_network_external_idx
-      ON products(network, external_id)
-      WHERE external_id IS NOT NULL;
-
-    CREATE TABLE IF NOT EXISTS sync_logs (
-      id BIGSERIAL PRIMARY KEY,
-      network TEXT NOT NULL,
-      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      finished_at TIMESTAMPTZ,
-
-      imported INTEGER NOT NULL DEFAULT 0,
-      updated INTEGER NOT NULL DEFAULT 0,
-      failed INTEGER NOT NULL DEFAULT 0,
-
-      error_message TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS affiliate_clicks (
-      id BIGSERIAL PRIMARY KEY,
-
-      product_id UUID NOT NULL
-        REFERENCES products(id)
-        ON DELETE CASCADE,
-
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-
-    CREATE INDEX IF NOT EXISTS affiliate_clicks_product_idx
-      ON affiliate_clicks(product_id, created_at);
-  `);
-}
-
-/* -------------------------------------------------------------------------- */
-/* VALIDATION                                                                  */
-/* -------------------------------------------------------------------------- */
-
-const goalSchema = z.enum([
-  "cut",
-  "bulk",
-  "lean-bulk",
-]);
+const goalSchema = z.enum(VALID_GOALS);
 
 const productSchema = z.object({
-  externalId: z
-    .string()
-    .trim()
-    .min(1)
-    .max(200)
-    .nullable()
-    .optional(),
-
-  name: z
-    .string()
-    .trim()
-    .min(1)
-    .max(300),
-
-  description: z
-    .string()
-    .trim()
-    .max(10000)
-    .nullable()
-    .optional(),
-
-  brand: z
-    .string()
-    .trim()
-    .max(200)
-    .nullable()
-    .optional(),
-
-  category: z
-    .string()
-    .trim()
-    .max(200)
-    .nullable()
-    .optional(),
-
-  goals: z
-    .array(goalSchema)
-    .min(1)
-    .max(3)
-    .default([
-      "cut",
-      "bulk",
-      "lean-bulk",
-    ]),
-
-  price: z
-    .number()
-    .finite()
-    .nonnegative(),
-
-  oldPrice: z
-    .number()
-    .finite()
-    .nonnegative()
-    .nullable()
-    .optional(),
-
+  externalId: z.string().trim().min(1).max(255).nullable().optional(),
+  name: z.string().trim().min(1).max(255),
+  slug: z.string().trim().min(1).max(255).optional(),
+  description: z.string().trim().max(5000).nullable().optional(),
+  brand: z.string().trim().max(255).nullable().optional(),
+  category: z.string().trim().min(1).max(100),
+  goals: z.array(goalSchema).min(1).max(3).default(VALID_GOALS),
+  price: z.number().nonnegative(),
+  oldPrice: z.number().nonnegative().nullable().optional(),
   currency: z
     .string()
     .trim()
-    .length(3)
-    .transform((value) =>
-      value.toUpperCase()
-    ),
-
-  imageUrl: z
-    .string()
-    .url()
-    .max(2048)
-    .nullable()
-    .optional(),
-
-  productUrl: z
-    .string()
-    .url()
-    .max(2048),
-
-  affiliateUrl: z
-    .string()
-    .url()
-    .max(2048)
-    .nullable()
-    .optional(),
-
-  merchantName: z
-    .string()
-    .trim()
-    .min(1)
-    .max(200),
-
-  merchantId: z
-    .string()
-    .trim()
-    .max(200)
-    .nullable()
-    .optional(),
-
-  network: z
-    .string()
-    .trim()
-    .min(1)
-    .max(50)
-    .default("DIRECT"),
-
-  commission: z
-    .number()
-    .finite()
-    .nonnegative()
-    .nullable()
-    .optional(),
-
-  commissionType: z
-    .string()
-    .trim()
-    .max(50)
-    .nullable()
-    .optional(),
-
-  inStock: z
-    .boolean()
-    .default(true),
+    .regex(/^[A-Z]{3}$/)
+    .default("EUR"),
+  imageUrl: z.string().url().nullable().optional(),
+  productUrl: z.string().url(),
+  affiliateUrl: z.string().url().nullable().optional(),
+  merchantName: z.string().trim().max(255).nullable().optional(),
+  merchantId: z.string().trim().max(255).nullable().optional(),
+  network: z.string().trim().max(100).default("direct"),
+  commission: z.number().nonnegative().nullable().optional(),
+  commissionType: z.string().trim().max(100).nullable().optional(),
+  inStock: z.boolean().default(true),
+  active: z.boolean().default(true),
 });
 
-type ProductInput = z.infer<
-  typeof productSchema
->;
+type ProductInput = z.infer<typeof productSchema>;
 
-/* -------------------------------------------------------------------------- */
-/* URL SECURITY                                                                */
-/* -------------------------------------------------------------------------- */
+type NormalizedProduct = {
+  externalId: string | null;
+  name: string;
+  slug: string;
+  description: string | null;
+  brand: string | null;
+  category: string;
+  goals: Goal[];
+  price: number;
+  oldPrice: number | null;
+  currency: string;
+  imageUrl: string | null;
+  productUrl: string;
+  affiliateUrl: string | null;
+  merchantName: string | null;
+  merchantId: string | null;
+  network: string;
+  commission: number | null;
+  commissionType: string | null;
+  inStock: boolean;
+  active: boolean;
+  discountPercent: number;
+  dealScore: number;
+};
 
-function httpsUrl(value: string): URL {
-  const url = new URL(value);
+const isValidGoal = (value: string): value is Goal =>
+  VALID_GOALS.includes(value as Goal);
 
-  if (url.protocol !== "https:") {
-    throw new Error(
-      "Only HTTPS URLs are allowed."
-    );
-  }
+const uniqueGoals = (goals: Goal[]): Goal[] =>
+  [...new Set(goals)].filter(isValidGoal);
 
-  return url;
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 200);
 }
 
-function isSafeAwinUrl(
-  value: string
-): boolean {
+function discountPercentage(price: number, oldPrice: number | null): number {
+  if (!oldPrice || oldPrice <= price || oldPrice <= 0) {
+    return 0;
+  }
+
+  return Math.round(((oldPrice - price) / oldPrice) * 100);
+}
+
+function calculateDealScore(
+  price: number,
+  oldPrice: number | null,
+  inStock: boolean,
+): number {
+  const discount = discountPercentage(price, oldPrice);
+
+  let score = discount * 2;
+
+  if (inStock) {
+    score += 20;
+  }
+
+  if (price > 0 && price < 25) {
+    score += 10;
+  }
+
+  return Math.min(100, Math.round(score));
+}
+
+function normalizeProduct(input: ProductInput): NormalizedProduct {
+  const goals = uniqueGoals(input.goals);
+
+  return {
+    externalId: input.externalId ?? null,
+    name: input.name,
+    slug: slugify(input.slug ?? input.name),
+    description: input.description ?? null,
+    brand: input.brand ?? null,
+    category: input.category,
+    goals: goals.length > 0 ? goals : [...VALID_GOALS],
+    price: input.price,
+    oldPrice: input.oldPrice ?? null,
+    currency: input.currency,
+    imageUrl: input.imageUrl ?? null,
+    productUrl: input.productUrl,
+    affiliateUrl: input.affiliateUrl ?? null,
+    merchantName: input.merchantName ?? null,
+    merchantId: input.merchantId ?? null,
+    network: input.network,
+    commission: input.commission ?? null,
+    commissionType: input.commissionType ?? null,
+    inStock: input.inStock,
+    active: input.active,
+    discountPercent: discountPercentage(
+      input.price,
+      input.oldPrice ?? null,
+    ),
+    dealScore: calculateDealScore(
+      input.price,
+      input.oldPrice ?? null,
+      input.inStock,
+    ),
+  };
+}
+
+function isHttpsUrl(value: string): boolean {
   try {
-    const host = httpsUrl(value)
-      .hostname
-      .toLowerCase();
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isSafeAwinUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+
+    if (url.protocol !== "https:") {
+      return false;
+    }
+
+    const hostname = url.hostname.toLowerCase();
 
     return (
-      host === "awin.com" ||
-      host === "www.awin.com" ||
-      host === "awin1.com" ||
-      host === "www.awin1.com" ||
-      host.endsWith(".awin.com") ||
-      host.endsWith(".awin1.com")
+      hostname === "awin.com" ||
+      hostname.endsWith(".awin.com") ||
+      hostname === "awin1.com" ||
+      hostname.endsWith(".awin1.com")
     );
   } catch {
     return false;
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* PRODUCT HELPERS                                                             */
-/* -------------------------------------------------------------------------- */
+function timingSafeSecretMatches(
+  provided: string | undefined,
+): boolean {
+  if (!provided) {
+    return false;
+  }
 
-function slugify(
-  value: string
-): string {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 180);
+  const expected = Buffer.from(ADMIN_SECRET, "utf8");
+  const actual = Buffer.from(provided, "utf8");
+
+  if (expected.length !== actual.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(expected, actual);
 }
 
-async function makeUniqueSlug(
-  base: string
-): Promise<string> {
-  const clean =
-    slugify(base) || "product";
+function requireAdmin(req: Request, res: Response): boolean {
+  const provided = req.header("x-admin-secret");
 
-  for (let i = 0; i < 100; i++) {
-    const slug =
-      i === 0
-        ? clean
-        : `${clean}-${i + 1}`;
-
-    const existing = await db(
-      `
-      SELECT id
-      FROM products
-      WHERE slug = $1
-      LIMIT 1
-      `,
-      [slug]
-    );
-
-    if (existing.length === 0) {
-      return slug;
-    }
-  }
-
-  return `${clean}-${crypto
-    .randomUUID()
-    .slice(0, 8)}`;
-}
-
-function discountPercentage(
-  price: number,
-  oldPrice?: number | null
-): number | null {
-  if (
-    !oldPrice ||
-    oldPrice <= price ||
-    oldPrice <= 0
-  ) {
-    return null;
-  }
-
-  return Math.min(
-    100,
-    Math.max(
-      0,
-      Math.round(
-        ((oldPrice - price) /
-          oldPrice) *
-          100
-      )
-    )
-  );
-}
-
-function dealScore(product: {
-  price: number;
-  oldPrice?: number | null;
-  commission?: number | null;
-  inStock: boolean;
-}): number {
-  if (!product.inStock) {
-    return 0;
-  }
-
-  const discount =
-    discountPercentage(
-      product.price,
-      product.oldPrice
-    );
-
-  let score = 0;
-
-  if (discount !== null) {
-    score += Math.min(
-      60,
-      Math.round(discount * 1.5)
-    );
-  }
-
-  if (
-    product.commission !== null &&
-    product.commission !== undefined
-  ) {
-    score += Math.min(
-      20,
-      Math.round(product.commission)
-    );
-  }
-
-  if (
-    product.price > 0 &&
-    product.price < 50
-  ) {
-    score += 10;
-  }
-
-  if (
-    product.oldPrice &&
-    product.oldPrice > product.price
-  ) {
-    score += 5;
-  }
-
-  return Math.min(
-    100,
-    Math.max(0, score)
-  );
-}
-
-function normalizeProduct(
-  input: ProductInput
-) {
-  const productUrl =
-    httpsUrl(input.productUrl);
-
-  let affiliateUrl:
-    | string
-    | null = null;
-
-  if (input.affiliateUrl) {
-    if (
-      !isSafeAwinUrl(
-        input.affiliateUrl
-      )
-    ) {
-      throw new Error(
-        "Affiliate URL must be a valid approved Awin URL."
-      );
-    }
-
-    affiliateUrl =
-      httpsUrl(
-        input.affiliateUrl
-      ).toString();
-  }
-
-  const discount =
-    discountPercentage(
-      input.price,
-      input.oldPrice
-    );
-
-  const score =
-    dealScore({
-      price: input.price,
-      oldPrice: input.oldPrice,
-      commission: input.commission,
-      inStock: input.inStock,
+  if (!timingSafeSecretMatches(provided)) {
+    res.status(401).json({
+      error: "Unauthorized",
     });
 
-  return {
-    ...input,
-    productUrl:
-      productUrl.toString(),
-    affiliateUrl,
-    discountPercent:
-      discount,
-    dealScore:
-      score,
-  };
+    return false;
+  }
+
+  return true;
 }
 
-/* -------------------------------------------------------------------------- */
-/* RATE LIMITING                                                               */
-/* -------------------------------------------------------------------------- */
-
-type RateBucket = {
+type RateLimitEntry = {
   count: number;
   resetAt: number;
 };
 
-const rateBuckets =
-  new Map<string, RateBucket>();
+const rateLimitStore = new Map<string, RateLimitEntry>();
 
 function rateLimit(
   maxRequests: number,
-  windowMs: number
+  windowMs: number,
 ) {
-  return (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    const ip =
-      req.ip || "unknown";
-
+  return (req: Request, res: Response, next: NextFunction) => {
+    const key = `${req.ip}:${req.path}`;
     const now = Date.now();
 
-    const bucket =
-      rateBuckets.get(ip);
+    const existing = rateLimitStore.get(key);
 
-    if (
-      !bucket ||
-      bucket.resetAt <= now
-    ) {
-      rateBuckets.set(ip, {
+    if (!existing || existing.resetAt <= now) {
+      rateLimitStore.set(key, {
         count: 1,
-        resetAt:
-          now + windowMs,
+        resetAt: now + windowMs,
       });
 
-      return next();
+      next();
+      return;
     }
 
-    if (
-      bucket.count >=
-      maxRequests
-    ) {
-      res.setHeader(
-        "Retry-After",
-        String(
-          Math.ceil(
-            (bucket.resetAt -
-              now) /
-              1000
-          )
-        )
-      );
+    existing.count += 1;
 
-      return res
-        .status(429)
-        .json({
-          error:
-            "Too many requests.",
-        });
+    if (existing.count > maxRequests) {
+      res.status(429).json({
+        error: "Too many requests",
+      });
+
+      return;
     }
 
-    bucket.count += 1;
-
-    return next();
+    next();
   };
 }
 
 setInterval(() => {
   const now = Date.now();
 
-  for (
-    const [
-      key,
-      bucket,
-    ] of rateBuckets
-  ) {
-    if (
-      bucket.resetAt <= now
-    ) {
-      rateBuckets.delete(key);
+  for (const [key, value] of rateLimitStore.entries()) {
+    if (value.resetAt <= now) {
+      rateLimitStore.delete(key);
     }
   }
 }, 60_000).unref();
 
-/* -------------------------------------------------------------------------- */
-/* ADMIN AUTH                                                                  */
-/* -------------------------------------------------------------------------- */
+async function createDatabase(): Promise<void> {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS products (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      external_id TEXT,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL UNIQUE,
+      description TEXT,
+      brand TEXT,
+      category TEXT NOT NULL,
 
-function requireAdmin(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  const supplied =
-    req.header(
-      "x-admin-secret"
+      goals TEXT[] NOT NULL
+        DEFAULT ARRAY['cut','bulk','lean-bulk']::text[],
+
+      price NUMERIC(12,2) NOT NULL,
+      old_price NUMERIC(12,2),
+
+      currency CHAR(3) NOT NULL DEFAULT 'EUR',
+
+      image_url TEXT,
+      product_url TEXT NOT NULL,
+      affiliate_url TEXT,
+
+      merchant_name TEXT,
+      merchant_id TEXT,
+
+      network TEXT NOT NULL DEFAULT 'direct',
+
+      commission NUMERIC(10,2),
+      commission_type TEXT,
+
+      in_stock BOOLEAN NOT NULL DEFAULT TRUE,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+
+      deal_score NUMERIC(6,2) NOT NULL DEFAULT 0,
+      discount_percent NUMERIC(6,2) NOT NULL DEFAULT 0,
+
+      last_synced_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
 
-  if (!supplied) {
-    return res
-      .status(401)
-      .json({
-        error:
-          "Unauthorized.",
-      });
-  }
+  await pool.query(`
+    ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS goals TEXT[]
+    NOT NULL
+    DEFAULT ARRAY['cut','bulk','lean-bulk']::text[];
+  `);
 
-  const suppliedBuffer =
-    Buffer.from(supplied);
+  await pool.query(`
+    ALTER TABLE products
+    ALTER COLUMN affiliate_url DROP NOT NULL;
+  `);
 
-  const expectedBuffer =
-    Buffer.from(
-      ADMIN_SECRET!
+  await pool.query(`
+    UPDATE products
+    SET goals = ARRAY['cut','bulk','lean-bulk']::text[]
+    WHERE goals IS NULL
+       OR cardinality(goals) = 0;
+  `);
+
+  await pool.query(`
+    ALTER TABLE products
+    DROP CONSTRAINT IF EXISTS products_goals_valid;
+  `);
+
+  await pool.query(`
+    ALTER TABLE products
+    ADD CONSTRAINT products_goals_valid
+    CHECK (
+      cardinality(goals) BETWEEN 1 AND 3
+      AND goals <@ ARRAY['cut','bulk','lean-bulk']::text[]
     );
+  `);
 
-  if (
-    suppliedBuffer.length !==
-      expectedBuffer.length ||
-    !crypto.timingSafeEqual(
-      suppliedBuffer,
-      expectedBuffer
-    )
-  ) {
-    return res
-      .status(401)
-      .json({
-        error:
-          "Unauthorized.",
-      });
-  }
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS products_category_idx
+    ON products(category);
+  `);
 
-  return next();
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS products_brand_idx
+    ON products(brand);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS products_merchant_idx
+    ON products(merchant_name);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS products_deal_score_idx
+    ON products(deal_score DESC);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS products_active_idx
+    ON products(active);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS products_goals_idx
+    ON products USING GIN(goals);
+  `);
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS products_network_external_idx
+    ON products(network, external_id)
+    WHERE external_id IS NOT NULL;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sync_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      network TEXT NOT NULL,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      finished_at TIMESTAMPTZ,
+      imported INTEGER NOT NULL DEFAULT 0,
+      failed INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'running',
+      error_message TEXT
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS affiliate_clicks (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      destination TEXT NOT NULL,
+      ip_hash TEXT,
+      user_agent TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS affiliate_clicks_product_idx
+    ON affiliate_clicks(product_id);
+  `);
 }
 
-/* -------------------------------------------------------------------------- */
-/* SAVE PRODUCT                                                                */
-/* -------------------------------------------------------------------------- */
+async function createUniqueSlug(
+  baseSlug: string,
+  existingId?: string,
+): Promise<string> {
+  const safeBase = baseSlug || "product";
 
-async function saveProduct(
-  input: ProductInput
-): Promise<
-  "inserted" | "updated"
-> {
-  const product =
-    normalizeProduct(input);
+  const result = await pool.query<{ slug: string }>(
+    `
+      SELECT slug
+      FROM products
+      WHERE slug = $1
+        AND ($2::uuid IS NULL OR id <> $2::uuid)
+      LIMIT 1
+    `,
+    [safeBase, existingId ?? null],
+  );
 
-  if (product.externalId) {
-    const existing =
-      await db<{ id: string }>(
-        `
-        SELECT id
+  if (result.rowCount === 0) {
+    return safeBase;
+  }
+
+  for (let i = 2; i <= 1000; i += 1) {
+    const candidate = `${safeBase}-${i}`;
+
+    const candidateResult = await pool.query<{ slug: string }>(
+      `
+        SELECT slug
         FROM products
-        WHERE network = $1
-          AND external_id = $2
+        WHERE slug = $1
+          AND ($2::uuid IS NULL OR id <> $2::uuid)
         LIMIT 1
-        `,
-        [
-          product.network,
-          product.externalId,
-        ]
-      );
+      `,
+      [candidate, existingId ?? null],
+    );
 
-    if (existing.length > 0) {
-      await db(
-        `
-        UPDATE products
-        SET
-          name = $1,
-          description = $2,
-          brand = $3,
-          category = $4,
-          goals = $5,
-          price = $6,
-          old_price = $7,
-          currency = $8,
-          image_url = $9,
-          product_url = $10,
-          affiliate_url = $11,
-          merchant_name = $12,
-          merchant_id = $13,
-          commission = $14,
-          commission_type = $15,
-          in_stock = $16,
-          deal_score = $17,
-          discount_percent = $18,
-          active = TRUE,
-          last_synced_at = NOW(),
-          updated_at = NOW()
-        WHERE id = $19::uuid
-        `,
-        [
-          product.name,
-          product.description ??
-            null,
-          product.brand ?? null,
-          product.category ??
-            null,
-          product.goals,
-          product.price,
-          product.oldPrice ??
-            null,
-          product.currency,
-          product.imageUrl ??
-            null,
-          product.productUrl,
-          product.affiliateUrl,
-          product.merchantName,
-          product.merchantId ??
-            null,
-          product.commission ??
-            null,
-          product.commissionType ??
-            null,
-          product.inStock,
-          product.dealScore,
-          product.discountPercent,
-          existing[0].id,
-        ]
-      );
-
-      return "updated";
+    if (candidateResult.rowCount === 0) {
+      return candidate;
     }
   }
 
-  const id =
-    crypto.randomUUID();
+  throw new Error("Unable to generate unique slug");
+}
 
-  const slug =
-    await makeUniqueSlug(
-      product.name
+async function saveProduct(
+  input: ProductInput,
+): Promise<void> {
+  const product = normalizeProduct(input);
+
+  if (product.externalId) {
+    await pool.query(
+      `
+        INSERT INTO products (
+          external_id,
+          name,
+          slug,
+          description,
+          brand,
+          category,
+          goals,
+          price,
+          old_price,
+          currency,
+          image_url,
+          product_url,
+          affiliate_url,
+          merchant_name,
+          merchant_id,
+          network,
+          commission,
+          commission_type,
+          in_stock,
+          active,
+          deal_score,
+          discount_percent,
+          last_synced_at,
+          updated_at
+        )
+        VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+          $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+          $21,$22,NOW(),NOW()
+        )
+        ON CONFLICT (network, external_id)
+        DO UPDATE SET
+          name = EXCLUDED.name,
+          slug = EXCLUDED.slug,
+          description = EXCLUDED.description,
+          brand = EXCLUDED.brand,
+          category = EXCLUDED.category,
+          goals = EXCLUDED.goals,
+          price = EXCLUDED.price,
+          old_price = EXCLUDED.old_price,
+          currency = EXCLUDED.currency,
+          image_url = EXCLUDED.image_url,
+          product_url = EXCLUDED.product_url,
+          affiliate_url = EXCLUDED.affiliate_url,
+          merchant_name = EXCLUDED.merchant_name,
+          merchant_id = EXCLUDED.merchant_id,
+          commission = EXCLUDED.commission,
+          commission_type = EXCLUDED.commission_type,
+          in_stock = EXCLUDED.in_stock,
+          active = EXCLUDED.active,
+          deal_score = EXCLUDED.deal_score,
+          discount_percent = EXCLUDED.discount_percent,
+          last_synced_at = NOW(),
+          updated_at = NOW()
+      `,
+      [
+        product.externalId,
+        product.name,
+        product.slug,
+        product.description,
+        product.brand,
+        product.category,
+        product.goals,
+        product.price,
+        product.oldPrice,
+        product.currency,
+        product.imageUrl,
+        product.productUrl,
+        product.affiliateUrl,
+        product.merchantName,
+        product.merchantId,
+        product.network,
+        product.commission,
+        product.commissionType,
+        product.inStock,
+        product.active,
+        product.dealScore,
+        product.discountPercent,
+      ],
     );
 
-  await db(
+    return;
+  }
+
+  const slug = await createUniqueSlug(product.slug);
+
+  await pool.query(
     `
-    INSERT INTO products (
-      id,
-      external_id,
-      name,
-      slug,
-      description,
-      brand,
-      category,
-      goals,
-      price,
-      old_price,
-      currency,
-      image_url,
-      product_url,
-      affiliate_url,
-      merchant_name,
-      merchant_id,
-      network,
-      commission,
-      commission_type,
-      in_stock,
-      deal_score,
-      discount_percent,
-      active,
-      last_synced_at
-    )
-    VALUES (
-      $1::uuid,
-      $2,
-      $3,
-      $4,
-      $5,
-      $6,
-      $7,
-      $8,
-      $9,
-      $10,
-      $11,
-      $12,
-      $13,
-      $14,
-      $15,
-      $16,
-      $17,
-      $18,
-      $19,
-      $20,
-      $21,
-      $22,
-      TRUE,
-      NOW()
-    )
+      INSERT INTO products (
+        name,
+        slug,
+        description,
+        brand,
+        category,
+        goals,
+        price,
+        old_price,
+        currency,
+        image_url,
+        product_url,
+        affiliate_url,
+        merchant_name,
+        merchant_id,
+        network,
+        commission,
+        commission_type,
+        in_stock,
+        active,
+        deal_score,
+        discount_percent
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+        $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
+      )
     `,
     [
-      id,
-      product.externalId ??
-        null,
       product.name,
       slug,
-      product.description ??
-        null,
-      product.brand ?? null,
-      product.category ??
-        null,
+      product.description,
+      product.brand,
+      product.category,
       product.goals,
       product.price,
-      product.oldPrice ??
-        null,
+      product.oldPrice,
       product.currency,
-      product.imageUrl ??
-        null,
+      product.imageUrl,
       product.productUrl,
       product.affiliateUrl,
       product.merchantName,
-      product.merchantId ??
-        null,
+      product.merchantId,
       product.network,
-      product.commission ??
-        null,
-      product.commissionType ??
-        null,
+      product.commission,
+      product.commissionType,
       product.inStock,
+      product.active,
       product.dealScore,
       product.discountPercent,
-    ]
+    ],
   );
-
-  return "inserted";
 }
 
-/* -------------------------------------------------------------------------- */
-/* PUBLIC API                                                                  */
-/* -------------------------------------------------------------------------- */
+function publicProduct(row: Record<string, unknown>) {
+  return {
+    id: row.id,
+    externalId: row.external_id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    brand: row.brand,
+    category: row.category,
+    goals: row.goals,
+    price: Number(row.price),
+    oldPrice:
+      row.old_price === null
+        ? null
+        : Number(row.old_price),
+    currency: row.currency,
+    imageUrl: row.image_url,
+    merchantName: row.merchant_name,
+    network: row.network,
+    inStock: row.in_stock,
+    active: row.active,
+    dealScore: Number(row.deal_score),
+    discountPercent: Number(row.discount_percent),
+    lastSyncedAt: row.last_synced_at,
+  };
+}
 
 app.get(
   "/api/products",
   rateLimit(120, 60_000),
-  async (
-    req: Request,
-    res: Response
-  ) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      let limit = Number(
-        req.query.limit ?? 100
+      const rawLimit = Number(req.query.limit ?? 50);
+      const rawOffset = Number(req.query.offset ?? 0);
+
+      const limit = Math.min(
+        Math.max(Number.isFinite(rawLimit) ? rawLimit : 50, 1),
+        100,
       );
 
-      let offset = Number(
-        req.query.offset ?? 0
-      );
-
-      if (!Number.isFinite(limit)) {
-        limit = 100;
-      }
-
-      if (
-        !Number.isFinite(offset)
-      ) {
-        offset = 0;
-      }
-
-      limit = Math.min(
-        Math.max(
-          Math.floor(limit),
-          1
-        ),
-        100
-      );
-
-      offset = Math.max(
-        Math.floor(offset),
-        0
+      const offset = Math.max(
+        Number.isFinite(rawOffset) ? rawOffset : 0,
+        0,
       );
 
       const category =
-        typeof req.query.category ===
-        "string"
-          ? req.query.category
-              .trim()
-              .slice(0, 200)
-          : null;
+        typeof req.query.category === "string"
+          ? req.query.category.trim()
+          : "";
 
       const search =
-        typeof req.query.search ===
-        "string"
-          ? req.query.search
-              .trim()
-              .slice(0, 200)
-          : null;
+        typeof req.query.search === "string"
+          ? req.query.search.trim()
+          : "";
+
+      const goal =
+        typeof req.query.goal === "string"
+          ? req.query.goal.trim()
+          : "";
 
       const sort =
-        req.query.sort ===
-        "price_asc"
-          ? "price ASC"
-          : req.query.sort ===
-              "price_desc"
-            ? "price DESC"
-            : req.query.sort ===
-                "newest"
-              ? "created_at DESC"
-              : "deal_score DESC";
+        typeof req.query.sort === "string"
+          ? req.query.sort
+          : "deal_score";
 
-      const products =
-        await db(
-          `
+      const allowedSorts: Record<string, string> = {
+        deal_score: "deal_score DESC, price ASC",
+        price_asc: "price ASC",
+        price_desc: "price DESC",
+        newest: "created_at DESC",
+        name: "name ASC",
+      };
+
+      const orderBy =
+        allowedSorts[sort] ?? allowedSorts.deal_score;
+
+      const values: unknown[] = [];
+      const conditions = ["active = TRUE"];
+
+      if (category) {
+        values.push(category);
+        conditions.push(`category = $${values.length}`);
+      }
+
+      if (search) {
+        values.push(`%${search}%`);
+        conditions.push(
+          `(name ILIKE $${values.length}
+            OR brand ILIKE $${values.length})`,
+        );
+      }
+
+      if (goal && isValidGoal(goal)) {
+        values.push(goal);
+        conditions.push(
+          `$${values.length} = ANY(goals)`,
+        );
+      }
+
+      values.push(limit);
+      const limitParam = values.length;
+
+      values.push(offset);
+      const offsetParam = values.length;
+
+      const result = await pool.query(
+        `
           SELECT
             id,
+            external_id,
             name,
             slug,
             description,
@@ -984,86 +777,47 @@ app.get(
             category,
             goals,
             price,
-            old_price AS "oldPrice",
+            old_price,
             currency,
-            image_url AS "imageUrl",
-            product_url AS "productUrl",
-            merchant_name AS "merchantName",
+            image_url,
+            merchant_name,
             network,
-            in_stock AS "inStock",
-            deal_score AS "dealScore",
-            discount_percent AS "discountPercent"
+            in_stock,
+            active,
+            deal_score,
+            discount_percent,
+            last_synced_at
           FROM products
-          WHERE active = TRUE
-
-          AND (
-            $1::text IS NULL
-            OR category = $1
-          )
-
-          AND (
-            $2::text IS NULL
-            OR name ILIKE '%' || $2 || '%'
-            OR brand ILIKE '%' || $2 || '%'
-          )
-
-          ORDER BY ${sort}
-          LIMIT $3
-          OFFSET $4
-          `,
-          [
-            category,
-            search,
-            limit,
-            offset,
-          ]
-        );
-
-      return res.json({
-        products,
-        limit,
-        offset,
-      });
-    } catch (error) {
-      console.error(
-        "Products error:",
-        error
+          WHERE ${conditions.join(" AND ")}
+          ORDER BY ${orderBy}
+          LIMIT $${limitParam}
+          OFFSET $${offsetParam}
+        `,
+        values,
       );
 
-      return res
-        .status(500)
-        .json({
-          error:
-            "Internal server error.",
-        });
+      res.json({
+        products: result.rows.map(publicProduct),
+        limit,
+        offset,
+        count: result.rowCount,
+      });
+    } catch (error) {
+      next(error);
     }
-  }
+  },
 );
-
-/* -------------------------------------------------------------------------- */
-/* SINGLE PRODUCT                                                              */
-/* -------------------------------------------------------------------------- */
 
 app.get(
   "/api/products/:slug",
   rateLimit(120, 60_000),
-  async (
-    req: Request,
-    res: Response
-  ) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const slug =
-        String(
-          req.params.slug
-        )
-          .trim()
-          .slice(0, 200);
-
-      const products =
-        await db(
-          `
+      const result = await pool.query(
+        `
           SELECT
             id,
+            external_id,
             name,
             slug,
             description,
@@ -1071,838 +825,657 @@ app.get(
             category,
             goals,
             price,
-            old_price AS "oldPrice",
+            old_price,
             currency,
-            image_url AS "imageUrl",
-            product_url AS "productUrl",
-            merchant_name AS "merchantName",
+            image_url,
+            merchant_name,
             network,
-            in_stock AS "inStock",
-            deal_score AS "dealScore",
-            discount_percent AS "discountPercent"
+            in_stock,
+            active,
+            deal_score,
+            discount_percent,
+            last_synced_at
           FROM products
           WHERE slug = $1
             AND active = TRUE
           LIMIT 1
-          `,
-          [slug]
-        );
+        `,
+        [req.params.slug],
+      );
 
-      if (
-        products.length === 0
-      ) {
-        return res
-          .status(404)
-          .json({
-            error:
-              "Product not found.",
-          });
+      if (result.rowCount === 0) {
+        res.status(404).json({
+          error: "Product not found",
+        });
+
+        return;
       }
 
-      return res.json(
-        products[0]
-      );
+      res.json(publicProduct(result.rows[0]));
     } catch (error) {
-      console.error(
-        "Product detail error:",
-        error
-      );
-
-      return res
-        .status(500)
-        .json({
-          error:
-            "Internal server error.",
-        });
+      next(error);
     }
-  }
+  },
 );
-
-/* -------------------------------------------------------------------------- */
-/* SAFE PRODUCT REDIRECT                                                       */
-/* -------------------------------------------------------------------------- */
 
 app.get(
   "/go/:id",
   rateLimit(60, 60_000),
-  async (
-    req: Request,
-    res: Response
-  ) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id =
-        String(req.params.id);
+      const id = req.params.id;
 
       if (
-        !/^[0-9a-f-]{36}$/i.test(
-          id
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          id,
         )
       ) {
-        return res
-          .status(400)
-          .send(
-            "Invalid product."
-          );
+        res.status(400).json({
+          error: "Invalid product id",
+        });
+
+        return;
       }
 
-      const products =
-        await db<{
-          id: string;
-          product_url: string;
-          affiliate_url:
-            | string
-            | null;
-          active: boolean;
-        }>(
-          `
+      const result = await pool.query<{
+        id: string;
+        product_url: string;
+        affiliate_url: string | null;
+      }>(
+        `
           SELECT
             id,
             product_url,
-            affiliate_url,
-            active
+            affiliate_url
           FROM products
-          WHERE id = $1::uuid
+          WHERE id = $1
+            AND active = TRUE
           LIMIT 1
-          `,
-          [id]
-        );
-
-      if (
-        products.length === 0 ||
-        !products[0].active
-      ) {
-        return res
-          .status(404)
-          .send(
-            "Product not found."
-          );
-      }
-
-      const product =
-        products[0];
-
-      let destination =
-        product.product_url;
-
-      if (
-        product.affiliate_url &&
-        isSafeAwinUrl(
-          product.affiliate_url
-        )
-      ) {
-        destination =
-          product.affiliate_url;
-      }
-
-      const safeDestination =
-        httpsUrl(
-          destination
-        ).toString();
-
-      await db(
-        `
-        INSERT INTO affiliate_clicks (
-          product_id
-        )
-        VALUES ($1::uuid)
         `,
-        [id]
+        [id],
       );
 
-      return res.redirect(
-        302,
-        safeDestination
+      if (result.rowCount === 0) {
+        res.status(404).json({
+          error: "Product not found",
+        });
+
+        return;
+      }
+
+      const product = result.rows[0];
+
+      const destination =
+        product.affiliate_url &&
+        isSafeAwinUrl(product.affiliate_url)
+          ? product.affiliate_url
+          : product.product_url;
+
+      if (!isHttpsUrl(destination)) {
+        res.status(500).json({
+          error: "Invalid destination URL",
+        });
+
+        return;
+      }
+
+      const ip =
+        typeof req.ip === "string"
+          ? crypto
+              .createHash("sha256")
+              .update(req.ip)
+              .digest("hex")
+          : null;
+
+      await pool.query(
+        `
+          INSERT INTO affiliate_clicks (
+            product_id,
+            destination,
+            ip_hash,
+            user_agent
+          )
+          VALUES ($1, $2, $3, $4)
+        `,
+        [
+          product.id,
+          destination,
+          ip,
+          req.get("user-agent") ?? null,
+        ],
       );
+
+      res.redirect(302, destination);
     } catch (error) {
-      console.error(
-        "Redirect error:",
-        error
-      );
-
-      return res
-        .status(500)
-        .send(
-          "Unable to process product link."
-        );
+      next(error);
     }
-  }
+  },
 );
-
-/* -------------------------------------------------------------------------- */
-/* ADMIN CREATE / UPDATE                                                       */
-/* -------------------------------------------------------------------------- */
 
 app.post(
   "/api/admin/products",
   rateLimit(30, 60_000),
-  requireAdmin,
-  async (
-    req: Request,
-    res: Response
-  ) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const parsed =
-        productSchema.safeParse(
-          req.body
-        );
-
-      if (!parsed.success) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Invalid product.",
-            details:
-              parsed.error.flatten(),
-          });
+      if (!requireAdmin(req, res)) {
+        return;
       }
 
-      const action =
-        await saveProduct(
-          parsed.data
-        );
+      const parsed = productSchema.safeParse(req.body);
 
-      return res
-        .status(
-          action === "inserted"
-            ? 201
-            : 200
-        )
-        .json({
-          ok: true,
-          action,
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "Invalid product data",
+          details: parsed.error.flatten(),
         });
+
+        return;
+      }
+
+      await saveProduct(parsed.data);
+
+      res.status(201).json({
+        success: true,
+      });
     } catch (error) {
-      console.error(
-        "Admin product error:",
-        error
-      );
-
-      return res
-        .status(400)
-        .json({
-          error:
-            error instanceof Error
-              ? error.message
-              : "Invalid product.",
-        });
+      next(error);
     }
-  }
+  },
 );
-
-/* -------------------------------------------------------------------------- */
-/* ADMIN DEACTIVATE                                                           */
-/* -------------------------------------------------------------------------- */
 
 app.delete(
   "/api/admin/products/:id",
   rateLimit(30, 60_000),
-  requireAdmin,
-  async (
-    req: Request,
-    res: Response
-  ) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id =
-        String(req.params.id);
-
-      if (
-        !/^[0-9a-f-]{36}$/i.test(
-          id
-        )
-      ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "Invalid product ID.",
-          });
+      if (!requireAdmin(req, res)) {
+        return;
       }
 
-      const result =
-        await database.query(
-          `
+      const id = req.params.id;
+
+      const result = await pool.query(
+        `
           UPDATE products
           SET
             active = FALSE,
             updated_at = NOW()
-          WHERE id = $1::uuid
-          `,
-          [id]
-        );
-
-      if (
-        result.rowCount === 0
-      ) {
-        return res
-          .status(404)
-          .json({
-            error:
-              "Product not found.",
-          });
-      }
-
-      return res.json({
-        ok: true,
-      });
-    } catch (error) {
-      console.error(
-        "Delete product error:",
-        error
+          WHERE id = $1
+        `,
+        [id],
       );
 
-      return res
-        .status(500)
-        .json({
-          error:
-            "Internal server error.",
+      if (result.rowCount === 0) {
+        res.status(404).json({
+          error: "Product not found",
         });
+
+        return;
+      }
+
+      res.json({
+        success: true,
+      });
+    } catch (error) {
+      next(error);
     }
-  }
+  },
 );
 
-/* -------------------------------------------------------------------------- */
-/* AWIN SUPPORT                                                               */
-/* -------------------------------------------------------------------------- */
-
-type AwinProduct = {
-  id?: string | number;
-  productId?: string | number;
-
-  name?: string;
-  title?: string;
-  description?: string;
-
-  brand?: string;
-  category?: string;
-
-  price?: string | number;
-  salePrice?: string | number;
-  currency?: string;
-
-  imageUrl?: string;
-  image?: string;
-
-  productUrl?: string;
-  affiliateUrl?: string;
-  awinLink?: string;
-  deepLink?: string;
-
-  merchantName?: string;
-  merchantId?: string | number;
-
-  commission?: string | number;
-  commissionType?: string;
-
-  inStock?: boolean;
-};
+type AwinProduct = Record<string, unknown>;
 
 function toNumber(
-  value: unknown
+  value: unknown,
 ): number | null {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
-    return null;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
   }
 
-  const number =
-    Number(value);
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(",", "."));
 
-  return Number.isFinite(number)
-    ? number
-    : null;
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
 }
 
 function toStringOrNull(
-  value: unknown
+  value: unknown,
 ): string | null {
   if (
-    value === null ||
-    value === undefined
+    typeof value === "string" &&
+    value.trim().length > 0
   ) {
-    return null;
+    return value.trim();
   }
 
-  const result =
-    String(value).trim();
-
-  return result || null;
+  return null;
 }
 
 function mapAwinProduct(
-  raw: AwinProduct
-): ProductInput {
-  const price =
-    toNumber(
-      raw.salePrice ??
-        raw.price
+  item: AwinProduct,
+): ProductInput | null {
+  const name =
+    toStringOrNull(
+      item.productName ??
+        item.name ??
+        item.title,
     );
-
-  if (price === null) {
-    throw new Error(
-      "Product has no valid price."
-    );
-  }
 
   const productUrl =
     toStringOrNull(
-      raw.productUrl
+      item.productUrl ??
+        item.product_url ??
+        item.url,
     );
 
   const affiliateUrl =
     toStringOrNull(
-      raw.affiliateUrl ??
-        raw.awinLink ??
-        raw.deepLink
+      item.awinLink ??
+        item.affiliateUrl ??
+        item.affiliate_url ??
+        item.deepLink,
+    );
+
+  const price =
+    toNumber(
+      item.searchPrice ??
+        item.price ??
+        item.currentPrice,
     );
 
   if (
+    !name ||
     !productUrl ||
-    !affiliateUrl
+    !affiliateUrl ||
+    price === null
   ) {
+    return null;
+  }
+
+  if (!isHttpsUrl(productUrl)) {
+    return null;
+  }
+
+  if (!isSafeAwinUrl(affiliateUrl)) {
+    return null;
+  }
+
+  const oldPrice =
+    toNumber(
+      item.previousPrice ??
+        item.oldPrice ??
+        item.old_price,
+    );
+
+  const currency =
+    toStringOrNull(
+      item.currency ??
+        item.currencyCode,
+    ) ?? "EUR";
+
+  const normalizedCurrency =
+    currency.toUpperCase();
+
+  if (!/^[A-Z]{3}$/.test(normalizedCurrency)) {
+    return null;
+  }
+
+  /*
+   * Awin levert niet gegarandeerd een betrouwbare FitDealFinder-
+   * doelcategorie mee.
+   *
+   * Daarom gebruiken we voorlopig alle drie de doelen.
+   * Zodra de echte Awin-feed bekend is, kunnen we hier gericht
+   * mappen op categorie/producttype.
+   */
+  const goals: Goal[] = [
+    "cut",
+    "bulk",
+    "lean-bulk",
+  ];
+
+  return {
+    externalId:
+      toStringOrNull(
+        item.productId ??
+          item.awinProductId ??
+          item.id,
+      ),
+    name,
+    description:
+      toStringOrNull(
+        item.description,
+      ),
+    brand:
+      toStringOrNull(
+        item.brand ??
+          item.manufacturer,
+      ),
+    category:
+      toStringOrNull(
+        item.category ??
+          item.productType,
+      ) ?? "overig",
+    goals,
+    price,
+    oldPrice,
+    currency: normalizedCurrency,
+    imageUrl:
+      toStringOrNull(
+        item.imageUrl ??
+          item.image_url ??
+          item.image,
+      ),
+    productUrl,
+    affiliateUrl,
+    merchantName:
+      toStringOrNull(
+        item.merchantName ??
+          item.merchant,
+      ),
+    merchantId:
+      toStringOrNull(
+        item.merchantId,
+      ),
+    network: "awin",
+    commission:
+      toNumber(
+        item.commission,
+      ),
+    commissionType:
+      toStringOrNull(
+        item.commissionType,
+      ),
+    inStock:
+      item.inStock !== false &&
+      item.in_stock !== false,
+    active: true,
+  };
+}
+
+async function getAwinProducts(): Promise<AwinProduct[]> {
+  if (!AWIN_PRODUCT_FEED_URL) {
     throw new Error(
-      "Awin product is missing a URL."
+      "AWIN_PRODUCT_FEED_URL is not configured",
     );
   }
 
-  const currency =
-    String(
-      raw.currency ?? "EUR"
-    ).trim().toUpperCase();
+  if (
+    !AWIN_API_KEY ||
+    !AWIN_PUBLISHER_ID
+  ) {
+    throw new Error(
+      "AWIN_API_KEY and AWIN_PUBLISHER_ID are required for Awin sync",
+    );
+  }
 
   if (
-    !/^[A-Z]{3}$/.test(
-      currency
+    AWIN_API_KEY === "YOUR_AWIN_API_KEY" ||
+    AWIN_PUBLISHER_ID === "YOUR_PUBLISHER_ID" ||
+    AWIN_PRODUCT_FEED_URL.includes(
+      "YOUR-AWIN-FEED-URL",
     )
   ) {
     throw new Error(
-      "Awin product has an invalid currency."
+      "Awin credentials/feed URL are still placeholders",
     );
   }
 
-  return productSchema.parse({
-    externalId:
-      toStringOrNull(
-        raw.id ??
-          raw.productId
-      ),
-
-    name:
-      String(
-        raw.name ??
-          raw.title ??
-          ""
-      ).trim(),
-
-    description:
-      toStringOrNull(
-        raw.description
-      ),
-
-    brand:
-      toStringOrNull(
-        raw.brand
-      ),
-
-    category:
-      toStringOrNull(
-        raw.category
-      ),
-
-    price,
-
-    oldPrice:
-      raw.salePrice !==
-        undefined &&
-      raw.price !==
-        undefined
-        ? toNumber(
-            raw.price
-          )
-        : null,
-
-    currency,
-
-    imageUrl:
-      toStringOrNull(
-        raw.imageUrl ??
-          raw.image
-      ),
-
-    productUrl,
-
-    affiliateUrl,
-
-    merchantName:
-      String(
-        raw.merchantName ??
-          "Unknown merchant"
-      ).trim(),
-
-    merchantId:
-      toStringOrNull(
-        raw.merchantId
-      ),
-
-    network: "AWIN",
-
-    commission:
-      toNumber(
-        raw.commission
-      ),
-
-    commissionType:
-      toStringOrNull(
-        raw.commissionType
-      ),
-
-    inStock:
-      raw.inStock !== false,
-  });
-}
-
-async function getAwinProducts(): Promise<
-  AwinProduct[]
-> {
-  if (!AWIN_API_KEY) {
-    throw new Error(
-      "AWIN_API_KEY is missing."
-    );
-  }
-
-  if (!AWIN_PRODUCT_FEED_URL) {
-    throw new Error(
-      "AWIN_PRODUCT_FEED_URL is missing."
-    );
-  }
-
-  const feed =
-    httpsUrl(
-      AWIN_PRODUCT_FEED_URL
-    );
-
-  const response =
-    await fetch(feed, {
-      method: "GET",
-
+  const response = await fetch(
+    AWIN_PRODUCT_FEED_URL,
+    {
       headers: {
-        Accept:
-          "application/json",
-
-        Authorization:
-          `Bearer ${AWIN_API_KEY}`,
-
+        Authorization: `Bearer ${AWIN_API_KEY}`,
+        Accept: "application/json",
         "User-Agent":
           "FitDealFinder/1.0",
       },
-
-      signal:
-        AbortSignal.timeout(
-          30_000
-        ),
-    });
+    },
+  );
 
   if (!response.ok) {
     throw new Error(
-      `Awin returned HTTP ${response.status}.`
+      `Awin feed request failed with status ${response.status}`,
     );
   }
 
   const data: unknown =
     await response.json();
 
+  if (Array.isArray(data)) {
+    return data as AwinProduct[];
+  }
+
   if (
-    !Array.isArray(data)
+    typeof data === "object" &&
+    data !== null &&
+    "products" in data &&
+    Array.isArray(
+      (data as { products: unknown }).products,
+    )
   ) {
-    throw new Error(
-      "Unexpected Awin feed format."
+    return (
+      (data as {
+        products: AwinProduct[];
+      }).products
     );
   }
 
-  return data as AwinProduct[];
+  throw new Error(
+    "Unsupported Awin feed response format",
+  );
 }
 
 let syncRunning = false;
 
 app.post(
-  "/api/admin/sync-awin",
+  "/api/admin/awin/sync",
   rateLimit(5, 60_000),
-  requireAdmin,
-  async (
-    _req: Request,
-    res: Response
-  ) => {
+  async (req: Request, res: Response) => {
+    if (!requireAdmin(req, res)) {
+      return;
+    }
+
     if (syncRunning) {
-      return res
-        .status(409)
-        .json({
-          error:
-            "Awin synchronization is already running.",
-        });
+      res.status(409).json({
+        error: "Awin sync already running",
+      });
+
+      return;
     }
 
     syncRunning = true;
 
-    let imported = 0;
-    let updated = 0;
-    let failed = 0;
-
-    let logId: string | null =
-      null;
+    let logId: string | null = null;
 
     try {
-      const logs =
-        await db<{ id: string }>(
-          `
+      const logResult = await pool.query<{
+        id: string;
+      }>(
+        `
           INSERT INTO sync_logs (
-            network
+            network,
+            status
           )
-          VALUES ('AWIN')
+          VALUES ('awin', 'running')
           RETURNING id
-          `
-        );
+        `,
+      );
 
-      logId =
-        logs[0].id;
+      logId = logResult.rows[0].id;
 
       const awinProducts =
         await getAwinProducts();
 
-      if (
-        awinProducts.length >
-        100000
-      ) {
-        throw new Error(
-          "Awin feed is larger than the allowed limit."
-        );
-      }
+      let imported = 0;
+      let failed = 0;
 
-      for (
-        const raw of awinProducts
-      ) {
+      for (const item of awinProducts.slice(
+        0,
+        100_000,
+      )) {
         try {
-          const product =
-            mapAwinProduct(
-              raw
-            );
+          const mapped =
+            mapAwinProduct(item);
 
-          const result =
-            await saveProduct(
-              product
-            );
-
-          if (
-            result ===
-            "inserted"
-          ) {
-            imported++;
-          } else {
-            updated++;
+          if (!mapped) {
+            failed += 1;
+            continue;
           }
-        } catch (error) {
-          failed++;
 
-          console.error(
-            "Awin product import failed:",
-            error
-          );
+          const parsed =
+            productSchema.safeParse(mapped);
+
+          if (!parsed.success) {
+            failed += 1;
+            continue;
+          }
+
+          await saveProduct(parsed.data);
+
+          imported += 1;
+        } catch {
+          failed += 1;
         }
       }
 
-      await database.query(
+      await pool.query(
         `
-        UPDATE sync_logs
-        SET
-          finished_at = NOW(),
-          imported = $1,
-          updated = $2,
-          failed = $3
-        WHERE id = $4
+          UPDATE sync_logs
+          SET
+            finished_at = NOW(),
+            imported = $1,
+            failed = $2,
+            status = 'completed'
+          WHERE id = $3
         `,
-        [
-          imported,
-          updated,
-          failed,
-          logId,
-        ]
+        [imported, failed, logId],
       );
 
-      return res.json({
-        ok: true,
+      res.json({
+        success: true,
         imported,
-        updated,
         failed,
       });
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Unknown error.";
+          : "Unknown Awin sync error";
 
       if (logId) {
-        await database.query(
+        await pool.query(
           `
-          UPDATE sync_logs
-          SET
-            finished_at = NOW(),
-            imported = $1,
-            updated = $2,
-            failed = $3,
-            error_message = $4
-          WHERE id = $5
+            UPDATE sync_logs
+            SET
+              finished_at = NOW(),
+              status = 'failed',
+              error_message = $1
+            WHERE id = $2
           `,
-          [
-            imported,
-            updated,
-            failed,
-            message.slice(
-              0,
-              5000
-            ),
-            logId,
-          ]
+          [message, logId],
         );
       }
 
-      console.error(
-        "Awin sync failed:",
-        error
-      );
-
-      return res
-        .status(500)
-        .json({
-          error:
-            "Awin synchronization failed.",
-          imported,
-          updated,
-          failed,
-        });
+      res.status(500).json({
+        error: "Awin sync failed",
+      });
     } finally {
       syncRunning = false;
     }
-  }
+  },
 );
-
-/* -------------------------------------------------------------------------- */
-/* HEALTH                                                                      */
-/* -------------------------------------------------------------------------- */
 
 app.get(
-  "/health",
-  async (
-    _req: Request,
-    res: Response
-  ) => {
+  "/api/health",
+  async (_req: Request, res: Response) => {
     try {
-      await database.query(
-        "SELECT 1"
-      );
+      await pool.query("SELECT 1");
 
-      return res.json({
-        ok: true,
+      res.json({
+        status: "ok",
+        database: "ok",
       });
     } catch {
-      return res
-        .status(503)
-        .json({
-          ok: false,
-        });
+      res.status(503).json({
+        status: "error",
+        database: "unavailable",
+      });
     }
-  }
+  },
 );
 
-/* -------------------------------------------------------------------------- */
-/* STATIC FRONTEND                                                             */
-/* -------------------------------------------------------------------------- */
-
-const publicDirectory =
-  path.join(
-    process.cwd(),
-    "public"
-  );
+const publicDirectory = path.join(
+  process.cwd(),
+  "public",
+);
 
 app.use(
-  express.static(
-    publicDirectory
-  )
+  express.static(publicDirectory, {
+    extensions: ["html"],
+  }),
 );
-
-/* -------------------------------------------------------------------------- */
-/* 404                                                                         */
-/* -------------------------------------------------------------------------- */
 
 app.use(
   (
-    _req: Request,
-    res: Response
+    req: Request,
+    res: Response,
   ) => {
-    res.status(404).json({
-      error: "Not found.",
-    });
-  }
-);
+    if (req.path.startsWith("/api/")) {
+      res.status(404).json({
+        error: "Not found",
+      });
 
-/* -------------------------------------------------------------------------- */
-/* ERROR HANDLER                                                               */
-/* -------------------------------------------------------------------------- */
+      return;
+    }
+
+    res.sendFile(
+      path.join(
+        publicDirectory,
+        "index.html",
+      ),
+    );
+  },
+);
 
 app.use(
   (
     error: unknown,
     _req: Request,
     res: Response,
-    _next: NextFunction
+    _next: NextFunction,
   ) => {
-    console.error(
-      "Unhandled error:",
-      error
-    );
+    console.error(error);
 
-    return res
-      .status(500)
-      .json({
-        error:
-          "Internal server error.",
-      });
-  }
+    if (res.headersSent) {
+      return;
+    }
+
+    res.status(500).json({
+      error: "Internal server error",
+    });
+  },
 );
 
-/* -------------------------------------------------------------------------- */
-/* START                                                                       */
-/* -------------------------------------------------------------------------- */
-
-async function main() {
+async function start(): Promise<void> {
   await createDatabase();
 
-  app.listen(
-    PORT,
-    "0.0.0.0",
-    () => {
-      console.log(
-        `FitDealFinder running on port ${PORT}`
-      );
-
-      console.log(
-        AWIN_PUBLISHER_ID
-          ? "Awin publisher configured."
-          : "Awin not configured yet."
-      );
-    }
-  );
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(
+      `FitDealFinder server running on port ${PORT}`,
+    );
+  });
 }
 
-main().catch(
-  (error) => {
-    console.error(
-      "Fatal startup error:",
-      error
-    );
+start().catch((error) => {
+  console.error(
+    "Failed to start FitDealFinder:",
+    error,
+  );
 
-    process.exit(1);
-  }
-);
-
+  process.exit(1);
+});
