@@ -33,34 +33,33 @@ const products = [
 },
 
   // PROTEIN BARS / SNACKS
-  {
-    id: 3,
-    name: "",
-    category: "snacks",
-    goal: ["cut", "bulk", "lean-bulk"],
-    brand: "",
-    store: "",
-    price: 0,
-    weight: 0,
-    protein: 0,
-    calories: 0,
-    servings: 0,
-    url: ""
-  },
-
+{
+  id: 3,
+  name: "Creatine Monohydraat 500g",
+  category: "creatine",
+  goal: ["cut", "bulk", "lean-bulk"],
+  brand: "Voorbeeld",
+  store: "Voorbeeldwinkel",
+  price: 19.99,
+  weight: 500,
+  protein: 0,
+  calories: 0,
+  servings: 100,
+  url: ""
+},
   // FIT MEALS
   {
-    id: 4,
-    name: "",
-    category: "meals",
-    goal: ["cut", "bulk", "lean-bulk"],
-    brand: "",
-    store: "",
-    price: 0,
-    weight: 0,
-    protein: 0,
-    calories: 0,
-    servings: 0,
-    url: ""
-  }
+  id: 4,
+  name: "High Protein Meal Chicken",
+  category: "meals",
+  goal: ["cut", "bulk", "lean-bulk"],
+  brand: "Voorbeeld",
+  store: "Voorbeeldwinkel",
+  price: 7.49,
+  weight: 0,
+  protein: 40,
+  calories: 450,
+  servings: 1,
+  url: ""
+},
 ];
