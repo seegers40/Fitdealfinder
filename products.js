@@ -1,19 +1,20 @@
 const products = [
   // WHEY / PROTEIN
   {
-    id: 1,
-    name: "",
-    category: "whey",
-    goal: ["cut", "bulk", "lean-bulk"],
-    brand: "",
-    store: "",
-    price: 0,
-    weight: 0,
-    protein: 0,
-    calories: 0,
-    servings: 0,
-    url: ""
-  },
+  id: 1,
+  name: "Whey Protein 1000g",
+  category: "whey",
+  goal: ["cut", "bulk", "lean-bulk"],
+  brand: "Voorbeeld",
+  store: "Voorbeeldwinkel",
+  price: 34.99,
+  weight: 1000,
+  protein: 23,
+  calories: 120,
+  servings: 33,
+  url: ""
+},
+  
 
   // CREATINE
   {
