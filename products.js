@@ -18,19 +18,19 @@ const products = [
 
   // CREATINE
   {
-    id: 2,
-    name: "",
-    category: "creatine",
-    goal: ["cut", "bulk", "lean-bulk"],
-    brand: "",
-    store: "",
-    price: 0,
-    weight: 0,
-    protein: 0,
-    calories: 0,
-    servings: 0,
-    url: ""
-  },
+  id: 2,
+  name: "Clear Whey 500g",
+  category: "whey",
+  goal: ["cut", "bulk", "lean-bulk"],
+  brand: "Voorbeeld",
+  store: "Voorbeeldwinkel",
+  price: 29.99,
+  weight: 500,
+  protein: 20,
+  calories: 80,
+  servings: 20,
+  url: ""
+},
 
   // PROTEIN BARS / SNACKS
   {
