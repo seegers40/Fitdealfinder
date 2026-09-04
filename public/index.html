@@ -3,313 +3,446 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="FitDealFinder vergelijkt fitnessproducten en deals voor cut, bulk en lean-bulk.">
-  <title>FitDealFinder – Fitness Deals Vergelijken</title>
+
+  <title>FitDealFinder – Fitness deals vergelijken</title>
+
+  <meta
+    name="description"
+    content="Vind en vergelijk fitnessproducten voor cut, bulk en lean-bulk bij verschillende fitnesswebshops."
+  >
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
     :root {
       --bg: #f5f7fa;
       --card: #ffffff;
       --text: #17202a;
-      --muted: #68737d;
-      --border: #e1e6eb;
-      --accent: #16a085;
-      --accent-dark: #117864;
-      --danger: #c0392b;
-      --shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+      --muted: #667085;
+      --border: #e4e7ec;
+      --primary: #111827;
+      --accent: #16a34a;
+      --accent-dark: #15803d;
+      --danger: #dc2626;
+      --shadow: 0 8px 24px rgba(16, 24, 40, 0.08);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
     }
 
     body {
       margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
       background: var(--bg);
       color: var(--text);
+      line-height: 1.5;
     }
 
-    header {
-      background: #ffffff;
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 10;
+    button,
+    input {
+      font: inherit;
     }
 
-    .header-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 18px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-    }
-
-    .logo {
-      font-size: 24px;
-      font-weight: 800;
-      text-decoration: none;
-      color: var(--text);
-    }
-
-    .logo span {
-      color: var(--accent);
+    a {
+      color: inherit;
     }
 
     .container {
-      max-width: 1200px;
+      width: min(1180px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 28px 20px 60px;
+    }
+
+    header {
+      background: var(--primary);
+      color: #ffffff;
+      padding: 48px 0 56px;
     }
 
     .hero {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 30px;
-      box-shadow: var(--shadow);
-      margin-bottom: 24px;
+      display: grid;
+      gap: 18px;
     }
 
-    .hero h1 {
-      margin: 0 0 10px;
-      font-size: clamp(28px, 5vw, 44px);
+    .logo {
+      margin: 0;
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      line-height: 1;
+      letter-spacing: -0.04em;
     }
 
     .hero p {
+      max-width: 700px;
       margin: 0;
-      color: var(--muted);
-      line-height: 1.6;
-      max-width: 720px;
+      color: #d1d5db;
+      font-size: 1.05rem;
     }
 
-    .controls {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      margin-top: 24px;
+    .search-area {
+      margin-top: -24px;
+      position: relative;
+      z-index: 2;
     }
 
-    .search {
-      width: 100%;
-      padding: 14px 16px;
+    .search-box {
+      background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      font-size: 16px;
-      outline: none;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
     }
 
-    .search:focus {
-      border-color: var(--accent);
+    #searchInput {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      outline: none;
+      color: var(--text);
+      background: #ffffff;
+    }
+
+    #searchInput:focus {
+      border-color: #98a2b3;
+      box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
     }
 
     .filters {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
+      margin-top: 14px;
     }
 
-    button {
-      border: 0;
-      border-radius: 9px;
-      padding: 11px 15px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      background: #e9eef2;
+    .filter-button {
+      border: 1px solid var(--border);
+      background: #ffffff;
       color: var(--text);
+      border-radius: 999px;
+      padding: 9px 15px;
+      cursor: pointer;
+      transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        border-color 0.15s ease;
     }
 
-    button:hover {
-      opacity: 0.9;
+    .filter-button:hover {
+      border-color: #98a2b3;
     }
 
-    button.active {
-      background: var(--accent);
+    .filter-button.active {
+      background: var(--primary);
       color: #ffffff;
+      border-color: var(--primary);
+    }
+
+    main {
+      padding: 40px 0 64px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .section-header h2 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    #resultCount {
+      color: var(--muted);
+      font-size: 0.95rem;
     }
 
     .status {
-      margin: 18px 0;
-      color: var(--muted);
-      min-height: 20px;
-    }
-
-    .products {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-      gap: 18px;
-    }
-
-    .product {
-      background: var(--card);
+      margin-bottom: 20px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: #ffffff;
       border: 1px solid var(--border);
-      border-radius: 15px;
-      overflow: hidden;
-      box-shadow: var(--shadow);
+      color: var(--muted);
+    }
+
+    .status.error {
+      color: var(--danger);
+      border-color: #fecaca;
+      background: #fffafa;
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .product-card {
       display: flex;
       flex-direction: column;
+      min-width: 0;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(16, 24, 40, 0.05);
     }
 
     .product-image {
       width: 100%;
-      height: 210px;
+      aspect-ratio: 1 / 1;
       object-fit: contain;
       background: #ffffff;
       border-bottom: 1px solid var(--border);
     }
 
-    .product-content {
-      padding: 17px;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-    }
-
-    .merchant {
+    .product-image-placeholder {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #f2f4f7;
       color: var(--muted);
-      font-size: 13px;
-      margin-bottom: 7px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
     }
 
-    .product h2 {
-      margin: 0 0 8px;
-      font-size: 18px;
+    .product-content {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    .product-brand {
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .product-name {
+      margin: 0 0 10px;
+      font-size: 1rem;
       line-height: 1.35;
     }
 
-    .description {
+    .product-description {
+      margin: 0 0 14px;
       color: var(--muted);
-      font-size: 14px;
-      line-height: 1.5;
+      font-size: 0.9rem;
+    }
+
+    .product-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
       margin-bottom: 14px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #f2f4f7;
+      color: #344054;
+      font-size: 0.75rem;
+    }
+
+    .deal-tag {
+      background: #dcfce7;
+      color: #166534;
     }
 
     .price-row {
       display: flex;
       align-items: baseline;
-      gap: 9px;
+      flex-wrap: wrap;
+      gap: 8px;
       margin-top: auto;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
 
     .price {
-      font-size: 23px;
+      font-size: 1.35rem;
       font-weight: 800;
     }
 
     .old-price {
       color: var(--muted);
       text-decoration: line-through;
-      font-size: 14px;
+      font-size: 0.9rem;
     }
 
     .discount {
-      display: inline-block;
-      color: var(--danger);
-      font-size: 13px;
-      font-weight: 800;
-      margin-bottom: 12px;
+      color: var(--accent-dark);
+      font-size: 0.85rem;
+      font-weight: 700;
     }
 
-    .deal-button {
-      display: block;
+    .merchant {
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .product-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       width: 100%;
-      text-align: center;
-      text-decoration: none;
-      padding: 12px;
-      border-radius: 9px;
+      min-height: 44px;
+      border: 0;
+      border-radius: 10px;
       background: var(--accent);
       color: #ffffff;
-      font-weight: 800;
+      text-decoration: none;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease;
     }
 
-    .deal-button:hover {
+    .product-button:hover {
       background: var(--accent-dark);
     }
 
-    .empty {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 15px;
-      padding: 30px;
-      text-align: center;
-      color: var(--muted);
+    .empty-state {
       grid-column: 1 / -1;
+      padding: 40px 20px;
+      text-align: center;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--muted);
     }
 
-    .ai {
-      margin-top: 32px;
-      background: var(--card);
+    .ai-section {
+      margin-top: 64px;
+      padding: 24px;
+      background: #ffffff;
       border: 1px solid var(--border);
-      border-radius: 15px;
-      padding: 22px;
+      border-radius: var(--radius);
       box-shadow: var(--shadow);
     }
 
-    .ai h2 {
+    .ai-section h2 {
       margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .ai-section p {
+      margin-top: 0;
+      color: var(--muted);
     }
 
     .ai-form {
       display: flex;
-      gap: 8px;
+      gap: 10px;
+      margin-top: 18px;
     }
 
-    .ai-input {
+    #aiInput {
       flex: 1;
       min-width: 0;
-      padding: 13px;
       border: 1px solid var(--border);
-      border-radius: 9px;
-      font-size: 15px;
+      border-radius: 10px;
+      padding: 13px 14px;
+      outline: none;
     }
 
-    .ai-response {
-      margin-top: 15px;
-      padding: 14px;
-      border-radius: 9px;
-      background: #f0f4f6;
+    #aiInput:focus {
+      border-color: #98a2b3;
+      box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+    }
+
+    #aiSubmit {
+      border: 0;
+      border-radius: 10px;
+      padding: 13px 18px;
+      background: var(--primary);
+      color: #ffffff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    #aiSubmit:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    #aiResponse {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
       white-space: pre-wrap;
-      line-height: 1.55;
-      min-height: 20px;
     }
 
     footer {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 20px 35px;
-      color: var(--muted);
-      font-size: 13px;
-      text-align: center;
+      padding: 30px 0;
+      background: #111827;
+      color: #9ca3af;
+      font-size: 0.85rem;
     }
 
-    @media (max-width: 600px) {
-      .header-inner {
-        padding: 15px;
-      }
+    footer p {
+      margin: 0;
+    }
 
-      .container {
-        padding: 18px 14px 45px;
+    @media (max-width: 1050px) {
+      .product-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
+    }
 
-      .hero {
-        padding: 22px;
-      }
-
-      .products {
-        grid-template-columns: 1fr;
+    @media (max-width: 760px) {
+      .product-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .ai-form {
         flex-direction: column;
       }
 
-      .ai-form button {
+      #aiSubmit {
         width: 100%;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .container {
+        width: min(100% - 20px, 1180px);
+      }
+
+      header {
+        padding: 34px 0 44px;
+      }
+
+      main {
+        padding-top: 30px;
+      }
+
+      .product-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .section-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
       }
     }
   </style>
@@ -317,84 +450,620 @@
 
 <body>
   <header>
-    <div class="header-inner">
-      <a class="logo" href="/">Fit<span>Deal</span>Finder</a>
+    <div class="container hero">
+      <h1 class="logo">FitDealFinder</h1>
+
+      <p>
+        Vergelijk fitnessproducten en vind interessante deals voor
+        cut, bulk en lean-bulk.
+      </p>
     </div>
   </header>
 
-  <main class="container">
-    <section class="hero">
-      <h1>Vind betere fitnessdeals.</h1>
-      <p>
-        Vergelijk fitnessproducten en ontdek interessante deals voor
-        cut, bulk en lean-bulk.
-      </p>
+  <div class="container search-area">
+    <div class="search-box">
+      <input
+        id="searchInput"
+        type="search"
+        placeholder="Zoek op product, merk of categorie..."
+        autocomplete="off"
+        aria-label="Zoek producten"
+      >
 
-      <div class="controls">
-        <input
-          id="search"
-          class="search"
-          type="search"
-          placeholder="Zoek product, merk of categorie..."
-          autocomplete="off"
+      <div
+        class="filters"
+        role="group"
+        aria-label="Doel filter"
+      >
+        <button
+          type="button"
+          class="filter-button active"
+          data-goal=""
         >
+          Alles
+        </button>
 
-        <div class="filters" aria-label="Doel filter">
-          <button class="filter active" data-goal="">Alles</button>
-          <button class="filter" data-goal="cut">Cut</button>
-          <button class="filter" data-goal="bulk">Bulk</button>
-          <button class="filter" data-goal="lean-bulk">Lean-bulk</button>
-        </div>
+        <button
+          type="button"
+          class="filter-button"
+          data-goal="cut"
+        >
+          Cut
+        </button>
+
+        <button
+          type="button"
+          class="filter-button"
+          data-goal="bulk"
+        >
+          Bulk
+        </button>
+
+        <button
+          type="button"
+          class="filter-button"
+          data-goal="lean-bulk"
+        >
+          Lean-bulk
+        </button>
       </div>
-    </section>
+    </div>
+  </div>
 
-    <div id="status" class="status">Producten laden...</div>
+  <main>
+    <div class="container">
+      <div class="section-header">
+        <h2>Fitness deals</h2>
+        <span id="resultCount">Producten laden...</span>
+      </div>
 
-    <section
-      id="products"
-      class="products"
-      aria-live="polite"
-    ></section>
+      <div
+        id="status"
+        class="status"
+        hidden
+      ></div>
 
-    <section class="ai">
-      <h2>FitDealFinder AI</h2>
+      <section
+        id="productGrid"
+        class="product-grid"
+        aria-live="polite"
+      ></section>
 
-      <p>
-        Stel een vraag over fitnessproducten, cut, bulk of lean-bulk.
-      </p>
+      <section class="ai-section">
+        <h2>FitDealFinder AI</h2>
 
-      <form id="ai-form" class="ai-form">
-        <input
-          id="ai-input"
-          class="ai-input"
-          type="text"
-          placeholder="Bijvoorbeeld: wat past bij een cut?"
-          maxlength="2000"
-          autocomplete="off"
-          required
+        <p>
+          Stel een vraag over fitnessproducten, cut, bulk of
+          lean-bulk.
+        </p>
+
+        <form
+          id="aiForm"
+          class="ai-form"
         >
+          <input
+            id="aiInput"
+            type="text"
+            placeholder="Bijvoorbeeld: welke producten passen bij bulk?"
+            maxlength="1000"
+            autocomplete="off"
+            aria-label="Vraag aan FitDealFinder AI"
+          >
 
-        <button type="submit">Vraag AI</button>
-      </form>
+          <button
+            id="aiSubmit"
+            type="submit"
+          >
+            Vraag AI
+          </button>
+        </form>
 
-      <div id="ai-response" class="ai-response"></div>
-    </section>
+        <div
+          id="aiResponse"
+          hidden
+          aria-live="polite"
+        ></div>
+      </section>
+    </div>
   </main>
 
   <footer>
-    FitDealFinder vergelijkt aanbiedingen. Controleer altijd prijs,
-    voorraad en productinformatie bij de verkoper voordat je bestelt.
+    <div class="container">
+      <p>
+        FitDealFinder vergelijkt producten en kan affiliate links
+        gebruiken. Controleer altijd prijs, voorraad,
+        productinformatie en voorwaarden bij de aanbieder voordat
+        je een aankoop doet.
+      </p>
+    </div>
   </footer>
 
   <script>
-    const productsElement =
-      document.getElementById("products");
+    "use strict";
+
+    const productGrid =
+      document.getElementById("productGrid");
+
+    const resultCount =
+      document.getElementById("resultCount");
 
     const statusElement =
       document.getElementById("status");
 
-    const searchElement =
-      document.getElementById("search");
+    const searchInput =
+      document.getElementById("searchInput");
 
     const filterButtons =
-      document.querySelector
+      document.querySelectorAll(".filter-button");
+
+    const aiForm =
+      document.getElementById("aiForm");
+
+    const aiInput =
+      document.getElementById("aiInput");
+
+    const aiSubmit =
+      document.getElementById("aiSubmit");
+
+    const aiResponse =
+      document.getElementById("aiResponse");
+
+    let activeGoal = "";
+    let searchTimer = null;
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function formatPrice(
+      price,
+      currency
+    ) {
+      const numericPrice =
+        Number(price);
+
+      if (
+        !Number.isFinite(
+          numericPrice
+        )
+      ) {
+        return "";
+      }
+
+      return new Intl.NumberFormat(
+        "nl-NL",
+        {
+          style: "currency",
+          currency:
+            currency || "EUR"
+        }
+      ).format(
+        numericPrice
+      );
+    }
+
+    function setStatus(
+      message,
+      isError = false
+    ) {
+      if (!message) {
+        statusElement.hidden = true;
+        statusElement.textContent = "";
+        statusElement.classList.remove(
+          "error"
+        );
+        return;
+      }
+
+      statusElement.hidden = false;
+      statusElement.textContent =
+        message;
+
+      statusElement.classList.toggle(
+        "error",
+        isError
+      );
+    }
+
+    function renderProducts(
+      products
+    ) {
+      if (
+        !Array.isArray(products) ||
+        products.length === 0
+      ) {
+        productGrid.innerHTML = `
+          <div class="empty-state">
+            Geen producten gevonden.
+          </div>
+        `;
+
+        resultCount.textContent =
+          "0 producten";
+
+        return;
+      }
+
+      resultCount.textContent =
+        products.length === 1
+          ? "1 product"
+          : `${products.length} producten`;
+
+      productGrid.innerHTML =
+        products
+          .map((product) => {
+            const name =
+              escapeHtml(
+                product.name
+              );
+
+            const brand =
+              escapeHtml(
+                product.brand ||
+                  ""
+              );
+
+            const description =
+              escapeHtml(
+                product.description ||
+                  ""
+              );
+
+            const merchant =
+              escapeHtml(
+                product.merchantName ||
+                  "Aanbieder"
+              );
+
+            const imageUrl =
+              typeof product.imageUrl ===
+                "string" &&
+              product.imageUrl
+                ? escapeHtml(
+                    product.imageUrl
+                  )
+                : "";
+
+            const price =
+              formatPrice(
+                product.price,
+                product.currency
+              );
+
+            const oldPrice =
+              product.oldPrice !== null &&
+              product.oldPrice !== undefined
+                ? formatPrice(
+                    product.oldPrice,
+                    product.currency
+                  )
+                : "";
+
+            const discount =
+              Number.isFinite(
+                Number(
+                  product.discountPercent
+                )
+              ) &&
+              Number(
+                product.discountPercent
+              ) > 0
+                ? `${Math.round(
+                    Number(
+                      product.discountPercent
+                    )
+                  )}% korting`
+                : "";
+
+            const imageHtml =
+              imageUrl
+                ? `
+                  <img
+                    class="product-image"
+                    src="${imageUrl}"
+                    alt="${name}"
+                    loading="lazy"
+                    referrerpolicy="no-referrer"
+                  >
+                `
+                : `
+                  <div
+                    class="product-image-placeholder"
+                    aria-label="Geen productafbeelding"
+                  >
+                    Geen afbeelding
+                  </div>
+                `;
+
+            const discountHtml =
+              discount
+                ? `
+                  <span class="tag deal-tag">
+                    ${escapeHtml(
+                      discount
+                    )}
+                  </span>
+                `
+                : "";
+
+            const descriptionHtml =
+              description
+                ? `
+                  <p class="product-description">
+                    ${description}
+                  </p>
+                `
+                : "";
+
+            return `
+              <article class="product-card">
+                ${imageHtml}
+
+                <div class="product-content">
+                  ${
+                    brand
+                      ? `
+                        <div class="product-brand">
+                          ${brand}
+                        </div>
+                      `
+                      : ""
+                  }
+
+                  <h3 class="product-name">
+                    ${name}
+                  </h3>
+
+                  ${descriptionHtml}
+
+                  <div class="product-meta">
+                    ${
+                      product.category
+                        ? `
+                          <span class="tag">
+                            ${escapeHtml(
+                              product.category
+                            )}
+                          </span>
+                        `
+                        : ""
+                    }
+
+                    ${discountHtml}
+                  </div>
+
+                  <div class="price-row">
+                    <span class="price">
+                      ${escapeHtml(
+                        price
+                      )}
+                    </span>
+
+                    ${
+                      oldPrice
+                        ? `
+                          <span class="old-price">
+                            ${escapeHtml(
+                              oldPrice
+                            )}
+                          </span>
+                        `
+                        : ""
+                    }
+                  </div>
+
+                  <div class="merchant">
+                    ${merchant}
+                  </div>
+
+                  <a
+                    class="product-button"
+                    href="/go/${encodeURIComponent(
+                      product.id
+                    )}"
+                  >
+                    Bekijk deal
+                  </a>
+                </div>
+              </article>
+            `;
+          })
+          .join("");
+    }
+
+    async function loadProducts() {
+      setStatus(
+        "Producten laden..."
+      );
+
+      const params =
+        new URLSearchParams();
+
+      params.set(
+        "limit",
+        "100"
+      );
+
+      const search =
+        searchInput.value.trim();
+
+      if (search) {
+        params.set(
+          "search",
+          search
+        );
+      }
+
+      if (activeGoal) {
+        params.set(
+          "goal",
+          activeGoal
+        );
+      }
+
+      try {
+        const response =
+          await fetch(
+            `/api/products?${params.toString()}`,
+            {
+              method: "GET",
+              headers: {
+                accept:
+                  "application/json"
+              }
+            }
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            `API fout (${response.status})`
+          );
+        }
+
+        const data =
+          await response.json();
+
+        renderProducts(
+          data.products || []
+        );
+
+        setStatus("");
+      } catch (error) {
+        productGrid.innerHTML = `
+          <div class="empty-state">
+            Producten konden niet worden geladen.
+          </div>
+        `;
+
+        resultCount.textContent =
+          "Geen resultaten";
+
+        setStatus(
+          "De producten konden momenteel niet worden geladen.",
+          true
+        );
+
+        console.error(
+          "Product loading error:",
+          error
+        );
+      }
+    }
+
+    filterButtons.forEach(
+      (button) => {
+        button.addEventListener(
+          "click",
+          () => {
+            activeGoal =
+              button.dataset.goal || "";
+
+            filterButtons.forEach(
+              (item) => {
+                item.classList.toggle(
+                  "active",
+                  item === button
+                );
+              }
+            );
+
+            loadProducts();
+          }
+        );
+      }
+    );
+
+    searchInput.addEventListener(
+      "input",
+      () => {
+        clearTimeout(
+          searchTimer
+        );
+
+        searchTimer =
+          setTimeout(
+            loadProducts,
+            300
+          );
+      }
+    );
+
+    aiForm.addEventListener(
+      "submit",
+      async (event) => {
+        event.preventDefault();
+
+        const message =
+          aiInput.value.trim();
+
+        if (!message) {
+          aiResponse.hidden = false;
+          aiResponse.textContent =
+            "Typ eerst een vraag.";
+          return;
+        }
+
+        aiSubmit.disabled = true;
+        aiResponse.hidden = false;
+        aiResponse.textContent =
+          "Even nadenken...";
+
+        try {
+          const response =
+            await fetch(
+              "/api/ai/chat",
+              {
+                method: "POST",
+                headers: {
+                  "content-type":
+                    "application/json",
+                  accept:
+                    "application/json"
+                },
+                body:
+                  JSON.stringify({
+                    message
+                  })
+              }
+            );
+
+          const data =
+            await response
+              .json()
+              .catch(
+                () => null
+              );
+
+          if (!response.ok) {
+            throw new Error(
+              data?.error ||
+                `AI fout (${response.status})`
+            );
+          }
+
+          aiResponse.textContent =
+            data?.reply ||
+            "Geen antwoord ontvangen.";
+        } catch (error) {
+          aiResponse.textContent =
+            "De AI-assistent is momenteel niet beschikbaar.";
+
+          console.error(
+            "AI error:",
+            error
+          );
+        } finally {
+          aiSubmit.disabled = false;
+        }
+      }
+    );
+
+    loadProducts();
+  </script>
+</body>
+</html>
