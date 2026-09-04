@@ -1,14 +1,12 @@
-interface Env {
-  ASSETS: Fetcher;
+export interface Env {
   DB: D1Database;
-  ADMIN_SECRET: string;
+  ASSETS: Fetcher;
+
   AWIN_API_KEY?: string;
+  AWIN_PUBLISHER_ID?: string;
   AWIN_PRODUCT_FEED_URL?: string;
+  ADMIN_SECRET?: string;
 }
-
-type Goal = "cut" | "bulk" | "lean-bulk";
-
-const GOALS: Goal[] = ["cut", "bulk", "lean-bulk"];
 
 type ProductRow = {
   id: string;
@@ -35,482 +33,230 @@ type ProductRow = {
   deal_score: number;
   discount_percent: number | null;
   last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type AwinProduct = {
   id?: string | number;
-  productId?: string | number;
-
+  product_id?: string | number;
   name?: string;
   title?: string;
-
   description?: string;
   brand?: string;
   category?: string;
-
-  price?: string | number;
-  salePrice?: string | number;
+  price?: number | string;
+  sale_price?: number | string;
+  old_price?: number | string;
   currency?: string;
-
-  imageUrl?: string;
+  image_url?: string;
   image?: string;
-
-  productUrl?: string;
-  affiliateUrl?: string;
-  awinLink?: string;
-  deepLink?: string;
-
-  merchantName?: string;
-  merchantId?: string | number;
-
-  commission?: string | number;
-  commissionType?: string;
-
-  inStock?: boolean;
+  product_url?: string;
+  url?: string;
+  affiliate_url?: string;
+  merchant_name?: string;
+  merchant_id?: string | number;
+  commission?: number | string;
+  commission_type?: string;
+  in_stock?: boolean | number;
 };
 
-function json(
-  data: unknown,
-  status = 200,
-): Response {
-  return Response.json(data, {
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "Cache-Control":
-        status === 200
-          ? "public, max-age=60, s-maxage=300"
-          : "no-store",
+      "content-type": "application/json; charset=UTF-8",
+      "cache-control": "no-store",
     },
   });
 }
 
-function errorJson(
-  message: string,
-  status = 500,
-): Response {
-  return json(
-    {
-      error: message,
-    },
+function text(data: string, status = 200): Response {
+  return new Response(data, {
     status,
-  );
+    headers: {
+      "content-type": "text/plain; charset=UTF-8",
+      "cache-control": "no-store",
+    },
+  });
 }
 
-function textOrNull(
-  value: unknown,
-): string | null {
-  if (
-    value === null ||
-    value === undefined
-  ) {
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 160);
+}
+
+function numberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") {
     return null;
   }
 
-  const text =
-    String(value).trim();
-
-  return text
-    ? text
-    : null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function numberOrNull(
-  value: unknown,
-): number | null {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
-    return null;
-  }
-
-  const number =
-    Number(value);
-
-  return Number.isFinite(number)
-    ? number
-    : null;
-}
-
-function safeHttps(
-  value: string,
-): URL {
-  const url =
-    new URL(value);
-
-  if (
-    url.protocol !==
-    "https:"
-  ) {
-    throw new Error(
-      "Only HTTPS URLs are allowed.",
-    );
-  }
-
-  return url;
-}
-
-function isAwinUrl(
-  value: string,
-): boolean {
-  try {
-    const host =
-      safeHttps(value)
-        .hostname
-        .toLowerCase();
-
-    return (
-      host === "awin.com" ||
-      host === "www.awin.com" ||
-      host === "awin1.com" ||
-      host === "www.awin1.com" ||
-      host.endsWith(".awin.com") ||
-      host.endsWith(".awin1.com")
-    );
-  } catch {
-    return false;
-  }
-}
-
-function slugify(
-  value: string,
-): string {
-  return (
-    value
-      .normalize("NFKD")
-      .replace(
-        /[\u0300-\u036f]/g,
-        "",
-      )
-      .toLowerCase()
-      .replace(
-        /[^a-z0-9]+/g,
-        "-",
-      )
-      .replace(
-        /^-+|-+$/g,
-        "",
-      )
-      .slice(0, 120) ||
-    "product"
-  );
-}
-
-function normalizeGoals(
-  value: unknown,
-): Goal[] {
-  if (
-    Array.isArray(value)
-  ) {
-    const valid =
-      value.filter(
-        (
-          goal,
-        ): goal is Goal =>
-          typeof goal ===
-            "string" &&
-          GOALS.includes(
-            goal as Goal,
-          ),
-      );
-
-    if (valid.length) {
-      return [
-        ...new Set(valid),
-      ];
-    }
-  }
-
-  return [...GOALS];
-}
-
-function goalsJson(
-  goals: Goal[],
-): string {
-  return JSON.stringify(
-    goals,
-  );
-}
-
-function parseGoals(
-  value: unknown,
-): Goal[] {
-  if (
-    typeof value !==
-    "string"
-  ) {
-    return [...GOALS];
-  }
-
-  try {
-    return normalizeGoals(
-      JSON.parse(value),
-    );
-  } catch {
-    return [...GOALS];
-  }
-}
-
-function discountPercent(
+function calculateDiscount(
   price: number,
-  oldPrice: number | null,
+  oldPrice: number | null
 ): number | null {
   if (
     oldPrice === null ||
-    oldPrice <= price ||
-    oldPrice <= 0
+    oldPrice <= 0 ||
+    price < 0 ||
+    price >= oldPrice
   ) {
     return null;
   }
 
-  return Math.min(
-    100,
-    Math.max(
-      0,
-      Math.round(
-        ((oldPrice - price) /
-          oldPrice) *
-          100,
-      ),
-    ),
-  );
+  return Math.round(((oldPrice - price) / oldPrice) * 100);
 }
 
-function dealScore(
+function calculateDealScore(
   price: number,
   oldPrice: number | null,
-  inStock: boolean,
+  inStock: boolean
 ): number {
   if (!inStock) {
     return 0;
   }
 
-  const discount =
-    discountPercent(
-      price,
-      oldPrice,
-    ) ?? 0;
+  const discount = calculateDiscount(price, oldPrice);
 
-  let score = Math.min(
-    60,
-    Math.round(
-      discount * 1.5,
-    ),
-  );
-
-  if (
-    price > 0 &&
-    price < 50
-  ) {
-    score += 10;
+  if (discount === null) {
+    return 10;
   }
 
-  if (
-    oldPrice !== null &&
-    oldPrice > price
-  ) {
-    score += 5;
-  }
-
-  return Math.min(
-    100,
-    Math.max(0, score),
-  );
+  return Math.max(0, Math.min(100, discount * 2));
 }
 
-function productJson(
-  row: ProductRow,
-) {
+function normalizeGoals(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    const allowed = new Set(["cut", "bulk", "lean-bulk"]);
+
+    const result = value
+      .map((item) => String(item).trim().toLowerCase())
+      .filter((item) => allowed.has(item));
+
+    if (result.length > 0) {
+      return [...new Set(result)];
+    }
+  }
+
+  return ["cut", "bulk", "lean-bulk"];
+}
+
+function productFromRow(row: ProductRow) {
+  let goals: string[] = [];
+
+  try {
+    goals = JSON.parse(row.goals);
+  } catch {
+    goals = ["cut", "bulk", "lean-bulk"];
+  }
+
   return {
     id: row.id,
-
-    externalId:
-      row.external_id,
-
-    name:
-      row.name,
-
-    slug:
-      row.slug,
-
-    description:
-      row.description,
-
-    brand:
-      row.brand,
-
-    category:
-      row.category,
-
-    goals:
-      parseGoals(
-        row.goals,
-      ),
-
-    price:
-      Number(row.price),
-
-    oldPrice:
-      row.old_price === null
-        ? null
-        : Number(
-            row.old_price,
-          ),
-
-    currency:
-      row.currency,
-
-    imageUrl:
-      row.image_url,
-
-    productUrl:
-      row.product_url,
-
-    affiliateUrl:
-      row.affiliate_url,
-
-    merchantName:
-      row.merchant_name,
-
-    merchantId:
-      row.merchant_id,
-
-    network:
-      row.network,
-
-    inStock:
-      Boolean(row.in_stock),
-
-    dealScore:
-      Number(
-        row.deal_score,
-      ),
-
-    discountPercent:
-      row.discount_percent ===
-      null
-        ? null
-        : Number(
-            row.discount_percent,
-          ),
-
-    lastSyncedAt:
-      row.last_synced_at,
+    externalId: row.external_id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    brand: row.brand,
+    category: row.category,
+    goals,
+    price: row.price,
+    oldPrice: row.old_price,
+    currency: row.currency,
+    imageUrl: row.image_url,
+    productUrl: row.product_url,
+    affiliateUrl: row.affiliate_url,
+    merchantName: row.merchant_name,
+    merchantId: row.merchant_id,
+    network: row.network,
+    commission: row.commission,
+    commissionType: row.commission_type,
+    inStock: row.in_stock === 1,
+    active: row.active === 1,
+    dealScore: row.deal_score,
+    discountPercent: row.discount_percent,
+    lastSyncedAt: row.last_synced_at,
   };
 }
 
-async function handleHealth(
-  env: Env,
-): Promise<Response> {
+function isSafeHttpsUrl(value: string): boolean {
   try {
-    const result =
-      await env.DB
-        .prepare(
-          "SELECT 1 AS ok",
-        )
-        .first<{
-          ok: number;
-        }>();
-
-    return json({
-      ok:
-        result?.ok === 1,
-
-      service:
-        "fitdealfinder",
-
-      database:
-        result?.ok === 1
-          ? "ok"
-          : "error",
-    });
-  } catch (error) {
-    console.error(
-      "Health check failed:",
-      error,
-    );
-
-    return errorJson(
-      "Database unavailable.",
-      503,
-    );
+    const url = new URL(value);
+    return url.protocol === "https:";
+  } catch {
+    return false;
   }
 }
 
-async function handleProducts(
-  request: Request,
+async function getProducts(
   env: Env,
+  request: Request
 ): Promise<Response> {
-  try {
-    const url =
-      new URL(request.url);
+  const url = new URL(request.url);
 
-    const requestedLimit =
-      Number(
-        url.searchParams.get(
-          "limit",
-        ) ?? "100",
-      );
+  const limitRaw = Number(url.searchParams.get("limit") ?? "100");
+  const limit = Math.max(1, Math.min(200, Number.isFinite(limitRaw) ? limitRaw : 100));
 
-    const limit =
-      Math.min(
-        Math.max(
-          Number.isFinite(
-            requestedLimit,
-          )
-            ? requestedLimit
-            : 100,
-          1,
-        ),
-        500,
-      );
+  const category = url.searchParams.get("category");
+  const goal = url.searchParams.get("goal");
+  const merchant = url.searchParams.get("merchant");
+  const search = url.searchParams.get("search");
 
-    const requestedOffset =
-      Number(
-        url.searchParams.get(
-          "offset",
-        ) ?? "0",
-      );
+  const where: string[] = ["active = 1"];
+  const bindings: unknown[] = [];
 
-    const offset =
-      Math.max(
-        Number.isFinite(
-          requestedOffset,
-        )
-          ? requestedOffset
-          : 0,
-        0,
-      );
+  if (category) {
+    where.push("LOWER(category) = LOWER(?)");
+    bindings.push(category);
+  }
 
-    const search =
-      textOrNull(
-        url.searchParams.get(
-          "search",
-        ),
-      );
+  if (merchant) {
+    where.push("LOWER(merchant_name) = LOWER(?)");
+    bindings.push(merchant);
+  }
 
-    const category =
-      textOrNull(
-        url.searchParams.get(
-          "category",
-        ),
-      );
+  if (goal) {
+    where.push(`goals LIKE ?`);
+    bindings.push(`%"${goal.toLowerCase()}"%`);
+  }
 
-    const goal =
-      textOrNull(
-        url.searchParams.get(
-          "goal",
-        ),
-      );
+  if (search) {
+    where.push(
+      "(LOWER(name) LIKE LOWER(?) OR LOWER(brand) LIKE LOWER(?) OR LOWER(category) LIKE LOWER(?))"
+    );
 
-    const merchant =
-      textOrNull(
-        url.searchParams.get(
-          "merchant",
-        ),
-      );
+    const term = `%${search}%`;
+    bindings.push(term, term, term);
+  }
 
-    const where: string[] = [
-      "active = 1",
-      "in_stock
+  const sql = `
+    SELECT *
+    FROM products
+    WHERE ${where.join(" AND ")}
+    ORDER BY deal_score DESC, price ASC, name ASC
+    LIMIT ?
+  `;
+
+  bindings.push(limit);
+
+  const result = await env.DB
+    .prepare(sql)
+    .bind(...bindings)
+    .all<ProductRow>();
+
+  return json({
+    products: result.results.map(productFromRow),
+    count: result.results.length,
+  });
+}
+
+async function getProduct(
+  env
