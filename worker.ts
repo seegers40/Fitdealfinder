@@ -154,7 +154,8 @@ function productFromRow(row: ProductRow) {
   let goals: string[] = [];
 
   try {
-    goals = JSON.parse(row.goals);
+    const parsed = JSON.parse(row.goals);
+    goals = normalizeGoals(parsed);
   } catch {
     goals = ["cut", "bulk", "lean-bulk"];
   }
@@ -202,8 +203,17 @@ async function getProducts(
 ): Promise<Response> {
   const url = new URL(request.url);
 
-  const limitRaw = Number(url.searchParams.get("limit") ?? "100");
-  const limit = Math.max(1, Math.min(200, Number.isFinite(limitRaw) ? limitRaw : 100));
+  const limitRaw = Number(
+    url.searchParams.get("limit") ?? "100"
+  );
+
+  const limit = Math.max(
+    1,
+    Math.min(
+      200,
+      Number.isFinite(limitRaw) ? Math.floor(limitRaw) : 100
+    )
+  );
 
   const category = url.searchParams.get("category");
   const goal = url.searchParams.get("goal");
@@ -224,7 +234,7 @@ async function getProducts(
   }
 
   if (goal) {
-    where.push(`goals LIKE ?`);
+    where.push("goals LIKE ?");
     bindings.push(`%"${goal.toLowerCase()}"%`);
   }
 
@@ -259,4 +269,707 @@ async function getProducts(
 }
 
 async function getProduct(
-  env
+  env: Env,
+  slug: string
+): Promise<Response> {
+  const row = await env.DB
+    .prepare(
+      `
+        SELECT *
+        FROM products
+        WHERE slug = ?
+          AND active = 1
+        LIMIT 1
+      `
+    )
+    .bind(slug)
+    .first<ProductRow>();
+
+  if (!row) {
+    return json(
+      {
+        error: "Product not found",
+      },
+      404
+    );
+  }
+
+  return json(productFromRow(row));
+}
+
+async function health(env: Env): Promise<Response> {
+  try {
+    const result = await env.DB
+      .prepare("SELECT 1 AS ok")
+      .first<{ ok: number }>();
+
+    return json({
+      ok: result?.ok === 1,
+      service: "fitdealfinder",
+      database: "D1",
+    });
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+        service: "fitdealfinder",
+        database: "D1",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Database error",
+      },
+      500
+    );
+  }
+}
+
+function getAdminSecret(request: Request): string {
+  return request.headers.get("x-admin-secret") ?? "";
+}
+
+function isAdmin(request: Request, env: Env): boolean {
+  if (!env.ADMIN_SECRET) {
+    return false;
+  }
+
+  const supplied = getAdminSecret(request);
+
+  return supplied.length > 0 && supplied === env.ADMIN_SECRET;
+}
+
+function getString(
+  value: unknown,
+  fallback = ""
+): string {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return String(value);
+  }
+
+  return fallback;
+}
+
+function getProductPrice(item: AwinProduct): number | null {
+  const salePrice = numberOrNull(item.sale_price);
+
+  if (salePrice !== null && salePrice >= 0) {
+    return salePrice;
+  }
+
+  const price = numberOrNull(item.price);
+
+  if (price !== null && price >= 0) {
+    return price;
+  }
+
+  return null;
+}
+
+function getProductExternalId(
+  item: AwinProduct
+): string | null {
+  const value = item.id ?? item.product_id;
+
+  if (
+    value === undefined ||
+    value === null ||
+    String(value).trim() === ""
+  ) {
+    return null;
+  }
+
+  return String(value).trim();
+}
+
+function getMerchantName(
+  item: AwinProduct
+): string {
+  const value = getString(
+    item.merchant_name,
+    "Awin merchant"
+  );
+
+  return value || "Awin merchant";
+}
+
+function getProductUrl(
+  item: AwinProduct
+): string {
+  return getString(
+    item.product_url ?? item.url
+  );
+}
+
+function getAffiliateUrl(
+  item: AwinProduct
+): string | null {
+  const value = getString(item.affiliate_url);
+
+  return value || null;
+}
+
+function getInStock(
+  item: AwinProduct
+): boolean {
+  if (typeof item.in_stock === "boolean") {
+    return item.in_stock;
+  }
+
+  if (typeof item.in_stock === "number") {
+    return item.in_stock !== 0;
+  }
+
+  return true;
+}
+
+function mapAwinProduct(
+  item: AwinProduct
+): {
+  externalId: string;
+  name: string;
+  description: string | null;
+  brand: string | null;
+  category: string | null;
+  price: number;
+  oldPrice: number | null;
+  currency: string;
+  imageUrl: string | null;
+  productUrl: string;
+  affiliateUrl: string | null;
+  merchantName: string;
+  merchantId: string | null;
+  commission: number | null;
+  commissionType: string | null;
+  inStock: boolean;
+  goals: string[];
+} | null {
+  const externalId = getProductExternalId(item);
+  const name = getString(item.name ?? item.title);
+  const price = getProductPrice(item);
+  const productUrl = getProductUrl(item);
+
+  if (
+    !externalId ||
+    !name ||
+    price === null ||
+    !productUrl ||
+    !isSafeHttpsUrl(productUrl)
+  ) {
+    return null;
+  }
+
+  const oldPrice = numberOrNull(item.old_price);
+
+  const imageValue = getString(
+    item.image_url ?? item.image
+  );
+
+  const imageUrl =
+    imageValue && isSafeHttpsUrl(imageValue)
+      ? imageValue
+      : null;
+
+  const affiliateValue = getAffiliateUrl(item);
+
+  const affiliateUrl =
+    affiliateValue && isSafeHttpsUrl(affiliateValue)
+      ? affiliateValue
+      : null;
+
+  return {
+    externalId,
+    name,
+    description: getString(item.description) || null,
+    brand: getString(item.brand) || null,
+    category: getString(item.category) || null,
+    price,
+    oldPrice,
+    currency:
+      getString(item.currency, "EUR").toUpperCase() || "EUR",
+    imageUrl,
+    productUrl,
+    affiliateUrl,
+    merchantName: getMerchantName(item),
+    merchantId:
+      getString(item.merchant_id) || null,
+    commission: numberOrNull(item.commission),
+    commissionType:
+      getString(item.commission_type) || null,
+    inStock: getInStock(item),
+    goals: ["cut", "bulk", "lean-bulk"],
+  };
+}
+
+function parseAwinFeed(
+  data: unknown
+): AwinProduct[] {
+  if (Array.isArray(data)) {
+    return data as AwinProduct[];
+  }
+
+  if (
+    typeof data === "object" &&
+    data !== null
+  ) {
+    const record = data as Record<string, unknown>;
+
+    const possibleKeys = [
+      "products",
+      "items",
+      "data",
+      "results",
+    ];
+
+    for (const key of possibleKeys) {
+      const value = record[key];
+
+      if (Array.isArray(value)) {
+        return value as AwinProduct[];
+      }
+    }
+  }
+
+  return [];
+}
+
+async function syncAwin(
+  env: Env,
+  request: Request
+): Promise<Response> {
+  if (!isAdmin(request, env)) {
+    return json(
+      {
+        error: "Unauthorized",
+      },
+      401
+    );
+  }
+
+  if (!env.AWIN_PRODUCT_FEED_URL) {
+    return json(
+      {
+        error: "AWIN_PRODUCT_FEED_URL is not configured",
+      },
+      500
+    );
+  }
+
+  const startedAt = new Date().toISOString();
+
+  let imported = 0;
+  let updated = 0;
+  let failed = 0;
+  let errorMessage: string | null = null;
+
+  try {
+    const headers = new Headers({
+      accept: "application/json",
+    });
+
+    if (env.AWIN_API_KEY) {
+      headers.set(
+        "authorization",
+        `Bearer ${env.AWIN_API_KEY}`
+      );
+    }
+
+    const response = await fetch(
+      env.AWIN_PRODUCT_FEED_URL,
+      {
+        method: "GET",
+        headers,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Awin feed request failed with HTTP ${response.status}`
+      );
+    }
+
+    const data: unknown = await response.json();
+    const feedProducts = parseAwinFeed(data);
+
+    if (feedProducts.length === 0) {
+      throw new Error(
+        "Awin feed contained no products"
+      );
+    }
+
+    for (const item of feedProducts) {
+      const mapped = mapAwinProduct(item);
+
+      if (!mapped) {
+        failed += 1;
+        continue;
+      }
+
+      const existing = await env.DB
+        .prepare(
+          `
+            SELECT id
+            FROM products
+            WHERE network = ?
+              AND external_id = ?
+            LIMIT 1
+          `
+        )
+        .bind("AWIN", mapped.externalId)
+        .first<{ id: string }>();
+
+      const id =
+        existing?.id ??
+        crypto.randomUUID();
+
+      const baseSlug =
+        slugify(mapped.name) ||
+        `product-${mapped.externalId}`;
+
+      const slug =
+        existing?.id
+          ? baseSlug
+          : `${baseSlug}-${mapped.externalId}`
+              .slice(0, 160);
+
+      const discountPercent =
+        calculateDiscount(
+          mapped.price,
+          mapped.oldPrice
+        );
+
+      const dealScore =
+        calculateDealScore(
+          mapped.price,
+          mapped.oldPrice,
+          mapped.inStock
+        );
+
+      await env.DB
+        .prepare(
+          `
+            INSERT INTO products (
+              id,
+              external_id,
+              name,
+              slug,
+              description,
+              brand,
+              category,
+              goals,
+              price,
+              old_price,
+              currency,
+              image_url,
+              product_url,
+              affiliate_url,
+              merchant_name,
+              merchant_id,
+              network,
+              commission,
+              commission_type,
+              in_stock,
+              active,
+              deal_score,
+              discount_percent,
+              last_synced_at,
+              created_at,
+              updated_at
+            )
+            VALUES (
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'),
+              datetime('now'), datetime('now')
+            )
+            ON CONFLICT(network, external_id)
+            DO UPDATE SET
+              name = excluded.name,
+              slug = excluded.slug,
+              description = excluded.description,
+              brand = excluded.brand,
+              category = excluded.category,
+              goals = excluded.goals,
+              price = excluded.price,
+              old_price = excluded.old_price,
+              currency = excluded.currency,
+              image_url = excluded.image_url,
+              product_url = excluded.product_url,
+              affiliate_url = excluded.affiliate_url,
+              merchant_name = excluded.merchant_name,
+              merchant_id = excluded.merchant_id,
+              commission = excluded.commission,
+              commission_type = excluded.commission_type,
+              in_stock = excluded.in_stock,
+              active = excluded.active,
+              deal_score = excluded.deal_score,
+              discount_percent = excluded.discount_percent,
+              last_synced_at = datetime('now'),
+              updated_at = datetime('now')
+          `
+        )
+        .bind(
+          id,
+          mapped.externalId,
+          mapped.name,
+          slug,
+          mapped.description,
+          mapped.brand,
+          mapped.category,
+          JSON.stringify(mapped.goals),
+          mapped.price,
+          mapped.oldPrice,
+          mapped.currency,
+          mapped.imageUrl,
+          mapped.productUrl,
+          mapped.affiliateUrl,
+          mapped.merchantName,
+          mapped.merchantId,
+          "AWIN",
+          mapped.commission,
+          mapped.commissionType,
+          mapped.inStock ? 1 : 0,
+          1,
+          dealScore,
+          discountPercent
+        )
+        .run();
+
+      if (existing) {
+        updated += 1;
+      } else {
+        imported += 1;
+      }
+    }
+  } catch (error) {
+    errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Unknown sync error";
+  }
+
+  await env.DB
+    .prepare(
+      `
+        INSERT INTO sync_logs (
+          network,
+          started_at,
+          finished_at,
+          imported,
+          updated,
+          failed,
+          error_message
+        )
+        VALUES (?, ?, datetime('now'), ?, ?, ?, ?)
+      `
+    )
+    .bind(
+      "AWIN",
+      startedAt,
+      imported,
+      updated,
+      failed,
+      errorMessage
+    )
+    .run();
+
+  if (errorMessage) {
+    return json(
+      {
+        ok: false,
+        network: "AWIN",
+        imported,
+        updated,
+        failed,
+        error: errorMessage,
+      },
+      500
+    );
+  }
+
+  return json({
+    ok: true,
+    network: "AWIN",
+    imported,
+    updated,
+    failed,
+  });
+}
+
+async function getSyncLogs(
+  env: Env,
+  request: Request
+): Promise<Response> {
+  if (!isAdmin(request, env)) {
+    return json(
+      {
+        error: "Unauthorized",
+      },
+      401
+    );
+  }
+
+  const result = await env.DB
+    .prepare(
+      `
+        SELECT
+          id,
+          network,
+          started_at,
+          finished_at,
+          imported,
+          updated,
+          failed,
+          error_message
+        FROM sync_logs
+        ORDER BY started_at DESC
+        LIMIT 50
+      `
+    )
+    .all();
+
+  return json({
+    logs: result.results,
+  });
+}
+
+async function redirectToProduct(
+  env: Env,
+  request: Request,
+  id: string
+): Promise<Response> {
+  const row = await env.DB
+    .prepare(
+      `
+        SELECT
+          id,
+          product_url,
+          affiliate_url,
+          active
+        FROM products
+        WHERE id = ?
+        LIMIT 1
+      `
+    )
+    .bind(id)
+    .first<{
+      id: string;
+      product_url: string;
+      affiliate_url: string | null;
+      active: number;
+    }>();
+
+  if (!row || row.active !== 1) {
+    return text("Product not found", 404);
+  }
+
+  await env.DB
+    .prepare(
+      `
+        INSERT INTO affiliate_clicks (
+          product_id
+        )
+        VALUES (?)
+      `
+    )
+    .bind(row.id)
+    .run();
+
+  const destination =
+    row.affiliate_url &&
+    isSafeHttpsUrl(row.affiliate_url)
+      ? row.affiliate_url
+      : row.product_url;
+
+  if (!isSafeHttpsUrl(destination)) {
+    return text(
+      "Product destination is not available",
+      500
+    );
+  }
+
+  return Response.redirect(destination, 302);
+}
+
+export default {
+  async fetch(
+    request: Request,
+    env: Env
+  ): Promise<Response> {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    try {
+      if (
+        request.method === "GET" &&
+        path === "/api/health"
+      ) {
+        return await health(env);
+      }
+
+      if (
+        request.method === "GET" &&
+        path === "/api/products"
+      ) {
+        return await getProducts(env, request);
+      }
+
+      if (
+        request.method === "GET" &&
+        path.startsWith("/api/products/")
+      ) {
+        const slug = decodeURIComponent(
+          path.slice("/api/products/".length)
+        );
+
+        return await getProduct(env, slug);
+      }
+
+      if (
+        request.method === "POST" &&
+        path === "/api/admin/sync-awin"
+      ) {
+        return await syncAwin(env, request);
+      }
+
+      if (
+        request.method === "GET" &&
+        path === "/api/admin/sync-logs"
+      ) {
+        return await getSyncLogs(env, request);
+      }
+
+      if (
+        request.method === "GET" &&
+        path.startsWith("/go/")
+      ) {
+        const id = decodeURIComponent(
+          path.slice("/go/".length)
+        );
+
+        return await redirectToProduct(
+          env,
+          request,
+          id
+        );
+      }
+
+      return await env.ASSETS.fetch(request);
+    } catch (error) {
+      return json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Internal server error",
+        },
+        500
+      );
+    }
+  },
+};
