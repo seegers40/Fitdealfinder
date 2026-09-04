@@ -1,19 +1,29 @@
 # FitDealFinder
 
-FitDealFinder.nl is een Nederlandse fitness-dealwebsite waarmee bezoekers
-fitnessproducten kunnen vinden op basis van prijs, categorie en doel.
+FitDealFinder is een fitness deals- en vergelijkingswebsite voor producten rond cut, bulk en lean-bulk.
+
+## Stack
+
+- Cloudflare Workers
+- Cloudflare D1
+- Cloudflare Workers Assets
+- TypeScript
+- HTML/CSS/JavaScript
+- Awin productfeed
+- Optionele AI-integratie
+
+Render, Neon en Hyperdrive zijn niet nodig.
 
 ## Projectstructuur
 
 ```text
 fitdealfinder/
+├── migrations/
+│   └── 0001_initial_schema.sql
 ├── public/
-│   ├── index.html
-│   ├── styles.css
-│   └── app.js
-├── fitdealfinder-products.ts
+│   └── index.html
+├── Wrangler.jsonc
 ├── package.json
 ├── tsconfig.json
-├── .env.example
-├── .gitignore
+├── worker.ts
 └── README.md
