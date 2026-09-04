@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "fitdealfinder-db",
-      "database_id": "VUL_HIER_LATER_HET_ECHTE_D1_DATABASE_ID_IN",
+      "database_id": "12942f1e-0caa-4835-aa18-b425228cad53",
       "migrations_dir": "migrations"
     }
   ]
