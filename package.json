@@ -1,19 +1,16 @@
 {
   "name": "fitdealfinder",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "description": "FitDealFinder fitness deals and product comparison site",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "pg": "^8.16.3"
+    "typecheck": "tsc --noEmit",
+    "cf-typegen": "wrangler types"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260904.0",
-    "@types/pg": "^8.15.5",
     "typescript": "^5.9.2",
     "wrangler": "^4.38.0"
   }
