@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
+
   "name": "fitdealfinder",
   "main": "worker.ts",
   "compatibility_date": "2026-09-04",
@@ -17,5 +18,9 @@
       "database_id": "12942f1e-0caa-4835-aa18-b425228cad53",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+
+  "ai": {
+    "binding": "AI"
+  }
 }
