@@ -1,296 +1,400 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FitDealFinder.nl — Slim besparen op fitness</title>
-  <meta
-    name="description"
-    content="Vergelijk fitnessproducten op prijs, categorie en doel. Vind slimme fitnessdeals voor Cut, Bulk en Lean Bulk."
-  >
-  <meta name="theme-color" content="#0b1020">
-  <link rel="stylesheet" href="/styles.css">
-  <script src="/app.js" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="FitDealFinder vergelijkt fitnessproducten en deals voor cut, bulk en lean-bulk.">
+  <title>FitDealFinder – Fitness Deals Vergelijken</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #f5f7fa;
+      --card: #ffffff;
+      --text: #17202a;
+      --muted: #68737d;
+      --border: #e1e6eb;
+      --accent: #16a085;
+      --accent-dark: #117864;
+      --danger: #c0392b;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 800;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 20px 60px;
+    }
+
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 30px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 5vw, 44px);
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 720px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .search {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    .search:focus {
+      border-color: var(--accent);
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 9px;
+      padding: 11px 15px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #e9eef2;
+      color: var(--text);
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button.active {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .status {
+      margin: 18px 0;
+      color: var(--muted);
+      min-height: 20px;
+    }
+
+    .products {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 18px;
+    }
+
+    .product {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .product-image {
+      width: 100%;
+      height: 210px;
+      object-fit: contain;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .product-content {
+      padding: 17px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .merchant {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 7px;
+    }
+
+    .product h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      line-height: 1.35;
+    }
+
+    .description {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    .price-row {
+      display: flex;
+      align-items: baseline;
+      gap: 9px;
+      margin-top: auto;
+      margin-bottom: 12px;
+    }
+
+    .price {
+      font-size: 23px;
+      font-weight: 800;
+    }
+
+    .old-price {
+      color: var(--muted);
+      text-decoration: line-through;
+      font-size: 14px;
+    }
+
+    .discount {
+      display: inline-block;
+      color: var(--danger);
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+
+    .deal-button {
+      display: block;
+      width: 100%;
+      text-align: center;
+      text-decoration: none;
+      padding: 12px;
+      border-radius: 9px;
+      background: var(--accent);
+      color: #ffffff;
+      font-weight: 800;
+    }
+
+    .deal-button:hover {
+      background: var(--accent-dark);
+    }
+
+    .empty {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 30px;
+      text-align: center;
+      color: var(--muted);
+      grid-column: 1 / -1;
+    }
+
+    .ai {
+      margin-top: 32px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .ai h2 {
+      margin-top: 0;
+    }
+
+    .ai-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .ai-input {
+      flex: 1;
+      min-width: 0;
+      padding: 13px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      font-size: 15px;
+    }
+
+    .ai-response {
+      margin-top: 15px;
+      padding: 14px;
+      border-radius: 9px;
+      background: #f0f4f6;
+      white-space: pre-wrap;
+      line-height: 1.55;
+      min-height: 20px;
+    }
+
+    footer {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px 35px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .header-inner {
+        padding: 15px;
+      }
+
+      .container {
+        padding: 18px 14px 45px;
+      }
+
+      .hero {
+        padding: 22px;
+      }
+
+      .products {
+        grid-template-columns: 1fr;
+      }
+
+      .ai-form {
+        flex-direction: column;
+      }
+
+      .ai-form button {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 
 <body>
-  <header class="site-header">
-    <div class="container header-inner">
-      <a class="logo" href="/" aria-label="FitDealFinder.nl home">
-        FitDealFinder<span>.nl</span>
-      </a>
-
-      <nav class="main-nav" aria-label="Hoofdnavigatie">
-        <a href="#deals">Deals</a>
-        <a href="#planner">Jouw doel</a>
-        <a href="#hoe-werkt-het">Hoe werkt het?</a>
-      </nav>
+  <header>
+    <div class="header-inner">
+      <a class="logo" href="/">Fit<span>Deal</span>Finder</a>
     </div>
   </header>
 
-  <main>
+  <main class="container">
     <section class="hero">
-      <div class="container hero-content">
-        <div class="eyebrow">Fitness • Voeding • Slim besparen</div>
+      <h1>Vind betere fitnessdeals.</h1>
+      <p>
+        Vergelijk fitnessproducten en ontdek interessante deals voor
+        cut, bulk en lean-bulk.
+      </p>
 
-        <h1>Vind de beste fitnessdeal voor jouw doel.</h1>
+      <div class="controls">
+        <input
+          id="search"
+          class="search"
+          type="search"
+          placeholder="Zoek product, merk of categorie..."
+          autocomplete="off"
+        >
 
-        <p class="hero-text">
-          Vergelijk fitnessproducten op prijs, categorie en doel.
-          Stel eenvoudig jouw boodschappenlijst samen voor Cut, Bulk of Lean Bulk.
-        </p>
-
-        <div class="goal-buttons" aria-label="Kies je doel">
-          <button
-            class="goal-button active"
-            type="button"
-            data-goal-button="cut"
-          >
-            Cut
-          </button>
-
-          <button
-            class="goal-button"
-            type="button"
-            data-goal-button="bulk"
-          >
-            Bulk
-          </button>
-
-          <button
-            class="goal-button"
-            type="button"
-            data-goal-button="lean-bulk"
-          >
-            Lean Bulk
-          </button>
+        <div class="filters" aria-label="Doel filter">
+          <button class="filter active" data-goal="">Alles</button>
+          <button class="filter" data-goal="cut">Cut</button>
+          <button class="filter" data-goal="bulk">Bulk</button>
+          <button class="filter" data-goal="lean-bulk">Lean-bulk</button>
         </div>
       </div>
     </section>
 
-    <section class="planner-section" id="planner">
-      <div class="container">
-        <div class="planner-card">
-          <div class="section-heading">
-            <div>
-              <span class="section-label">Jouw plan</span>
-              <h2>Maak jouw boodschappenlijst</h2>
-            </div>
+    <div id="status" class="status">Producten laden...</div>
 
-            <p>
-              Kies je doel en budget. FitDealFinder zoekt een passend pakket
-              uit de beschikbare producten.
-            </p>
-          </div>
+    <section
+      id="products"
+      class="products"
+      aria-live="polite"
+    ></section>
 
-          <div class="planner-grid">
-            <div class="form-group">
-              <label for="goal-select">Doel</label>
+    <section class="ai">
+      <h2>FitDealFinder AI</h2>
 
-              <select id="goal-select">
-                <option value="cut">Cut</option>
-                <option value="bulk">Bulk</option>
-                <option value="lean-bulk">Lean Bulk</option>
-              </select>
-            </div>
+      <p>
+        Stel een vraag over fitnessproducten, cut, bulk of lean-bulk.
+      </p>
 
-            <div class="form-group">
-              <label for="budget-input">Budget</label>
+      <form id="ai-form" class="ai-form">
+        <input
+          id="ai-input"
+          class="ai-input"
+          type="text"
+          placeholder="Bijvoorbeeld: wat past bij een cut?"
+          maxlength="2000"
+          autocomplete="off"
+          required
+        >
 
-              <div class="input-with-prefix">
-                <span>€</span>
+        <button type="submit">Vraag AI</button>
+      </form>
 
-                <input
-                  id="budget-input"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value="60"
-                  inputmode="decimal"
-                >
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="period-select">Periode</label>
-
-              <select id="period-select">
-                <option value="week">Per week</option>
-                <option value="month">Per maand</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="protein-input">Min. eiwit per dag</label>
-
-              <div class="input-with-suffix">
-                <input
-                  id="protein-input"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value="160"
-                  inputmode="numeric"
-                >
-
-                <span>g</span>
-              </div>
-            </div>
-          </div>
-
-          <button
-            class="primary-button"
-            id="make-plan-button"
-            type="button"
-          >
-            Maak mijn boodschappenlijst
-          </button>
-
-          <p class="planner-note">
-            De planner gebruikt de huidige productprijzen en maakt een
-            eenvoudig pakket binnen je budget.
-          </p>
-
-          <div
-            class="planner-result"
-            id="planner-result"
-            aria-live="polite"
-          ></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="products-section" id="deals">
-      <div class="container">
-        <div class="section-heading products-heading">
-          <div>
-            <span class="section-label">Deals</span>
-            <h2>Fitnessproducten vergelijken</h2>
-          </div>
-
-          <p>
-            Zoek op product of merk en filter op categorie.
-          </p>
-        </div>
-
-        <div class="product-filters">
-          <div class="search-wrapper">
-            <label class="sr-only" for="search-input">
-              Zoek producten
-            </label>
-
-            <input
-              id="search-input"
-              type="search"
-              placeholder="Zoek op product of merk..."
-              autocomplete="off"
-            >
-          </div>
-
-          <div>
-            <label class="sr-only" for="category-select">
-              Kies een categorie
-            </label>
-
-            <select id="category-select">
-              <option value="">Alle categorieën</option>
-              <option value="whey">Whey</option>
-              <option value="creatine">Creatine</option>
-              <option value="snacks">Snacks</option>
-              <option value="meals">Maaltijden</option>
-              <option value="preworkout">Pre-workout</option>
-              <option value="vitamins">Vitamines</option>
-              <option value="gainer">Gainer</option>
-            </select>
-          </div>
-        </div>
-
-        <div
-          class="products-status"
-          id="products-status"
-          aria-live="polite"
-        ></div>
-
-        <div
-          class="product-grid"
-          id="product-grid"
-        ></div>
-      </div>
-    </section>
-
-    <section class="how-section" id="hoe-werkt-het">
-      <div class="container">
-        <div class="section-heading">
-          <div>
-            <span class="section-label">Zo werkt het</span>
-            <h2>Van doel naar deal</h2>
-          </div>
-        </div>
-
-        <div class="steps-grid">
-          <article class="step-card">
-            <div class="step-number">1</div>
-
-            <h3>Kies je doel</h3>
-
-            <p>
-              Geef aan of je wilt cutten, bulken of lean bulken.
-            </p>
-          </article>
-
-          <article class="step-card">
-            <div class="step-number">2</div>
-
-            <h3>Stel je budget in</h3>
-
-            <p>
-              Bepaal hoeveel je ongeveer wilt uitgeven per week of maand.
-            </p>
-          </article>
-
-          <article class="step-card">
-            <div class="step-number">3</div>
-
-            <h3>Vergelijk deals</h3>
-
-            <p>
-              Bekijk producten, prijzen en aanbieders en kies de deal
-              die bij jou past.
-            </p>
-          </article>
-        </div>
-      </div>
+      <div id="ai-response" class="ai-response"></div>
     </section>
   </main>
 
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <div>
-        <strong>
-          FitDealFinder<span>.nl</span>
-        </strong>
-
-        <p>
-          Slim fitnessproducten vergelijken en besparen.
-        </p>
-      </div>
-
-      <div class="footer-links">
-        <a href="#deals">Deals</a>
-        <a href="#planner">Jouw doel</a>
-        <a href="#hoe-werkt-het">Hoe werkt het?</a>
-      </div>
-    </div>
-
-    <div class="container footer-bottom">
-      <p>
-        © <span id="current-year">2026</span> FitDealFinder.nl
-      </p>
-
-      <p>
-        Prijzen kunnen wijzigen bij de aanbieder.
-      </p>
-    </div>
+  <footer>
+    FitDealFinder vergelijkt aanbiedingen. Controleer altijd prijs,
+    voorraad en productinformatie bij de verkoper voordat je bestelt.
   </footer>
-</body>
-</html>
+
+  <script>
+    const productsElement =
+      document.getElementById("products");
+
+    const statusElement =
+      document.getElementById("status");
+
+    const searchElement =
+      document.getElementById("search");
+
+    const filterButtons =
+      document.querySelector
