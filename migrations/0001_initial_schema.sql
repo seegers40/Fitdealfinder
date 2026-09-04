@@ -94,8 +94,7 @@ ON products(deal_score);
 
 CREATE UNIQUE INDEX IF NOT EXISTS
   products_network_external_idx
-ON products(network, external_id)
-WHERE external_id IS NOT NULL;
+ON products(network, external_id);
 
 
 CREATE TABLE IF NOT EXISTS affiliate_clicks (
