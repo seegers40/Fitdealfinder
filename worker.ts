@@ -5,7 +5,12 @@ export interface Env {
   AWIN_API_KEY?: string;
   AWIN_PUBLISHER_ID?: string;
   AWIN_PRODUCT_FEED_URL?: string;
+
   ADMIN_SECRET?: string;
+
+  AI_API_URL?: string;
+  AI_API_KEY?: string;
+  AI_MODEL?: string;
 }
 
 type ProductRow = {
@@ -61,25 +66,23 @@ type AwinProduct = {
   in_stock?: boolean | number;
 };
 
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
+const json = (data: unknown, status = 200): Response =>
+  new Response(JSON.stringify(data), {
     status,
     headers: {
       "content-type": "application/json; charset=UTF-8",
       "cache-control": "no-store",
     },
   });
-}
 
-function text(data: string, status = 200): Response {
-  return new Response(data, {
+const text = (data: string, status = 200): Response =>
+  new Response(data, {
     status,
     headers: {
       "content-type": "text/plain; charset=UTF-8",
       "cache-control": "no-store",
     },
   });
-}
 
 function slugify(value: string): string {
   return value
@@ -88,7 +91,7 @@ function slugify(value: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 160);
+    .slice(0, 140);
 }
 
 function numberOrNull(value: unknown): number | null {
@@ -97,7 +100,16 @@ function numberOrNull(value: unknown): number | null {
   }
 
   const parsed = Number(value);
+
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isSafeHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function calculateDiscount(
@@ -135,29 +147,32 @@ function calculateDealScore(
 }
 
 function normalizeGoals(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    const allowed = new Set(["cut", "bulk", "lean-bulk"]);
+  const allowed = ["cut", "bulk", "lean-bulk"];
 
-    const result = value
-      .map((item) => String(item).trim().toLowerCase())
-      .filter((item) => allowed.has(item));
+  if (Array.isArray(value)) {
+    const result = [
+      ...new Set(
+        value
+          .map((item) => String(item).trim().toLowerCase())
+          .filter((item) => allowed.includes(item))
+      ),
+    ];
 
     if (result.length > 0) {
-      return [...new Set(result)];
+      return result;
     }
   }
 
-  return ["cut", "bulk", "lean-bulk"];
+  return allowed;
 }
 
 function productFromRow(row: ProductRow) {
-  let goals: string[] = [];
+  let parsedGoals: unknown = null;
 
   try {
-    const parsed = JSON.parse(row.goals);
-    goals = normalizeGoals(parsed);
+    parsedGoals = JSON.parse(row.goals);
   } catch {
-    goals = ["cut", "bulk", "lean-bulk"];
+    parsedGoals = null;
   }
 
   return {
@@ -168,7 +183,7 @@ function productFromRow(row: ProductRow) {
     description: row.description,
     brand: row.brand,
     category: row.category,
-    goals,
+    goals: normalizeGoals(parsedGoals),
     price: row.price,
     oldPrice: row.old_price,
     currency: row.currency,
@@ -188,22 +203,13 @@ function productFromRow(row: ProductRow) {
   };
 }
 
-function isSafeHttpsUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 async function getProducts(
   env: Env,
   request: Request
 ): Promise<Response> {
   const url = new URL(request.url);
 
-  const limitRaw = Number(
+  const rawLimit = Number(
     url.searchParams.get("limit") ?? "100"
   );
 
@@ -211,7 +217,9 @@ async function getProducts(
     1,
     Math.min(
       200,
-      Number.isFinite(limitRaw) ? Math.floor(limitRaw) : 100
+      Number.isFinite(rawLimit)
+        ? Math.floor(rawLimit)
+        : 100
     )
   );
 
@@ -240,25 +248,35 @@ async function getProducts(
 
   if (search) {
     where.push(
-      "(LOWER(name) LIKE LOWER(?) OR LOWER(brand) LIKE LOWER(?) OR LOWER(category) LIKE LOWER(?))"
+      "(LOWER(name) LIKE LOWER(?) OR " +
+        "LOWER(brand) LIKE LOWER(?) OR " +
+        "LOWER(category) LIKE LOWER(?))"
     );
 
     const term = `%${search}%`;
-    bindings.push(term, term, term);
-  }
 
-  const sql = `
-    SELECT *
-    FROM products
-    WHERE ${where.join(" AND ")}
-    ORDER BY deal_score DESC, price ASC, name ASC
-    LIMIT ?
-  `;
+    bindings.push(
+      term,
+      term,
+      term
+    );
+  }
 
   bindings.push(limit);
 
   const result = await env.DB
-    .prepare(sql)
+    .prepare(
+      `
+        SELECT *
+        FROM products
+        WHERE ${where.join(" AND ")}
+        ORDER BY
+          deal_score DESC,
+          price ASC,
+          name ASC
+        LIMIT ?
+      `
+    )
     .bind(...bindings)
     .all<ProductRow>();
 
@@ -297,10 +315,14 @@ async function getProduct(
   return json(productFromRow(row));
 }
 
-async function health(env: Env): Promise<Response> {
+async function health(
+  env: Env
+): Promise<Response> {
   try {
     const result = await env.DB
-      .prepare("SELECT 1 AS ok")
+      .prepare(
+        "SELECT 1 AS ok"
+      )
       .first<{ ok: number }>();
 
     return json({
@@ -324,186 +346,163 @@ async function health(env: Env): Promise<Response> {
   }
 }
 
-function getAdminSecret(request: Request): string {
-  return request.headers.get("x-admin-secret") ?? "";
-}
-
-function isAdmin(request: Request, env: Env): boolean {
+function isAdmin(
+  request: Request,
+  env: Env
+): boolean {
   if (!env.ADMIN_SECRET) {
     return false;
   }
 
-  const supplied = getAdminSecret(request);
-
-  return supplied.length > 0 && supplied === env.ADMIN_SECRET;
-}
-
-function getString(
-  value: unknown,
-  fallback = ""
-): string {
-  if (typeof value === "string") {
-    return value.trim();
-  }
-
-  if (
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return String(value);
-  }
-
-  return fallback;
-}
-
-function getProductPrice(item: AwinProduct): number | null {
-  const salePrice = numberOrNull(item.sale_price);
-
-  if (salePrice !== null && salePrice >= 0) {
-    return salePrice;
-  }
-
-  const price = numberOrNull(item.price);
-
-  if (price !== null && price >= 0) {
-    return price;
-  }
-
-  return null;
-}
-
-function getProductExternalId(
-  item: AwinProduct
-): string | null {
-  const value = item.id ?? item.product_id;
-
-  if (
-    value === undefined ||
-    value === null ||
-    String(value).trim() === ""
-  ) {
-    return null;
-  }
-
-  return String(value).trim();
-}
-
-function getMerchantName(
-  item: AwinProduct
-): string {
-  const value = getString(
-    item.merchant_name,
-    "Awin merchant"
+  return (
+    request.headers.get("x-admin-secret") ===
+    env.ADMIN_SECRET
   );
-
-  return value || "Awin merchant";
-}
-
-function getProductUrl(
-  item: AwinProduct
-): string {
-  return getString(
-    item.product_url ?? item.url
-  );
-}
-
-function getAffiliateUrl(
-  item: AwinProduct
-): string | null {
-  const value = getString(item.affiliate_url);
-
-  return value || null;
-}
-
-function getInStock(
-  item: AwinProduct
-): boolean {
-  if (typeof item.in_stock === "boolean") {
-    return item.in_stock;
-  }
-
-  if (typeof item.in_stock === "number") {
-    return item.in_stock !== 0;
-  }
-
-  return true;
 }
 
 function mapAwinProduct(
   item: AwinProduct
-): {
-  externalId: string;
-  name: string;
-  description: string | null;
-  brand: string | null;
-  category: string | null;
-  price: number;
-  oldPrice: number | null;
-  currency: string;
-  imageUrl: string | null;
-  productUrl: string;
-  affiliateUrl: string | null;
-  merchantName: string;
-  merchantId: string | null;
-  commission: number | null;
-  commissionType: string | null;
-  inStock: boolean;
-  goals: string[];
-} | null {
-  const externalId = getProductExternalId(item);
-  const name = getString(item.name ?? item.title);
-  const price = getProductPrice(item);
-  const productUrl = getProductUrl(item);
+) {
+  const externalId =
+    item.id ?? item.product_id;
+
+  const name = String(
+    item.name ?? item.title ?? ""
+  ).trim();
+
+  const salePrice =
+    numberOrNull(item.sale_price);
+
+  const normalPrice =
+    numberOrNull(item.price);
+
+  const price =
+    salePrice !== null
+      ? salePrice
+      : normalPrice;
+
+  const productUrl = String(
+    item.product_url ??
+      item.url ??
+      ""
+  ).trim();
 
   if (
-    !externalId ||
+    externalId === undefined ||
+    externalId === null ||
+    !String(externalId).trim() ||
     !name ||
     price === null ||
+    price < 0 ||
     !productUrl ||
     !isSafeHttpsUrl(productUrl)
   ) {
     return null;
   }
 
-  const oldPrice = numberOrNull(item.old_price);
+  const oldPrice =
+    numberOrNull(item.old_price);
 
-  const imageValue = getString(
-    item.image_url ?? item.image
-  );
+  const imageUrlValue = String(
+    item.image_url ??
+      item.image ??
+      ""
+  ).trim();
 
-  const imageUrl =
-    imageValue && isSafeHttpsUrl(imageValue)
-      ? imageValue
-      : null;
-
-  const affiliateValue = getAffiliateUrl(item);
-
-  const affiliateUrl =
-    affiliateValue && isSafeHttpsUrl(affiliateValue)
-      ? affiliateValue
-      : null;
+  const affiliateUrlValue =
+    String(
+      item.affiliate_url ?? ""
+    ).trim();
 
   return {
-    externalId,
+    externalId:
+      String(externalId).trim(),
+
     name,
-    description: getString(item.description) || null,
-    brand: getString(item.brand) || null,
-    category: getString(item.category) || null,
+
+    description:
+      String(
+        item.description ?? ""
+      ).trim() || null,
+
+    brand:
+      String(
+        item.brand ?? ""
+      ).trim() || null,
+
+    category:
+      String(
+        item.category ?? ""
+      ).trim() || null,
+
     price,
+
     oldPrice,
+
     currency:
-      getString(item.currency, "EUR").toUpperCase() || "EUR",
-    imageUrl,
+      String(
+        item.currency ?? "EUR"
+      )
+        .trim()
+        .toUpperCase() || "EUR",
+
+    imageUrl:
+      imageUrlValue &&
+      isSafeHttpsUrl(imageUrlValue)
+        ? imageUrlValue
+        : null,
+
     productUrl,
-    affiliateUrl,
-    merchantName: getMerchantName(item),
+
+    affiliateUrl:
+      affiliateUrlValue &&
+      isSafeHttpsUrl(
+        affiliateUrlValue
+      )
+        ? affiliateUrlValue
+        : null,
+
+    merchantName:
+      String(
+        item.merchant_name ??
+          "Awin merchant"
+      ).trim() ||
+      "Awin merchant",
+
     merchantId:
-      getString(item.merchant_id) || null,
-    commission: numberOrNull(item.commission),
+      item.merchant_id ===
+        undefined ||
+      item.merchant_id === null
+        ? null
+        : String(
+            item.merchant_id
+          ),
+
+    commission:
+      numberOrNull(
+        item.commission
+      ),
+
     commissionType:
-      getString(item.commission_type) || null,
-    inStock: getInStock(item),
-    goals: ["cut", "bulk", "lean-bulk"],
+      String(
+        item.commission_type ??
+          ""
+      ).trim() || null,
+
+    inStock:
+      typeof item.in_stock ===
+      "boolean"
+        ? item.in_stock
+        : typeof item.in_stock ===
+          "number"
+        ? item.in_stock !== 0
+        : true,
+
+    goals: [
+      "cut",
+      "bulk",
+      "lean-bulk",
+    ],
   };
 }
 
@@ -515,23 +514,27 @@ function parseAwinFeed(
   }
 
   if (
-    typeof data === "object" &&
-    data !== null
+    data !== null &&
+    typeof data === "object"
   ) {
-    const record = data as Record<string, unknown>;
+    const record =
+      data as Record<
+        string,
+        unknown
+      >;
 
-    const possibleKeys = [
-      "products",
-      "items",
-      "data",
-      "results",
-    ];
-
-    for (const key of possibleKeys) {
-      const value = record[key];
-
-      if (Array.isArray(value)) {
-        return value as AwinProduct[];
+    for (
+      const key of [
+        "products",
+        "items",
+        "data",
+        "results",
+      ]
+    ) {
+      if (
+        Array.isArray(record[key])
+      ) {
+        return record[key] as AwinProduct[];
       }
     }
   }
@@ -552,26 +555,34 @@ async function syncAwin(
     );
   }
 
-  if (!env.AWIN_PRODUCT_FEED_URL) {
+  if (
+    !env.AWIN_PRODUCT_FEED_URL
+  ) {
     return json(
       {
-        error: "AWIN_PRODUCT_FEED_URL is not configured",
+        error:
+          "AWIN_PRODUCT_FEED_URL is not configured",
       },
       500
     );
   }
 
-  const startedAt = new Date().toISOString();
+  const startedAt =
+    new Date().toISOString();
 
   let imported = 0;
   let updated = 0;
   let failed = 0;
-  let errorMessage: string | null = null;
+  let errorMessage:
+    | string
+    | null = null;
 
   try {
-    const headers = new Headers({
-      accept: "application/json",
-    });
+    const headers =
+      new Headers({
+        accept:
+          "application/json",
+      });
 
     if (env.AWIN_API_KEY) {
       headers.set(
@@ -580,13 +591,14 @@ async function syncAwin(
       );
     }
 
-    const response = await fetch(
-      env.AWIN_PRODUCT_FEED_URL,
-      {
-        method: "GET",
-        headers,
-      }
-    );
+    const response =
+      await fetch(
+        env.AWIN_PRODUCT_FEED_URL,
+        {
+          method: "GET",
+          headers,
+        }
+      );
 
     if (!response.ok) {
       throw new Error(
@@ -594,49 +606,81 @@ async function syncAwin(
       );
     }
 
-    const data: unknown = await response.json();
-    const feedProducts = parseAwinFeed(data);
+    const data: unknown =
+      await response.json();
 
-    if (feedProducts.length === 0) {
+    const feedProducts =
+      parseAwinFeed(data);
+
+    if (
+      feedProducts.length === 0
+    ) {
       throw new Error(
         "Awin feed contained no products"
       );
     }
 
-    for (const item of feedProducts) {
-      const mapped = mapAwinProduct(item);
+    for (
+      const item of feedProducts
+    ) {
+      const mapped =
+        mapAwinProduct(item);
 
       if (!mapped) {
         failed += 1;
         continue;
       }
 
-      const existing = await env.DB
-        .prepare(
-          `
-            SELECT id
-            FROM products
-            WHERE network = ?
-              AND external_id = ?
-            LIMIT 1
-          `
-        )
-        .bind("AWIN", mapped.externalId)
-        .first<{ id: string }>();
+      const existing =
+        await env.DB
+          .prepare(
+            `
+              SELECT id, slug
+              FROM products
+              WHERE network = ?
+                AND external_id = ?
+              LIMIT 1
+            `
+          )
+          .bind(
+            "AWIN",
+            mapped.externalId
+          )
+          .first<{
+            id: string;
+            slug: string;
+          }>();
+
+      let slug =
+        slugify(mapped.name) ||
+        `product-${mapped.externalId}`;
+
+      if (!existing) {
+        const slugTaken =
+          await env.DB
+            .prepare(
+              `
+                SELECT id
+                FROM products
+                WHERE slug = ?
+                LIMIT 1
+              `
+            )
+            .bind(slug)
+            .first<{
+              id: string;
+            }>();
+
+        if (slugTaken) {
+          slug =
+            `${slug}-${mapped.externalId}`
+              .slice(0, 160);
+        }
+      }
 
       const id =
         existing?.id ??
         crypto.randomUUID();
-
-      const baseSlug =
-        slugify(mapped.name) ||
-        `product-${mapped.externalId}`;
-
-      const slug =
-        existing?.id
-          ? baseSlug
-          : `${baseSlug}-${mapped.externalId}`
-              .slice(0, 160);
 
       const discountPercent =
         calculateDiscount(
@@ -683,9 +727,12 @@ async function syncAwin(
               updated_at
             )
             VALUES (
-              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'),
-              datetime('now'), datetime('now')
+              ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?,
+              datetime('now'),
+              datetime('now'),
+              datetime('now')
             )
             ON CONFLICT(network, external_id)
             DO UPDATE SET
@@ -721,7 +768,9 @@ async function syncAwin(
           mapped.description,
           mapped.brand,
           mapped.category,
-          JSON.stringify(mapped.goals),
+          JSON.stringify(
+            mapped.goals
+          ),
           mapped.price,
           mapped.oldPrice,
           mapped.currency,
@@ -765,7 +814,15 @@ async function syncAwin(
           failed,
           error_message
         )
-        VALUES (?, ?, datetime('now'), ?, ?, ?, ?)
+        VALUES (
+          ?,
+          ?,
+          datetime('now'),
+          ?,
+          ?,
+          ?,
+          ?
+        )
       `
     )
     .bind(
@@ -778,26 +835,130 @@ async function syncAwin(
     )
     .run();
 
-  if (errorMessage) {
+  return json(
+    {
+      ok: !errorMessage,
+      network: "AWIN",
+      imported,
+      updated,
+      failed,
+      error: errorMessage,
+    },
+    errorMessage ? 500 : 200
+  );
+}
+
+async function aiChat(
+  env: Env,
+  request: Request
+): Promise<Response> {
+  if (
+    !env.AI_API_URL ||
+    !env.AI_API_KEY
+  ) {
     return json(
       {
-        ok: false,
-        network: "AWIN",
-        imported,
-        updated,
-        failed,
-        error: errorMessage,
+        error:
+          "AI service is not configured",
       },
-      500
+      503
     );
   }
 
+  const body =
+    (await request
+      .json()
+      .catch(() => null)) as
+      | {
+          message?: unknown;
+        }
+      | null;
+
+  const message =
+    typeof body?.message ===
+    "string"
+      ? body.message.trim()
+      : "";
+
+  if (!message) {
+    return json(
+      {
+        error:
+          "Message is required",
+      },
+      400
+    );
+  }
+
+  const response =
+    await fetch(
+      env.AI_API_URL,
+      {
+        method: "POST",
+        headers: {
+          "content-type":
+            "application/json",
+          authorization:
+            `Bearer ${env.AI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model:
+            env.AI_MODEL ??
+            "gpt-4o-mini",
+
+          messages: [
+            {
+              role: "system",
+              content:
+                "Je bent de FitDealFinder AI-assistent. " +
+                "Je helpt in het Nederlands met fitnessproducten, " +
+                "cut, bulk en lean-bulk. " +
+                "Geef praktische, korte antwoorden. " +
+                "Verzin nooit productprijzen, kortingen of voorraad. " +
+                "Adviseer gebruikers om prijzen en productinformatie " +
+                "te controleren voordat ze kopen.",
+            },
+            {
+              role: "user",
+              content: message,
+            },
+          ],
+
+          temperature: 0.4,
+        }),
+      }
+    );
+
+  const data =
+    (await response
+      .json()
+      .catch(() => null)) as
+      | {
+          choices?: Array<{
+            message?: {
+              content?: string;
+            };
+          }>;
+        }
+      | null;
+
+  if (!response.ok) {
+    return json(
+      {
+        error:
+          "AI service request failed",
+      },
+      502
+    );
+  }
+
+  const reply =
+    data?.choices?.[0]?.message
+      ?.content ??
+    "Geen antwoord ontvangen.";
+
   return json({
-    ok: true,
-    network: "AWIN",
-    imported,
-    updated,
-    failed,
+    reply,
   });
 }
 
@@ -814,24 +975,25 @@ async function getSyncLogs(
     );
   }
 
-  const result = await env.DB
-    .prepare(
-      `
-        SELECT
-          id,
-          network,
-          started_at,
-          finished_at,
-          imported,
-          updated,
-          failed,
-          error_message
-        FROM sync_logs
-        ORDER BY started_at DESC
-        LIMIT 50
-      `
-    )
-    .all();
+  const result =
+    await env.DB
+      .prepare(
+        `
+          SELECT
+            id,
+            network,
+            started_at,
+            finished_at,
+            imported,
+            updated,
+            failed,
+            error_message
+          FROM sync_logs
+          ORDER BY started_at DESC
+          LIMIT 50
+        `
+      )
+      .all();
 
   return json({
     logs: result.results,
@@ -840,32 +1002,40 @@ async function getSyncLogs(
 
 async function redirectToProduct(
   env: Env,
-  request: Request,
   id: string
 ): Promise<Response> {
-  const row = await env.DB
-    .prepare(
-      `
-        SELECT
-          id,
-          product_url,
-          affiliate_url,
-          active
-        FROM products
-        WHERE id = ?
-        LIMIT 1
-      `
-    )
-    .bind(id)
-    .first<{
-      id: string;
-      product_url: string;
-      affiliate_url: string | null;
-      active: number;
-    }>();
+  const row =
+    await env.DB
+      .prepare(
+        `
+          SELECT
+            id,
+            product_url,
+            affiliate_url,
+            active
+          FROM products
+          WHERE id = ?
+          LIMIT 1
+        `
+      )
+      .bind(id)
+      .first<{
+        id: string;
+        product_url: string;
+        affiliate_url:
+          | string
+          | null;
+        active: number;
+      }>();
 
-  if (!row || row.active !== 1) {
-    return text("Product not found", 404);
+  if (
+    !row ||
+    row.active !== 1
+  ) {
+    return text(
+      "Product not found",
+      404
+    );
   }
 
   await env.DB
@@ -882,18 +1052,27 @@ async function redirectToProduct(
 
   const destination =
     row.affiliate_url &&
-    isSafeHttpsUrl(row.affiliate_url)
+    isSafeHttpsUrl(
+      row.affiliate_url
+    )
       ? row.affiliate_url
       : row.product_url;
 
-  if (!isSafeHttpsUrl(destination)) {
+  if (
+    !isSafeHttpsUrl(
+      destination
+    )
+  ) {
     return text(
       "Product destination is not available",
       500
     );
   }
 
-  return Response.redirect(destination, 302);
+  return Response.redirect(
+    destination,
+    302
+  );
 }
 
 export default {
@@ -901,65 +1080,114 @@ export default {
     request: Request,
     env: Env
   ): Promise<Response> {
-    const url = new URL(request.url);
-    const path = url.pathname;
+    const url =
+      new URL(request.url);
+
+    const path =
+      url.pathname;
 
     try {
       if (
-        request.method === "GET" &&
-        path === "/api/health"
+        request.method ===
+          "GET" &&
+        path ===
+          "/api/health"
       ) {
-        return await health(env);
+        return health(env);
       }
 
       if (
-        request.method === "GET" &&
-        path === "/api/products"
+        request.method ===
+          "GET" &&
+        path ===
+          "/api/products"
       ) {
-        return await getProducts(env, request);
-      }
-
-      if (
-        request.method === "GET" &&
-        path.startsWith("/api/products/")
-      ) {
-        const slug = decodeURIComponent(
-          path.slice("/api/products/".length)
-        );
-
-        return await getProduct(env, slug);
-      }
-
-      if (
-        request.method === "POST" &&
-        path === "/api/admin/sync-awin"
-      ) {
-        return await syncAwin(env, request);
-      }
-
-      if (
-        request.method === "GET" &&
-        path === "/api/admin/sync-logs"
-      ) {
-        return await getSyncLogs(env, request);
-      }
-
-      if (
-        request.method === "GET" &&
-        path.startsWith("/go/")
-      ) {
-        const id = decodeURIComponent(
-          path.slice("/go/".length)
-        );
-
-        return await redirectToProduct(
+        return getProducts(
           env,
-          request,
+          request
+        );
+      }
+
+      if (
+        request.method ===
+          "GET" &&
+        path.startsWith(
+          "/api/products/"
+        )
+      ) {
+        const slug =
+          decodeURIComponent(
+            path.slice(
+              "/api/products/"
+                .length
+            )
+          );
+
+        return getProduct(
+          env,
+          slug
+        );
+      }
+
+      if (
+        request.method ===
+          "POST" &&
+        path ===
+          "/api/admin/sync-awin"
+      ) {
+        return syncAwin(
+          env,
+          request
+        );
+      }
+
+      if (
+        request.method ===
+          "GET" &&
+        path ===
+          "/api/admin/sync-logs"
+      ) {
+        return getSyncLogs(
+          env,
+          request
+        );
+      }
+
+      if (
+        request.method ===
+          "POST" &&
+        path ===
+          "/api/ai/chat"
+      ) {
+        return aiChat(
+          env,
+          request
+        );
+      }
+
+      if (
+        request.method ===
+          "GET" &&
+        path.startsWith(
+          "/go/"
+        )
+      ) {
+        const id =
+          decodeURIComponent(
+            path.slice(
+              "/go/".length
+            )
+          );
+
+        return redirectToProduct(
+          env,
           id
         );
       }
 
-      return await env.ASSETS.fetch(request);
+      return env.ASSETS.fetch(
+        request
+      );
     } catch (error) {
       return json(
         {
@@ -973,3 +1201,4 @@ export default {
     }
   },
 };
+
