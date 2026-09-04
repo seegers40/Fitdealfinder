@@ -1,8 +1,20 @@
 {
+  "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "fitdealfinder",
-  "compatibility_date": "2026-09-03",
+  "main": "worker.ts",
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "assets": {
     "directory": "./public",
-    "not_found_handling": "single-page-application"
-  }
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "VUL_HIER_LATER_JE_HYPERDRIVE_ID_IN"
+    }
+  ]
 }
