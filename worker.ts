@@ -1,19 +1,17 @@
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
-
-  AWIN_API_KEY?: string;
-  AWIN_PUBLISHER_ID?: string;
-  AWIN_PRODUCT_FEED_URL?: string;
+  AI: Ai;
 
   ADMIN_SECRET?: string;
 
-  AI_API_URL?: string;
-  AI_API_KEY?: string;
+  AWIN_FEED_URL?: string;
+  AWIN_PUBLISHER_ID?: string;
+
   AI_MODEL?: string;
 }
 
-type ProductRow = {
+interface ProductRow {
   id: string;
   external_id: string | null;
   name: string;
@@ -40,19 +38,19 @@ type ProductRow = {
   last_synced_at: string | null;
   created_at: string;
   updated_at: string;
-};
+}
 
-type AwinProduct = {
+interface AwinProduct {
   id?: string | number;
-  product_id?: string | number;
+  external_id?: string | number;
   name?: string;
   title?: string;
   description?: string;
   brand?: string;
   category?: string;
   price?: number | string;
-  sale_price?: number | string;
   old_price?: number | string;
+  sale_price?: number | string;
   currency?: string;
   image_url?: string;
   image?: string;
@@ -64,25 +62,49 @@ type AwinProduct = {
   commission?: number | string;
   commission_type?: string;
   in_stock?: boolean | number;
-};
+  stock?: boolean | number;
+  goals?: string[] | string;
+}
 
-const json = (data: unknown, status = 200): Response =>
-  new Response(JSON.stringify(data), {
+const DEFAULT_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
+
+function json(
+  data: unknown,
+  status = 200,
+  extraHeaders: Record<string, string> = {},
+): Response {
+  return new Response(JSON.stringify(data), {
     status,
     headers: {
-      "content-type": "application/json; charset=UTF-8",
-      "cache-control": "no-store",
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+      ...extraHeaders,
     },
   });
+}
 
-const text = (data: string, status = 200): Response =>
-  new Response(data, {
+function text(
+  value: string,
+  status = 200,
+  extraHeaders: Record<string, string> = {},
+): Response {
+  return new Response(value, {
     status,
     headers: {
-      "content-type": "text/plain; charset=UTF-8",
-      "cache-control": "no-store",
+      "Content-Type": "text/plain; charset=utf-8",
+      ...extraHeaders,
     },
   });
+}
+
+function errorResponse(message: string, status = 500): Response {
+  return json(
+    {
+      error: message,
+    },
+    status,
+  );
+}
 
 function slugify(value: string): string {
   return value
@@ -91,7 +113,7 @@ function slugify(value: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 140);
+    .slice(0, 100);
 }
 
 function numberOrNull(value: unknown): number | null {
@@ -104,23 +126,100 @@ function numberOrNull(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function isSafeHttpsUrl(value: string): boolean {
-  try {
-    return new URL(value).protocol === "https:";
-  } catch {
-    return false;
+function booleanToInteger(value: unknown, fallback = 1): number {
+  if (value === undefined || value === null) {
+    return fallback;
   }
+
+  if (typeof value === "boolean") {
+    return value ? 1 : 0;
+  }
+
+  if (typeof value === "number") {
+    return value > 0 ? 1 : 0;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+
+    if (["false", "0", "no", "out", "outofstock"].includes(normalized)) {
+      return 0;
+    }
+
+    if (["true", "1", "yes", "in", "instock"].includes(normalized)) {
+      return 1;
+    }
+  }
+
+  return fallback;
+}
+
+function safeUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      return null;
+    }
+
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeGoals(value: unknown): string {
+  const allowed = new Set(["cut", "bulk", "lean-bulk"]);
+
+  let values: string[] = [];
+
+  if (Array.isArray(value)) {
+    values = value.map(String);
+  } else if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+
+      if (Array.isArray(parsed)) {
+        values = parsed.map(String);
+      } else {
+        values = value.split(/[,\s]+/);
+      }
+    } catch {
+      values = value.split(/[,\s]+/);
+    }
+  }
+
+  const normalized = values
+    .map((item) => item.trim().toLowerCase())
+    .map((item) => {
+      if (item === "leanbulk" || item === "lean_bulk") {
+        return "lean-bulk";
+      }
+
+      return item;
+    })
+    .filter((item) => allowed.has(item));
+
+  const unique = [...new Set(normalized)];
+
+  return JSON.stringify(
+    unique.length > 0 ? unique : ["cut", "bulk", "lean-bulk"],
+  );
 }
 
 function calculateDiscount(
   price: number,
-  oldPrice: number | null
+  oldPrice: number | null,
 ): number | null {
   if (
     oldPrice === null ||
     oldPrice <= 0 ||
     price < 0 ||
-    price >= oldPrice
+    oldPrice <= price
   ) {
     return null;
   }
@@ -131,1072 +230,1010 @@ function calculateDiscount(
 function calculateDealScore(
   price: number,
   oldPrice: number | null,
-  inStock: boolean
+  inStock: number,
 ): number {
   if (!inStock) {
     return 0;
   }
 
-  const discount = calculateDiscount(price, oldPrice);
-
-  if (discount === null) {
-    return 10;
-  }
+  const discount = calculateDiscount(price, oldPrice) ?? 0;
 
   return Math.max(0, Math.min(100, discount * 2));
 }
 
-function normalizeGoals(value: unknown): string[] {
-  const allowed = ["cut", "bulk", "lean-bulk"];
-
-  if (Array.isArray(value)) {
-    const result = [
-      ...new Set(
-        value
-          .map((item) => String(item).trim().toLowerCase())
-          .filter((item) => allowed.includes(item))
-      ),
-    ];
-
-    if (result.length > 0) {
-      return result;
-    }
-  }
-
-  return allowed;
-}
-
-function productFromRow(row: ProductRow) {
-  let parsedGoals: unknown = null;
-
-  try {
-    parsedGoals = JSON.parse(row.goals);
-  } catch {
-    parsedGoals = null;
-  }
-
-  return {
-    id: row.id,
-    externalId: row.external_id,
-    name: row.name,
-    slug: row.slug,
-    description: row.description,
-    brand: row.brand,
-    category: row.category,
-    goals: normalizeGoals(parsedGoals),
-    price: row.price,
-    oldPrice: row.old_price,
-    currency: row.currency,
-    imageUrl: row.image_url,
-    productUrl: row.product_url,
-    affiliateUrl: row.affiliate_url,
-    merchantName: row.merchant_name,
-    merchantId: row.merchant_id,
-    network: row.network,
-    commission: row.commission,
-    commissionType: row.commission_type,
-    inStock: row.in_stock === 1,
-    active: row.active === 1,
-    dealScore: row.deal_score,
-    discountPercent: row.discount_percent,
-    lastSyncedAt: row.last_synced_at,
-  };
-}
-
-async function getProducts(
-  env: Env,
-  request: Request
-): Promise<Response> {
-  const url = new URL(request.url);
-
-  const rawLimit = Number(
-    url.searchParams.get("limit") ?? "100"
+function mapProduct(product: AwinProduct): {
+  externalId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  brand: string | null;
+  category: string | null;
+  goals: string;
+  price: number;
+  oldPrice: number | null;
+  currency: string;
+  imageUrl: string | null;
+  productUrl: string;
+  affiliateUrl: string | null;
+  merchantName: string;
+  merchantId: string | null;
+  commission: number | null;
+  commissionType: string | null;
+  inStock: number;
+} {
+  const externalId = String(
+    product.external_id ??
+      product.id ??
+      crypto.randomUUID(),
   );
-
-  const limit = Math.max(
-    1,
-    Math.min(
-      200,
-      Number.isFinite(rawLimit)
-        ? Math.floor(rawLimit)
-        : 100
-    )
-  );
-
-  const category = url.searchParams.get("category");
-  const goal = url.searchParams.get("goal");
-  const merchant = url.searchParams.get("merchant");
-  const search = url.searchParams.get("search");
-
-  const where: string[] = ["active = 1"];
-  const bindings: unknown[] = [];
-
-  if (category) {
-    where.push("LOWER(category) = LOWER(?)");
-    bindings.push(category);
-  }
-
-  if (merchant) {
-    where.push("LOWER(merchant_name) = LOWER(?)");
-    bindings.push(merchant);
-  }
-
-  if (goal) {
-    where.push("goals LIKE ?");
-    bindings.push(`%"${goal.toLowerCase()}"%`);
-  }
-
-  if (search) {
-    where.push(
-      "(LOWER(name) LIKE LOWER(?) OR " +
-        "LOWER(brand) LIKE LOWER(?) OR " +
-        "LOWER(category) LIKE LOWER(?))"
-    );
-
-    const term = `%${search}%`;
-
-    bindings.push(
-      term,
-      term,
-      term
-    );
-  }
-
-  bindings.push(limit);
-
-  const result = await env.DB
-    .prepare(
-      `
-        SELECT *
-        FROM products
-        WHERE ${where.join(" AND ")}
-        ORDER BY
-          deal_score DESC,
-          price ASC,
-          name ASC
-        LIMIT ?
-      `
-    )
-    .bind(...bindings)
-    .all<ProductRow>();
-
-  return json({
-    products: result.results.map(productFromRow),
-    count: result.results.length,
-  });
-}
-
-async function getProduct(
-  env: Env,
-  slug: string
-): Promise<Response> {
-  const row = await env.DB
-    .prepare(
-      `
-        SELECT *
-        FROM products
-        WHERE slug = ?
-          AND active = 1
-        LIMIT 1
-      `
-    )
-    .bind(slug)
-    .first<ProductRow>();
-
-  if (!row) {
-    return json(
-      {
-        error: "Product not found",
-      },
-      404
-    );
-  }
-
-  return json(productFromRow(row));
-}
-
-async function health(
-  env: Env
-): Promise<Response> {
-  try {
-    const result = await env.DB
-      .prepare(
-        "SELECT 1 AS ok"
-      )
-      .first<{ ok: number }>();
-
-    return json({
-      ok: result?.ok === 1,
-      service: "fitdealfinder",
-      database: "D1",
-    });
-  } catch (error) {
-    return json(
-      {
-        ok: false,
-        service: "fitdealfinder",
-        database: "D1",
-        error:
-          error instanceof Error
-            ? error.message
-            : "Database error",
-      },
-      500
-    );
-  }
-}
-
-function isAdmin(
-  request: Request,
-  env: Env
-): boolean {
-  if (!env.ADMIN_SECRET) {
-    return false;
-  }
-
-  return (
-    request.headers.get("x-admin-secret") ===
-    env.ADMIN_SECRET
-  );
-}
-
-function mapAwinProduct(
-  item: AwinProduct
-) {
-  const externalId =
-    item.id ?? item.product_id;
 
   const name = String(
-    item.name ?? item.title ?? ""
+    product.name ??
+      product.title ??
+      "Onbekend product",
   ).trim();
-
-  const salePrice =
-    numberOrNull(item.sale_price);
-
-  const normalPrice =
-    numberOrNull(item.price);
 
   const price =
-    salePrice !== null
-      ? salePrice
-      : normalPrice;
-
-  const productUrl = String(
-    item.product_url ??
-      item.url ??
-      ""
-  ).trim();
-
-  if (
-    externalId === undefined ||
-    externalId === null ||
-    !String(externalId).trim() ||
-    !name ||
-    price === null ||
-    price < 0 ||
-    !productUrl ||
-    !isSafeHttpsUrl(productUrl)
-  ) {
-    return null;
-  }
+    numberOrNull(
+      product.sale_price ??
+        product.price,
+    ) ?? 0;
 
   const oldPrice =
-    numberOrNull(item.old_price);
+    numberOrNull(product.old_price);
 
-  const imageUrlValue = String(
-    item.image_url ??
-      item.image ??
-      ""
-  ).trim();
+  const productUrl =
+    safeUrl(
+      product.product_url ??
+        product.url,
+    ) ?? "";
 
-  const affiliateUrlValue =
-    String(
-      item.affiliate_url ?? ""
-    ).trim();
+  const imageUrl =
+    safeUrl(
+      product.image_url ??
+        product.image,
+    );
+
+  const affiliateUrl =
+    safeUrl(product.affiliate_url);
+
+  const inStock = booleanToInteger(
+    product.in_stock ??
+      product.stock,
+    1,
+  );
 
   return {
-    externalId:
-      String(externalId).trim(),
-
+    externalId,
     name,
-
+    slug: slugify(name) || `product-${externalId}`,
     description:
-      String(
-        item.description ?? ""
-      ).trim() || null,
-
+      typeof product.description === "string"
+        ? product.description.trim()
+        : null,
     brand:
-      String(
-        item.brand ?? ""
-      ).trim() || null,
-
+      typeof product.brand === "string"
+        ? product.brand.trim()
+        : null,
     category:
-      String(
-        item.category ?? ""
-      ).trim() || null,
-
+      typeof product.category === "string"
+        ? product.category.trim()
+        : null,
+    goals: normalizeGoals(product.goals),
     price,
-
     oldPrice,
-
     currency:
-      String(
-        item.currency ?? "EUR"
-      )
-        .trim()
-        .toUpperCase() || "EUR",
-
-    imageUrl:
-      imageUrlValue &&
-      isSafeHttpsUrl(imageUrlValue)
-        ? imageUrlValue
-        : null,
-
+      typeof product.currency === "string" &&
+      product.currency.trim()
+        ? product.currency.trim().toUpperCase()
+        : "EUR",
+    imageUrl,
     productUrl,
-
-    affiliateUrl:
-      affiliateUrlValue &&
-      isSafeHttpsUrl(
-        affiliateUrlValue
-      )
-        ? affiliateUrlValue
-        : null,
-
+    affiliateUrl,
     merchantName:
-      String(
-        item.merchant_name ??
-          "Awin merchant"
-      ).trim() ||
-      "Awin merchant",
-
+      typeof product.merchant_name === "string" &&
+      product.merchant_name.trim()
+        ? product.merchant_name.trim()
+        : "Awin merchant",
     merchantId:
-      item.merchant_id ===
-        undefined ||
-      item.merchant_id === null
-        ? null
-        : String(
-            item.merchant_id
-          ),
-
+      product.merchant_id !== undefined &&
+      product.merchant_id !== null
+        ? String(product.merchant_id)
+        : null,
     commission:
-      numberOrNull(
-        item.commission
-      ),
-
+      numberOrNull(product.commission),
     commissionType:
-      String(
-        item.commission_type ??
-          ""
-      ).trim() || null,
-
-    inStock:
-      typeof item.in_stock ===
-      "boolean"
-        ? item.in_stock
-        : typeof item.in_stock ===
-          "number"
-        ? item.in_stock !== 0
-        : true,
-
-    goals: [
-      "cut",
-      "bulk",
-      "lean-bulk",
-    ],
+      typeof product.commission_type === "string"
+        ? product.commission_type
+        : null,
+    inStock,
   };
 }
 
-function parseAwinFeed(
-  data: unknown
-): AwinProduct[] {
+function getProductsFromFeed(data: unknown): AwinProduct[] {
   if (Array.isArray(data)) {
     return data as AwinProduct[];
   }
 
-  if (
-    data !== null &&
-    typeof data === "object"
-  ) {
-    const record =
-      data as Record<
-        string,
-        unknown
-      >;
+  if (!data || typeof data !== "object") {
+    return [];
+  }
 
-    for (
-      const key of [
-        "products",
-        "items",
-        "data",
-        "results",
-      ]
-    ) {
-      if (
-        Array.isArray(record[key])
-      ) {
-        return record[key] as AwinProduct[];
-      }
+  const object = data as Record<string, unknown>;
+
+  for (const key of [
+    "products",
+    "items",
+    "data",
+    "results",
+  ]) {
+    if (Array.isArray(object[key])) {
+      return object[key] as AwinProduct[];
     }
   }
 
   return [];
 }
 
-async function syncAwin(
-  env: Env,
-  request: Request
-): Promise<Response> {
-  if (!isAdmin(request, env)) {
-    return json(
-      {
-        error: "Unauthorized",
-      },
-      401
-    );
-  }
+async function parseAwinFeed(response: Response): Promise<AwinProduct[]> {
+  const contentType =
+    response.headers.get("content-type") ?? "";
+
+  const body = await response.text();
 
   if (
-    !env.AWIN_PRODUCT_FEED_URL
+    contentType.includes("application/json") ||
+    body.trim().startsWith("{") ||
+    body.trim().startsWith("[")
   ) {
-    return json(
-      {
-        error:
-          "AWIN_PRODUCT_FEED_URL is not configured",
-      },
-      500
-    );
+    try {
+      return getProductsFromFeed(JSON.parse(body));
+    } catch {
+      throw new Error("Awin-feed bevat geen geldige JSON.");
+    }
   }
 
-  const startedAt =
-    new Date().toISOString();
+  throw new Error(
+    "Awin-feed formaat is nog niet herkend. Eerst de echte Awin-feed controleren.",
+  );
+}
+
+async function syncAwin(env: Env): Promise<{
+  imported: number;
+  updated: number;
+  failed: number;
+}> {
+  if (!env.AWIN_FEED_URL) {
+    throw new Error("AWIN_FEED_URL is nog niet ingesteld.");
+  }
+
+  const startedAt = new Date().toISOString();
+
+  const logResult = await env.DB.prepare(
+    `
+      INSERT INTO sync_logs (
+        network,
+        started_at
+      )
+      VALUES (?, ?)
+    `,
+  )
+    .bind("AWIN", startedAt)
+    .run();
+
+  const logId = Number(logResult.meta.last_row_id);
 
   let imported = 0;
   let updated = 0;
   let failed = 0;
-  let errorMessage:
-    | string
-    | null = null;
 
   try {
-    const headers =
-      new Headers({
-        accept:
-          "application/json",
-      });
+    const feedResponse = await fetch(env.AWIN_FEED_URL, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    });
 
-    if (env.AWIN_API_KEY) {
-      headers.set(
-        "authorization",
-        `Bearer ${env.AWIN_API_KEY}`
-      );
-    }
-
-    const response =
-      await fetch(
-        env.AWIN_PRODUCT_FEED_URL,
-        {
-          method: "GET",
-          headers,
-        }
-      );
-
-    if (!response.ok) {
+    if (!feedResponse.ok) {
       throw new Error(
-        `Awin feed request failed with HTTP ${response.status}`
+        `Awin-feed gaf HTTP ${feedResponse.status}.`,
       );
     }
 
-    const data: unknown =
-      await response.json();
+    const products =
+      await parseAwinFeed(feedResponse);
 
-    const feedProducts =
-      parseAwinFeed(data);
+    for (const rawProduct of products) {
+      try {
+        const product = mapProduct(rawProduct);
 
-    if (
-      feedProducts.length === 0
-    ) {
-      throw new Error(
-        "Awin feed contained no products"
-      );
-    }
-
-    for (
-      const item of feedProducts
-    ) {
-      const mapped =
-        mapAwinProduct(item);
-
-      if (!mapped) {
-        failed += 1;
-        continue;
-      }
-
-      const existing =
-        await env.DB
-          .prepare(
-            `
-              SELECT id, slug
-              FROM products
-              WHERE network = ?
-                AND external_id = ?
-              LIMIT 1
-            `
-          )
-          .bind(
-            "AWIN",
-            mapped.externalId
-          )
-          .first<{
-            id: string;
-            slug: string;
-          }>();
-
-      let slug =
-        slugify(mapped.name) ||
-        `product-${mapped.externalId}`;
-
-      if (!existing) {
-        const slugTaken =
-          await env.DB
-            .prepare(
-              `
-                SELECT id
-                FROM products
-                WHERE slug = ?
-                LIMIT 1
-              `
-            )
-            .bind(slug)
-            .first<{
-              id: string;
-            }>();
-
-        if (slugTaken) {
-          slug =
-            `${slug}-${mapped.externalId}`
-              .slice(0, 160);
+        if (!product.productUrl) {
+          failed++;
+          continue;
         }
-      }
 
-      const id =
-        existing?.id ??
-        crypto.randomUUID();
+        const now = new Date().toISOString();
 
-      const discountPercent =
-        calculateDiscount(
-          mapped.price,
-          mapped.oldPrice
-        );
-
-      const dealScore =
-        calculateDealScore(
-          mapped.price,
-          mapped.oldPrice,
-          mapped.inStock
-        );
-
-      await env.DB
-        .prepare(
+        const existing = await env.DB.prepare(
           `
-            INSERT INTO products (
+            SELECT id
+            FROM products
+            WHERE network = ?
+              AND external_id = ?
+            LIMIT 1
+          `,
+        )
+          .bind("AWIN", product.externalId)
+          .first<{ id: string }>();
+
+        if (existing) {
+          await env.DB.prepare(
+            `
+              UPDATE products
+              SET
+                name = ?,
+                slug = ?,
+                description = ?,
+                brand = ?,
+                category = ?,
+                goals = ?,
+                price = ?,
+                old_price = ?,
+                currency = ?,
+                image_url = ?,
+                product_url = ?,
+                affiliate_url = ?,
+                merchant_name = ?,
+                merchant_id = ?,
+                commission = ?,
+                commission_type = ?,
+                in_stock = ?,
+                active = 1,
+                deal_score = ?,
+                discount_percent = ?,
+                last_synced_at = ?,
+                updated_at = ?
+              WHERE id = ?
+            `,
+          )
+            .bind(
+              product.name,
+              product.slug,
+              product.description,
+              product.brand,
+              product.category,
+              product.goals,
+              product.price,
+              product.oldPrice,
+              product.currency,
+              product.imageUrl,
+              product.productUrl,
+              product.affiliateUrl,
+              product.merchantName,
+              product.merchantId,
+              product.commission,
+              product.commissionType,
+              product.inStock,
+              calculateDealScore(
+                product.price,
+                product.oldPrice,
+                product.inStock,
+              ),
+              calculateDiscount(
+                product.price,
+                product.oldPrice,
+              ),
+              now,
+              now,
+              existing.id,
+            )
+            .run();
+
+          updated++;
+        } else {
+          const id = crypto.randomUUID();
+
+          await env.DB.prepare(
+            `
+              INSERT INTO products (
+                id,
+                external_id,
+                name,
+                slug,
+                description,
+                brand,
+                category,
+                goals,
+                price,
+                old_price,
+                currency,
+                image_url,
+                product_url,
+                affiliate_url,
+                merchant_name,
+                merchant_id,
+                network,
+                commission,
+                commission_type,
+                in_stock,
+                active,
+                deal_score,
+                discount_percent,
+                last_synced_at
+              )
+              VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?
+              )
+            `,
+          )
+            .bind(
               id,
-              external_id,
-              name,
-              slug,
-              description,
-              brand,
-              category,
-              goals,
-              price,
-              old_price,
-              currency,
-              image_url,
-              product_url,
-              affiliate_url,
-              merchant_name,
-              merchant_id,
-              network,
-              commission,
-              commission_type,
-              in_stock,
-              active,
-              deal_score,
-              discount_percent,
-              last_synced_at,
-              created_at,
-              updated_at
+              product.externalId,
+              product.name,
+              product.slug,
+              product.description,
+              product.brand,
+              product.category,
+              product.goals,
+              product.price,
+              product.oldPrice,
+              product.currency,
+              product.imageUrl,
+              product.productUrl,
+              product.affiliateUrl,
+              product.merchantName,
+              product.merchantId,
+              "AWIN",
+              product.commission,
+              product.commissionType,
+              product.inStock,
+              1,
+              calculateDealScore(
+                product.price,
+                product.oldPrice,
+                product.inStock,
+              ),
+              calculateDiscount(
+                product.price,
+                product.oldPrice,
+              ),
+              now,
             )
-            VALUES (
-              ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?, ?, ?, ?,
-              ?, ?, ?, ?, ?, ?, ?,
-              datetime('now'),
-              datetime('now'),
-              datetime('now')
-            )
-            ON CONFLICT(network, external_id)
-            DO UPDATE SET
-              name = excluded.name,
-              slug = excluded.slug,
-              description = excluded.description,
-              brand = excluded.brand,
-              category = excluded.category,
-              goals = excluded.goals,
-              price = excluded.price,
-              old_price = excluded.old_price,
-              currency = excluded.currency,
-              image_url = excluded.image_url,
-              product_url = excluded.product_url,
-              affiliate_url = excluded.affiliate_url,
-              merchant_name = excluded.merchant_name,
-              merchant_id = excluded.merchant_id,
-              commission = excluded.commission,
-              commission_type = excluded.commission_type,
-              in_stock = excluded.in_stock,
-              active = excluded.active,
-              deal_score = excluded.deal_score,
-              discount_percent = excluded.discount_percent,
-              last_synced_at = datetime('now'),
-              updated_at = datetime('now')
-          `
-        )
-        .bind(
-          id,
-          mapped.externalId,
-          mapped.name,
-          slug,
-          mapped.description,
-          mapped.brand,
-          mapped.category,
-          JSON.stringify(
-            mapped.goals
-          ),
-          mapped.price,
-          mapped.oldPrice,
-          mapped.currency,
-          mapped.imageUrl,
-          mapped.productUrl,
-          mapped.affiliateUrl,
-          mapped.merchantName,
-          mapped.merchantId,
-          "AWIN",
-          mapped.commission,
-          mapped.commissionType,
-          mapped.inStock ? 1 : 0,
-          1,
-          dealScore,
-          discountPercent
-        )
-        .run();
+            .run();
 
-      if (existing) {
-        updated += 1;
-      } else {
-        imported += 1;
+          imported++;
+        }
+      } catch {
+        failed++;
       }
     }
+
+    await env.DB.prepare(
+      `
+        UPDATE sync_logs
+        SET
+          finished_at = ?,
+          imported = ?,
+          updated = ?,
+          failed = ?
+        WHERE id = ?
+      `,
+    )
+      .bind(
+        new Date().toISOString(),
+        imported,
+        updated,
+        failed,
+        logId,
+      )
+      .run();
+
+    return {
+      imported,
+      updated,
+      failed,
+    };
   } catch (error) {
-    errorMessage =
+    const message =
       error instanceof Error
         ? error.message
-        : "Unknown sync error";
+        : String(error);
+
+    await env.DB.prepare(
+      `
+        UPDATE sync_logs
+        SET
+          finished_at = ?,
+          imported = ?,
+          updated = ?,
+          failed = ?,
+          error_message = ?
+        WHERE id = ?
+      `,
+    )
+      .bind(
+        new Date().toISOString(),
+        imported,
+        updated,
+        failed + 1,
+        message,
+        logId,
+      )
+      .run();
+
+    throw error;
   }
-
-  await env.DB
-    .prepare(
-      `
-        INSERT INTO sync_logs (
-          network,
-          started_at,
-          finished_at,
-          imported,
-          updated,
-          failed,
-          error_message
-        )
-        VALUES (
-          ?,
-          ?,
-          datetime('now'),
-          ?,
-          ?,
-          ?,
-          ?
-        )
-      `
-    )
-    .bind(
-      "AWIN",
-      startedAt,
-      imported,
-      updated,
-      failed,
-      errorMessage
-    )
-    .run();
-
-  return json(
-    {
-      ok: !errorMessage,
-      network: "AWIN",
-      imported,
-      updated,
-      failed,
-      error: errorMessage,
-    },
-    errorMessage ? 500 : 200
-  );
 }
 
-async function aiChat(
+function adminAuthorized(
+  request: Request,
   env: Env,
-  request: Request
+): boolean {
+  if (!env.ADMIN_SECRET) {
+    return false;
+  }
+
+  const supplied =
+    request.headers.get("Authorization");
+
+  if (!supplied) {
+    return false;
+  }
+
+  return supplied === `Bearer ${env.ADMIN_SECRET}`;
+}
+
+async function handleProducts(
+  request: Request,
+  env: Env,
 ): Promise<Response> {
-  if (
-    !env.AI_API_URL ||
-    !env.AI_API_KEY
-  ) {
-    return json(
-      {
-        error:
-          "AI service is not configured",
-      },
-      503
+  const url = new URL(request.url);
+
+  const search =
+    url.searchParams.get("search")?.trim() ?? "";
+
+  const goal =
+    url.searchParams.get("goal")?.trim() ?? "";
+
+  const category =
+    url.searchParams.get("category")?.trim() ?? "";
+
+  const limitRaw =
+    Number(url.searchParams.get("limit") ?? "50");
+
+  const limit = Math.min(
+    Math.max(
+      Number.isFinite(limitRaw)
+        ? Math.floor(limitRaw)
+        : 50,
+      1,
+    ),
+    100,
+  );
+
+  const offsetRaw =
+    Number(url.searchParams.get("offset") ?? "0");
+
+  const offset = Math.max(
+    Number.isFinite(offsetRaw)
+      ? Math.floor(offsetRaw)
+      : 0,
+    0,
+  );
+
+  const conditions = [
+    "active = 1",
+    "in_stock = 1",
+  ];
+
+  const params: unknown[] = [];
+
+  if (search) {
+    conditions.push(
+      `
+        (
+          name LIKE ?
+          OR brand LIKE ?
+          OR category LIKE ?
+          OR merchant_name LIKE ?
+        )
+      `,
+    );
+
+    const value = `%${search}%`;
+
+    params.push(
+      value,
+      value,
+      value,
+      value,
     );
   }
 
-  const body =
-    (await request
-      .json()
-      .catch(() => null)) as
-      | {
-          message?: unknown;
-        }
-      | null;
+  if (goal && ["cut", "bulk", "lean-bulk"].includes(goal)) {
+    conditions.push("goals LIKE ?");
+    params.push(`%\"${goal}\"%`);
+  }
+
+  if (category) {
+    conditions.push("category = ?");
+    params.push(category);
+  }
+
+  const where = conditions.join(" AND ");
+
+  const countResult = await env.DB.prepare(
+    `
+      SELECT COUNT(*) AS total
+      FROM products
+      WHERE ${where}
+    `,
+  )
+    .bind(...params)
+    .first<{ total: number }>();
+
+  const rows = await env.DB.prepare(
+    `
+      SELECT
+        id,
+        external_id,
+        name,
+        slug,
+        description,
+        brand,
+        category,
+        goals,
+        price,
+        old_price,
+        currency,
+        image_url,
+        product_url,
+        affiliate_url,
+        merchant_name,
+        merchant_id,
+        network,
+        commission,
+        commission_type,
+        in_stock,
+        active,
+        deal_score,
+        discount_percent,
+        last_synced_at,
+        created_at,
+        updated_at
+      FROM products
+      WHERE ${where}
+      ORDER BY deal_score DESC, updated_at DESC
+      LIMIT ? OFFSET ?
+    `,
+  )
+    .bind(
+      ...params,
+      limit,
+      offset,
+    )
+    .all<ProductRow>();
+
+  return json({
+    products: rows.results,
+    total: Number(countResult?.total ?? 0),
+    limit,
+    offset,
+  });
+}
+
+async function handleProductBySlug(
+  env: Env,
+  slug: string,
+): Promise<Response> {
+  const product = await env.DB.prepare(
+    `
+      SELECT
+        id,
+        external_id,
+        name,
+        slug,
+        description,
+        brand,
+        category,
+        goals,
+        price,
+        old_price,
+        currency,
+        image_url,
+        product_url,
+        affiliate_url,
+        merchant_name,
+        merchant_id,
+        network,
+        commission,
+        commission_type,
+        in_stock,
+        active,
+        deal_score,
+        discount_percent,
+        last_synced_at,
+        created_at,
+        updated_at
+      FROM products
+      WHERE slug = ?
+        AND active = 1
+      LIMIT 1
+    `,
+  )
+    .bind(slug)
+    .first<ProductRow>();
+
+  if (!product) {
+    return errorResponse(
+      "Product niet gevonden.",
+      404,
+    );
+  }
+
+  return json({
+    product,
+  });
+}
+
+async function handleAiChat(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  if (request.method !== "POST") {
+    return errorResponse(
+      "Methode niet toegestaan.",
+      405,
+    );
+  }
+
+  let body: {
+    message?: unknown;
+  };
+
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse(
+      "Ongeldige JSON.",
+      400,
+    );
+  }
 
   const message =
-    typeof body?.message ===
-    "string"
+    typeof body.message === "string"
       ? body.message.trim()
       : "";
 
   if (!message) {
-    return json(
-      {
-        error:
-          "Message is required",
-      },
-      400
+    return errorResponse(
+      "Vul een vraag in.",
+      400,
     );
   }
 
-  const response =
-    await fetch(
-      env.AI_API_URL,
-      {
-        method: "POST",
-        headers: {
-          "content-type":
-            "application/json",
-          authorization:
-            `Bearer ${env.AI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model:
-            env.AI_MODEL ??
-            "gpt-4o-mini",
-
-          messages: [
-            {
-              role: "system",
-              content:
-                "Je bent de FitDealFinder AI-assistent. " +
-                "Je helpt in het Nederlands met fitnessproducten, " +
-                "cut, bulk en lean-bulk. " +
-                "Geef praktische, korte antwoorden. " +
-                "Verzin nooit productprijzen, kortingen of voorraad. " +
-                "Adviseer gebruikers om prijzen en productinformatie " +
-                "te controleren voordat ze kopen.",
-            },
-            {
-              role: "user",
-              content: message,
-            },
-          ],
-
-          temperature: 0.4,
-        }),
-      }
-    );
-
-  const data =
-    (await response
-      .json()
-      .catch(() => null)) as
-      | {
-          choices?: Array<{
-            message?: {
-              content?: string;
-            };
-          }>;
-        }
-      | null;
-
-  if (!response.ok) {
-    return json(
-      {
-        error:
-          "AI service request failed",
-      },
-      502
+  if (message.length > 2000) {
+    return errorResponse(
+      "Vraag is te lang.",
+      400,
     );
   }
 
-  const reply =
-    data?.choices?.[0]?.message
-      ?.content ??
-    "Geen antwoord ontvangen.";
+  const systemPrompt = `
+Je bent de AI-assistent van FitDealFinder.
 
-  return json({
-    reply,
-  });
+FitDealFinder vergelijkt fitnessproducten en deals
+voor cut, bulk en lean-bulk.
+
+Antwoord in het Nederlands.
+Wees praktisch, kort en duidelijk.
+Geef geen medische diagnose.
+Verzin geen actuele prijzen, kortingen, producten,
+winkels of beschikbaarheid.
+
+Als er geen actuele productgegevens zijn,
+zeg dat eerlijk.
+
+Help gebruikers met:
+- cut
+- bulk
+- lean-bulk
+- supplementen
+- fitnessvoeding
+- productvergelijkingen
+- algemene fitnessvragen
+
+Zeg nooit dat een product momenteel op voorraad is
+als dat niet uit actuele gegevens blijkt.
+  `.trim();
+
+  try {
+    const result = await env.AI.run(
+      env.AI_MODEL || DEFAULT_AI_MODEL,
+      {
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: message,
+          },
+        ],
+      },
+    );
+
+    const response =
+      result as {
+        response?: string;
+      };
+
+    return json({
+      answer:
+        response.response ??
+        "Ik kon helaas geen antwoord genereren.",
+    });
+  } catch (error) {
+    console.error("Workers AI error:", error);
+
+    return errorResponse(
+      "De AI kon momenteel geen antwoord geven.",
+      502,
+    );
+  }
 }
 
-async function getSyncLogs(
+async function handleHealth(
   env: Env,
-  request: Request
 ): Promise<Response> {
-  if (!isAdmin(request, env)) {
+  try {
+    const result = await env.DB.prepare(
+      "SELECT COUNT(*) AS count FROM products",
+    ).first<{ count: number }>();
+
+    return json({
+      ok: true,
+      database: "connected",
+      products: Number(result?.count ?? 0),
+      ai: true,
+    });
+  } catch (error) {
+    console.error("Health check error:", error);
+
     return json(
       {
-        error: "Unauthorized",
+        ok: false,
+        database: "error",
+        ai: true,
       },
-      401
+      500,
     );
   }
-
-  const result =
-    await env.DB
-      .prepare(
-        `
-          SELECT
-            id,
-            network,
-            started_at,
-            finished_at,
-            imported,
-            updated,
-            failed,
-            error_message
-          FROM sync_logs
-          ORDER BY started_at DESC
-          LIMIT 50
-        `
-      )
-      .all();
-
-  return json({
-    logs: result.results,
-  });
 }
 
-async function redirectToProduct(
+async function handleAffiliateRedirect(
+  request: Request,
   env: Env,
-  id: string
+  productId: string,
 ): Promise<Response> {
-  const row =
-    await env.DB
-      .prepare(
-        `
-          SELECT
-            id,
-            product_url,
-            affiliate_url,
-            active
-          FROM products
-          WHERE id = ?
-          LIMIT 1
-        `
-      )
-      .bind(id)
-      .first<{
-        id: string;
-        product_url: string;
-        affiliate_url:
-          | string
-          | null;
-        active: number;
-      }>();
+  const product = await env.DB.prepare(
+    `
+      SELECT
+        id,
+        product_url,
+        affiliate_url,
+        active
+      FROM products
+      WHERE id = ?
+      LIMIT 1
+    `,
+  )
+    .bind(productId)
+    .first<{
+      id: string;
+      product_url: string;
+      affiliate_url: string | null;
+      active: number;
+    }>();
 
-  if (
-    !row ||
-    row.active !== 1
-  ) {
-    return text(
-      "Product not found",
-      404
+  if (!product || product.active !== 1) {
+    return errorResponse(
+      "Product niet gevonden.",
+      404,
     );
   }
 
-  await env.DB
-    .prepare(
-      `
-        INSERT INTO affiliate_clicks (
-          product_id
-        )
-        VALUES (?)
-      `
-    )
-    .bind(row.id)
+  await env.DB.prepare(
+    `
+      INSERT INTO affiliate_clicks (
+        product_id
+      )
+      VALUES (?)
+    `,
+  )
+    .bind(product.id)
     .run();
 
   const destination =
-    row.affiliate_url &&
-    isSafeHttpsUrl(
-      row.affiliate_url
-    )
-      ? row.affiliate_url
-      : row.product_url;
+    safeUrl(product.affiliate_url) ??
+    safeUrl(product.product_url);
 
-  if (
-    !isSafeHttpsUrl(
-      destination
-    )
-  ) {
-    return text(
-      "Product destination is not available",
-      500
+  if (!destination) {
+    return errorResponse(
+      "Productlink is ongeldig.",
+      500,
     );
   }
 
   return Response.redirect(
     destination,
-    302
+    302,
   );
+}
+
+async function handleSync(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  if (!adminAuthorized(request, env)) {
+    return errorResponse(
+      "Niet geautoriseerd.",
+      401,
+    );
+  }
+
+  if (request.method !== "POST") {
+    return errorResponse(
+      "Gebruik POST.",
+      405,
+    );
+  }
+
+  try {
+    const result = await syncAwin(env);
+
+    return json({
+      ok: true,
+      ...result,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : String(error);
+
+    return errorResponse(
+      message,
+      500,
+    );
+  }
+}
+
+async function handleSyncLogs(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  if (!adminAuthorized(request, env)) {
+    return errorResponse(
+      "Niet geautoriseerd.",
+      401,
+    );
+  }
+
+  const logs = await env.DB.prepare(
+    `
+      SELECT
+        id,
+        network,
+        started_at,
+        finished_at,
+        imported,
+        updated,
+        failed,
+        error_message
+      FROM sync_logs
+      ORDER BY started_at DESC
+      LIMIT 50
+    `,
+  ).all();
+
+  return json({
+    logs: logs.results,
+  });
 }
 
 export default {
   async fetch(
     request: Request,
-    env: Env
+    env: Env,
   ): Promise<Response> {
-    const url =
-      new URL(request.url);
-
-    const path =
-      url.pathname;
+    const url = new URL(request.url);
 
     try {
-      if (
-        request.method ===
-          "GET" &&
-        path ===
-          "/api/health"
-      ) {
-        return health(env);
+      if (url.pathname === "/api/health") {
+        return await handleHealth(env);
       }
 
       if (
-        request.method ===
-          "GET" &&
-        path ===
-          "/api/products"
+        url.pathname === "/api/products" &&
+        request.method === "GET"
       ) {
-        return getProducts(
+        return await handleProducts(
+          request,
           env,
-          request
         );
       }
 
       if (
-        request.method ===
-          "GET" &&
-        path.startsWith(
-          "/api/products/"
-        )
+        url.pathname.startsWith("/api/products/")
       ) {
         const slug =
-          decodeURIComponent(
-            path.slice(
-              "/api/products/"
-                .length
-            )
+          url.pathname.slice(
+            "/api/products/".length,
           );
 
-        return getProduct(
-          env,
-          slug
-        );
-      }
-
-      if (
-        request.method ===
-          "POST" &&
-        path ===
-          "/api/admin/sync-awin"
-      ) {
-        return syncAwin(
-          env,
-          request
-        );
-      }
-
-      if (
-        request.method ===
-          "GET" &&
-        path ===
-          "/api/admin/sync-logs"
-      ) {
-        return getSyncLogs(
-          env,
-          request
-        );
-      }
-
-      if (
-        request.method ===
-          "POST" &&
-        path ===
-          "/api/ai/chat"
-      ) {
-        return aiChat(
-          env,
-          request
-        );
-      }
-
-      if (
-        request.method ===
-          "GET" &&
-        path.startsWith(
-          "/go/"
-        )
-      ) {
-        const id =
-          decodeURIComponent(
-            path.slice(
-              "/go/".length
-            )
+        if (slug) {
+          return await handleProductBySlug(
+            env,
+            slug,
           );
+        }
+      }
 
-        return redirectToProduct(
+      if (url.pathname === "/api/ai/chat") {
+        return await handleAiChat(
+          request,
           env,
-          id
         );
       }
 
-      return env.ASSETS.fetch(
-        request
-      );
+      if (url.pathname === "/api/admin/sync") {
+        return await handleSync(
+          request,
+          env,
+        );
+      }
+
+      if (
+        url.pathname ===
+        "/api/admin/sync-logs"
+      ) {
+        return await handleSyncLogs(
+          request,
+          env,
+        );
+      }
+
+      if (
+        url.pathname.startsWith("/go/")
+      ) {
+        const productId =
+          url.pathname.slice(4);
+
+        if (!productId) {
+          return errorResponse(
+            "Product ontbreekt.",
+            400,
+          );
+        }
+
+        return await handleAffiliateRedirect(
+          request,
+          env,
+          productId,
+        );
+      }
+
+      return env.ASSETS.fetch(request);
     } catch (error) {
-      return json(
-        {
-          error:
-            error instanceof Error
-              ? error.message
-              : "Internal server error",
-        },
-        500
+      console.error("Worker error:", error);
+
+      return errorResponse(
+        "Interne serverfout.",
+        500,
       );
     }
   },
