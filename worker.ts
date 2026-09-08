@@ -37,6 +37,10 @@ type ProductInput = {
 const DEFAULT_AI_MODEL =
   "@cf/meta/llama-3.1-8b-instruct-fast";
 
+const MAX_PRODUCTS_API = 2000;
+const DEFAULT_PRODUCTS_API = 200;
+const MAX_SYNC_PRODUCTS_PER_SOURCE = 5000;
+
 function json(
   data: unknown,
   status = 200,
@@ -86,15 +90,11 @@ function asRecord(
 }
 
 function firstValue(
-  object: Record<
-    string,
-    unknown
-  >,
+  object: Record<string, unknown>,
   keys: string[],
 ): unknown {
   for (const key of keys) {
-    const value =
-      object[key];
+    const value = object[key];
 
     if (
       value !== undefined &&
@@ -120,11 +120,10 @@ function safeUrl(
   }
 
   try {
-    const url =
-      new URL(
-        value.trim(),
-        base,
-      );
+    const url = new URL(
+      value.trim(),
+      base,
+    );
 
     if (
       url.protocol !== "http:" &&
@@ -184,9 +183,7 @@ function numberOrNull(
   if (
     typeof value === "number"
   ) {
-    return Number.isFinite(
-      value,
-    )
+    return Number.isFinite(value)
       ? value
       : null;
   }
@@ -210,14 +207,10 @@ function numberOrNull(
   }
 
   const comma =
-    normalized.lastIndexOf(
-      ",",
-    );
+    normalized.lastIndexOf(",");
 
   const dot =
-    normalized.lastIndexOf(
-      ".",
-    );
+    normalized.lastIndexOf(".");
 
   if (
     comma >= 0 &&
@@ -254,13 +247,9 @@ function numberOrNull(
   }
 
   const parsed =
-    Number(
-      normalized,
-    );
+    Number(normalized);
 
-  return Number.isFinite(
-    parsed,
-  )
+  return Number.isFinite(parsed)
     ? parsed
     : null;
 }
@@ -343,9 +332,7 @@ function normalizeGoals(
         JSON.parse(value);
 
       if (
-        Array.isArray(
-          parsed,
-        )
+        Array.isArray(parsed)
       ) {
         const goals =
           parsed
@@ -447,17 +434,13 @@ function getFeedItems(
   payload: unknown,
 ): unknown[] {
   if (
-    Array.isArray(
-      payload,
-    )
+    Array.isArray(payload)
   ) {
     return payload;
   }
 
   const object =
-    asRecord(
-      payload,
-    );
+    asRecord(payload);
 
   for (
     const key of [
@@ -474,9 +457,7 @@ function getFeedItems(
         object[key],
       )
     ) {
-      return object[
-        key
-      ] as unknown[];
+      return object[key] as unknown[];
     }
   }
 
@@ -506,7 +487,8 @@ function detectCsvDelimiter(
   let bestCount = 0;
 
   for (
-    const delimiter of delimiters
+    const delimiter of
+      delimiters
   ) {
     const count =
       sample.split(
@@ -527,14 +509,9 @@ function detectCsvDelimiter(
 
 function parseCsv(
   input: string,
-): Record<
-  string,
-  string
->[] {
+): Record<string, string>[] {
   const delimiter =
-    detectCsvDelimiter(
-      input,
-    );
+    detectCsvDelimiter(input);
 
   const rows: string[][] =
     [];
@@ -559,11 +536,9 @@ function parseCsv(
     ) {
       if (
         quoted &&
-        input[i + 1] ===
-          '"'
+        input[i + 1] === '"'
       ) {
-        field +=
-          '"';
+        field += '"';
         i++;
       } else {
         quoted =
@@ -574,16 +549,11 @@ function parseCsv(
     }
 
     if (
-      char ===
-        delimiter &&
+      char === delimiter &&
       !quoted
     ) {
-      row.push(
-        field,
-      );
-
+      row.push(field);
       field = "";
-
       continue;
     }
 
@@ -596,28 +566,21 @@ function parseCsv(
     ) {
       if (
         char === "\r" &&
-        input[i + 1] ===
-          "\n"
+        input[i + 1] === "\n"
       ) {
         i++;
       }
 
-      row.push(
-        field,
-      );
-
+      row.push(field);
       field = "";
 
       if (
         row.some(
           (value) =>
-            value.trim() !==
-            "",
+            value.trim() !== "",
         )
       ) {
-        rows.push(
-          row,
-        );
+        rows.push(row);
       }
 
       row = [];
@@ -625,24 +588,18 @@ function parseCsv(
       continue;
     }
 
-    field +=
-      char;
+    field += char;
   }
 
-  row.push(
-    field,
-  );
+  row.push(field);
 
   if (
     row.some(
       (value) =>
-        value.trim() !==
-        "",
+        value.trim() !== "",
     )
   ) {
-    rows.push(
-      row,
-    );
+    rows.push(row);
   }
 
   if (
@@ -672,22 +629,17 @@ function parseCsv(
     .map(
       (values) => {
         const result:
-          Record<
-            string,
-            string
-          > = {};
+          Record<string, string> =
+          {};
 
         headers.forEach(
           (
             header,
             index,
           ) => {
-            result[
-              header
-            ] =
-              values[
-                index
-              ] ?? "";
+            result[header] =
+              values[index] ??
+              "";
           },
         );
 
@@ -713,15 +665,10 @@ function stripXml(
 
 function parseXmlProducts(
   xml: string,
-): Record<
-  string,
-  string
->[] {
+): Record<string, string>[] {
   const products:
-    Record<
-      string,
-      string
-    >[] = [];
+    Record<string, string>[] =
+    [];
 
   const blocks =
     xml.match(
@@ -753,10 +700,8 @@ function parseXmlProducts(
     const block of blocks
   ) {
     const result:
-      Record<
-        string,
-        string
-      > = {};
+      Record<string, string> =
+      {};
 
     for (
       const fieldName of
@@ -775,28 +720,19 @@ function parseXmlProducts(
         );
 
       const match =
-        block.match(
-          regex,
-        );
+        block.match(regex);
 
       if (match) {
-        result[
-          fieldName
-        ] =
-          stripXml(
-            match[1],
-          );
+        result[fieldName] =
+          stripXml(match[1]);
       }
     }
 
     if (
-      Object.keys(
-        result,
-      ).length
+      Object.keys(result)
+        .length
     ) {
-      products.push(
-        result,
-      );
+      products.push(result);
     }
   }
 
@@ -818,7 +754,7 @@ async function fetchCatalog(
             "application/json,text/csv,text/xml,application/xml;q=0.9,*/*;q=0.8",
 
           "user-agent":
-            "Mozilla/5.0 (compatible; FitDealFinder/3.0; catalog-sync)",
+            "Mozilla/5.0 (compatible; FitDealFinder/4.0; catalog-sync)",
         },
       },
     );
@@ -833,9 +769,7 @@ async function fetchCatalog(
 
   const contentType =
     response.headers
-      .get(
-        "content-type",
-      )
+      .get("content-type")
       ?.toLowerCase() ??
     "";
 
@@ -865,20 +799,12 @@ async function fetchCatalog(
   }
 
   if (
-    contentType.includes(
-      "json",
-    ) ||
-    trimmed.startsWith(
-      "{",
-    ) ||
-    trimmed.startsWith(
-      "[",
-    )
+    contentType.includes("json") ||
+    trimmed.startsWith("{") ||
+    trimmed.startsWith("[")
   ) {
     try {
-      return JSON.parse(
-        body,
-      );
+      return JSON.parse(body);
     } catch {
       throw new Error(
         `Catalogus bevat geen geldige JSON: ${url}`,
@@ -887,20 +813,12 @@ async function fetchCatalog(
   }
 
   if (
-    contentType.includes(
-      "xml",
-    ) ||
-    contentType.includes(
-      "rss",
-    ) ||
-    trimmed.startsWith(
-      "<",
-    )
+    contentType.includes("xml") ||
+    contentType.includes("rss") ||
+    trimmed.startsWith("<")
   ) {
     const products =
-      parseXmlProducts(
-        body,
-      );
+      parseXmlProducts(body);
 
     if (
       !products.length
@@ -914,9 +832,7 @@ async function fetchCatalog(
   }
 
   const rows =
-    parseCsv(
-      body,
-    );
+    parseCsv(body);
 
   if (
     !rows.length
@@ -934,9 +850,7 @@ function getShopifyFallbackUrls(
 ): string[] {
   try {
     const source =
-      new URL(
-        sourceUrl,
-      );
+      new URL(sourceUrl);
 
     const origin =
       source.origin;
@@ -949,9 +863,7 @@ function getShopifyFallbackUrls(
     return Array.from(
       new Set(
         urls.filter(
-          (
-            candidate,
-          ) =>
+          (candidate) =>
             candidate !==
             source.toString(),
         ),
@@ -986,9 +898,7 @@ async function fetchShopifyCatalog(
         );
 
       const items =
-        getFeedItems(
-          payload,
-        );
+        getFeedItems(payload);
 
       if (
         items.length > 0
@@ -1003,8 +913,7 @@ async function fetchShopifyCatalog(
       error
     ) {
       errors.push(
-        error instanceof
-        Error
+        error instanceof Error
           ? error.message
           : String(error),
       );
@@ -1037,16 +946,11 @@ async function fetchDirectCatalog(
     );
   }
 
-  return fetchCatalog(
-    url,
-  );
+  return fetchCatalog(url);
 }
 
 function normalizeProduct(
-  source: Record<
-    string,
-    unknown
-  >,
+  source: Record<string, unknown>,
   merchantName: string,
   network: string,
   baseUrl?: string,
@@ -1128,9 +1032,7 @@ function normalizeProduct(
       ) ??
         firstValue(
           variant,
-          [
-            "price",
-          ],
+          ["price"],
         ),
     );
 
@@ -1169,16 +1071,12 @@ function normalizeProduct(
       baseUrl,
     );
 
-  if (
-    !productUrl
-  ) {
+  if (!productUrl) {
     const handle =
       String(
         firstValue(
           source,
-          [
-            "handle",
-          ],
+          ["handle"],
         ) ?? "",
       ).trim();
 
@@ -1360,9 +1258,10 @@ function normalizeProduct(
 
     name,
 
-    slug: slugify(
-      `${resolvedMerchant}-${name}-${externalId}`,
-    ),
+    slug:
+      slugify(
+        `${resolvedMerchant}-${name}-${externalId}`,
+      ),
 
     description,
 
@@ -1494,12 +1393,12 @@ async function upsertProducts(
       unique.values(),
     );
 
-  const now =
-    new Date().toISOString();
-
   let imported = 0;
   let updated = 0;
   let skipped = 0;
+
+  const now =
+    new Date().toISOString();
 
   for (
     const batch of chunks(
@@ -1515,9 +1414,7 @@ async function upsertProducts(
 
     const placeholders =
       keys
-        .map(
-          () => "?",
-        )
+        .map(() => "?")
         .join(",");
 
     const existingResult =
@@ -1526,12 +1423,10 @@ async function upsertProducts(
         SELECT id, network, external_id
         FROM products
         WHERE network || ':' || external_id
-          IN (${placeholders})
+        IN (${placeholders})
         `,
       )
-        .bind(
-          ...keys,
-        )
+        .bind(...keys)
         .all<{
           id: string;
           network: string;
@@ -1568,9 +1463,7 @@ async function upsertProducts(
         `${product.network}:${product.external_id}`;
 
       const existingId =
-        existing.get(
-          key,
-        );
+        existing.get(key);
 
       try {
         if (
@@ -1725,9 +1618,7 @@ function parseDirectCatalogConfig(
   url: string;
 }[] {
   return value
-    .split(
-      /\r?\n/,
-    )
+    .split(/\r?\n/)
     .map(
       (line) =>
         line.trim(),
@@ -1736,9 +1627,7 @@ function parseDirectCatalogConfig(
     .map(
       (line) => {
         const separator =
-          line.indexOf(
-            "|",
-          );
+          line.indexOf("|");
 
         if (
           separator <= 0
@@ -1827,9 +1716,7 @@ async function syncDirectCatalogs(
       );
 
     const rawItems =
-      getFeedItems(
-        feed,
-      );
+      getFeedItems(feed);
 
     if (
       rawItems.length ===
@@ -1840,13 +1727,19 @@ async function syncDirectCatalogs(
       );
     }
 
+    const limitedItems =
+      rawItems.slice(
+        0,
+        MAX_SYNC_PRODUCTS_PER_SOURCE,
+      );
+
     const baseUrl =
       new URL(
         catalog.url,
       ).origin;
 
     const products =
-      rawItems
+      limitedItems
         .map(
           (raw) =>
             normalizeProduct(
@@ -1949,12 +1842,16 @@ async function syncAwin(
       );
 
     const rawItems =
-      getFeedItems(
-        feed,
+      getFeedItems(feed);
+
+    const limitedItems =
+      rawItems.slice(
+        0,
+        MAX_SYNC_PRODUCTS_PER_SOURCE,
       );
 
     const products =
-      rawItems
+      limitedItems
         .map(
           (raw) =>
             normalizeProduct(
@@ -2073,10 +1970,160 @@ function isAuthorized(
     "";
 
   return (
-    supplied.length >
-      0 &&
+    supplied.length > 0 &&
     supplied ===
       env.ADMIN_SECRET
+  );
+}
+
+/**
+ * Server-side category matching.
+ *
+ * Dit voorkomt dat bijvoorbeeld:
+ * - "Whey Protein" niet onder Proteïne verschijnt
+ * - "Creatine Monohydraat" niet onder Creatine verschijnt
+ * - "5150 Pre Workout" niet onder Pre-workout verschijnt
+ */
+function categoryTerms(
+  category: string,
+): string[] {
+  const normalized =
+    category
+      .normalize("NFKD")
+      .replace(
+        /[\u0300-\u036f]/g,
+        "",
+      )
+      .toLowerCase()
+      .trim();
+
+  if (
+    normalized ===
+    "proteine"
+  ) {
+    return [
+      "proteine",
+      "protein",
+      "whey",
+      "isolaat",
+      "isolate",
+      "casein",
+      "caseine",
+      "eiwit",
+      "egg protein",
+      "beef protein",
+      "clear whey",
+      "mass gainer",
+      "gainer",
+    ];
+  }
+
+  if (
+    normalized ===
+    "creatine"
+  ) {
+    return [
+      "creatine",
+      "crea",
+      "creatine monohydraat",
+      "creatine monohydrate",
+    ];
+  }
+
+  if (
+    normalized ===
+    "pre-workout" ||
+    normalized ===
+    "pre workout"
+  ) {
+    return [
+      "pre-workout",
+      "pre workout",
+      "preworkout",
+      "pump",
+      "nox",
+      "5150",
+      "abe",
+    ];
+  }
+
+  if (
+    normalized ===
+    "supplementen"
+  ) {
+    return [
+      "supplement",
+      "vitamine",
+      "vitamin",
+      "mineral",
+      "mineraal",
+      "omega",
+      "bcaa",
+      "eaa",
+      "amino",
+      "amino acid",
+      "carnitine",
+      "glutamine",
+      "magnesium",
+      "zinc",
+      "zink",
+      "ashwagandha",
+      "electrolyte",
+      "elektrolyt",
+      "collagen",
+      "collageen",
+      "multivitamin",
+      "fish oil",
+      "visolie",
+    ];
+  }
+
+  return [
+    normalized,
+  ];
+}
+
+function productMatchesCategory(
+  product: Record<string, unknown>,
+  requestedCategory: string,
+): boolean {
+  const terms =
+    categoryTerms(
+      requestedCategory,
+    );
+
+  if (
+    !terms.length
+  ) {
+    return true;
+  }
+
+  const text =
+    [
+      product.category,
+      product.name,
+      product.brand,
+      product.description,
+    ]
+      .filter(
+        (
+          value,
+        ) =>
+          value !== null &&
+          value !== undefined,
+      )
+      .map(String)
+      .join(" ")
+      .normalize("NFKD")
+      .replace(
+        /[\u0300-\u036f]/g,
+        "",
+      )
+      .toLowerCase();
+
+  return terms.some(
+    (term) =>
+      text.includes(term),
   );
 }
 
@@ -2085,20 +2132,21 @@ async function handleProducts(
   env: Env,
 ): Promise<Response> {
   const url =
-    new URL(
-      request.url,
-    );
+    new URL(request.url);
 
   const requestedLimit =
     Number(
       url.searchParams.get(
         "limit",
-      ) ?? "50",
+      ) ??
+        String(
+          DEFAULT_PRODUCTS_API,
+        ),
     );
 
   const limit =
     Math.min(
-      100,
+      MAX_PRODUCTS_API,
       Math.max(
         1,
         Number.isFinite(
@@ -2107,32 +2155,45 @@ async function handleProducts(
           ? Math.floor(
               requestedLimit,
             )
-          : 50,
+          : DEFAULT_PRODUCTS_API,
       ),
+    );
+
+  const requestedOffset =
+    Number(
+      url.searchParams.get(
+        "offset",
+      ) ?? "0",
+    );
+
+  const offset =
+    Math.max(
+      0,
+      Number.isFinite(
+        requestedOffset,
+      )
+        ? Math.floor(
+            requestedOffset,
+          )
+        : 0,
     );
 
   const search =
     url.searchParams
-      .get(
-        "search",
-      )
+      .get("search")
       ?.trim() ??
     "";
 
   const goal =
     url.searchParams
-      .get(
-        "goal",
-      )
+      .get("goal")
       ?.trim()
       .toLowerCase() ??
     "";
 
   const category =
     url.searchParams
-      .get(
-        "category",
-      )
+      .get("category")
       ?.trim() ??
     "";
 
@@ -2151,6 +2212,8 @@ async function handleProducts(
         name LIKE ?
         OR brand LIKE ?
         OR merchant_name LIKE ?
+        OR description LIKE ?
+        OR category LIKE ?
       )
       `,
     );
@@ -2159,6 +2222,8 @@ async function handleProducts(
       `%${search}%`;
 
     binds.push(
+      query,
+      query,
       query,
       query,
       query,
@@ -2171,22 +2236,87 @@ async function handleProducts(
     );
 
     binds.push(
-      `%"${goal}"%`,
+      `%\"${goal}\"%`,
     );
   }
 
+  /*
+   * Category filtering is deliberately broader than
+   * "category = exact value".
+   *
+   * This lets the API find:
+   * Whey Protein
+   * Whey Isolate
+   * Creatine Monohydrate
+   * 5150 Pre Workout
+   * etc.
+   *
+   * We first use broad SQL matching and then apply the
+   * complete category matcher in JavaScript.
+   */
   if (category) {
-    conditions.push(
-      "category LIKE ?",
-    );
+    const terms =
+      categoryTerms(
+        category,
+      );
 
-    binds.push(
-      `%${category}%`,
-    );
+    if (
+      terms.length
+    ) {
+      const categoryConditions =
+        terms.map(
+          () =>
+            `
+            (
+              category LIKE ?
+              OR name LIKE ?
+              OR brand LIKE ?
+              OR description LIKE ?
+            )
+            `,
+        );
+
+      for (
+        const term of
+          terms
+      ) {
+        const query =
+          `%${term}%`;
+
+        binds.push(
+          query,
+          query,
+          query,
+          query,
+        );
+      }
+
+      conditions.push(
+        `(${categoryConditions.join(
+          " OR ",
+        )})`,
+      );
+    }
   }
+
+  /*
+   * Fetch a larger candidate set when category filtering
+   * is active because the final category matcher is more
+   * precise than SQL LIKE alone.
+   */
+  const sqlLimit =
+    category
+      ? Math.min(
+          MAX_PRODUCTS_API,
+          Math.max(
+            limit * 3,
+            300,
+          ),
+        )
+      : limit;
 
   binds.push(
-    limit,
+    sqlLimit,
   );
 
   const result =
@@ -2209,12 +2339,62 @@ async function handleProducts(
       )
       .all();
 
+  let products =
+    result.results;
+
+  if (
+    category
+  ) {
+    products =
+      products.filter(
+        (product) =>
+          productMatchesCategory(
+            asRecord(product),
+            category,
+          ),
+      );
+  }
+
+  const totalResult =
+    await env.DB.prepare(
+      `
+      SELECT COUNT(*) AS count
+      FROM products
+      WHERE active=1
+      `,
+    ).first<{
+      count: number;
+    }>();
+
+  const total =
+    Number(
+      totalResult?.count ??
+        0,
+    );
+
+  const paginated =
+    products.slice(
+      offset,
+      offset + limit,
+    );
+
   return json({
     products:
-      result.results,
+      paginated,
 
     count:
-      result.results.length,
+      paginated.length,
+
+    total,
+
+    limit,
+
+    offset,
+
+    has_more:
+      offset +
+        paginated.length <
+      total,
   });
 }
 
@@ -2239,9 +2419,7 @@ async function handleProduct(
       LIMIT 1
       `,
     )
-      .bind(
-        id,
-      )
+      .bind(id)
       .first();
 
   if (!row) {
@@ -2280,9 +2458,7 @@ async function handleRedirect(
       LIMIT 1
       `,
     )
-      .bind(
-        id,
-      )
+      .bind(id)
       .first<{
         id: string;
         product_url: string;
@@ -2310,9 +2486,7 @@ async function handleRedirect(
       row.product_url,
     );
 
-  if (
-    !destination
-  ) {
+  if (!destination) {
     return errorResponse(
       "Ongeldige productlink.",
       500,
@@ -2327,9 +2501,7 @@ async function handleRedirect(
     VALUES (?)
     `,
   )
-    .bind(
-      id,
-    )
+    .bind(id)
     .run();
 
   return Response.redirect(
@@ -2358,8 +2530,7 @@ async function handleHealth(
 
     products:
       Number(
-        row?.count ??
-          0,
+        row?.count ?? 0,
       ),
 
     timestamp:
@@ -2456,12 +2627,9 @@ async function handleSync(
       ) {
         awin = {
           error:
-            error instanceof
-            Error
+            error instanceof Error
               ? error.message
-              : String(
-                  error,
-                ),
+              : String(error),
         };
 
         failed++;
@@ -2614,9 +2782,7 @@ async function handleAi(
 
   const message =
     String(
-      asRecord(
-        body,
-      ).message ??
+      asRecord(body).message ??
         "",
     ).trim();
 
@@ -2677,9 +2843,7 @@ async function handleAi(
       );
 
     const record =
-      asRecord(
-        result,
-      );
+      asRecord(result);
 
     const answer =
       typeof result ===
@@ -2737,9 +2901,7 @@ export default {
     env: Env,
   ): Promise<Response> {
     const url =
-      new URL(
-        request.url,
-      );
+      new URL(request.url);
 
     try {
       if (
@@ -2778,9 +2940,7 @@ export default {
               "/api/products/"
                 .length,
             )
-            .split(
-              "/",
-            )[0];
+            .split("/")[0];
 
         return handleProduct(
           env,
@@ -2895,4 +3055,3 @@ export default {
     }
   },
 };
-      
