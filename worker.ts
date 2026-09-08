@@ -40,24 +40,37 @@ type ProductRow = {
   updated_at: string;
 };
 
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=UTF-8",
-      "cache-control": "no-store",
-      "x-content-type-options": "nosniff",
+function json(
+  data: unknown,
+  status = 200,
+): Response {
+  return new Response(
+    JSON.stringify(data),
+    {
+      status,
+      headers: {
+        "content-type":
+          "application/json; charset=UTF-8",
+        "cache-control": "no-store",
+        "x-content-type-options":
+          "nosniff",
+      },
     },
-  });
+  );
 }
 
-function text(message: string, status = 200): Response {
+function text(
+  message: string,
+  status = 200,
+): Response {
   return new Response(message, {
     status,
     headers: {
-      "content-type": "text/plain; charset=UTF-8",
+      "content-type":
+        "text/plain; charset=UTF-8",
       "cache-control": "no-store",
-      "x-content-type-options": "nosniff",
+      "x-content-type-options":
+        "nosniff",
     },
   });
 }
@@ -66,21 +79,37 @@ function errorResponse(
   message: string,
   status = 500,
 ): Response {
-  return json({ error: message }, status);
+  return json(
+    { error: message },
+    status,
+  );
 }
 
-function slugify(value: string): string {
+function slugify(
+  value: string,
+): string {
   return value
     .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(
+      /[\u0300-\u036f]/g,
+      "",
+    )
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(
+      /[^a-z0-9]+/g,
+      "-",
+    )
+    .replace(
+      /^-+|-+$/g,
+      "",
+    )
     .slice(0, 180);
 }
 
-function numberOrNull(value: unknown): number | null {
+function numberOrNull(
+  value: unknown,
+): number | null {
   if (
     value === null ||
     value === undefined ||
@@ -96,34 +125,64 @@ function numberOrNull(value: unknown): number | null {
     return value;
   }
 
-  if (typeof value !== "string") {
+  if (
+    typeof value !== "string"
+  ) {
     return null;
   }
 
-  let normalized = value
-    .trim()
-    .replace(/[^\d,.-]/g, "");
+  let normalized =
+    value
+      .trim()
+      .replace(
+        /[^\d,.-]/g,
+        "",
+      );
 
   if (!normalized) {
     return null;
   }
 
-  const comma = normalized.lastIndexOf(",");
-  const dot = normalized.lastIndexOf(".");
+  const comma =
+    normalized.lastIndexOf(",");
 
-  if (comma >= 0 && dot >= 0) {
+  const dot =
+    normalized.lastIndexOf(".");
+
+  if (
+    comma >= 0 &&
+    dot >= 0
+  ) {
     if (comma > dot) {
-      normalized = normalized
-        .replace(/\./g, "")
-        .replace(",", ".");
+      normalized =
+        normalized
+          .replace(
+            /\./g,
+            "",
+          )
+          .replace(
+            ",",
+            ".",
+          );
     } else {
-      normalized = normalized.replace(/,/g, "");
+      normalized =
+        normalized.replace(
+          /,/g,
+          "",
+        );
     }
-  } else if (comma >= 0) {
-    normalized = normalized.replace(",", ".");
+  } else if (
+    comma >= 0
+  ) {
+    normalized =
+      normalized.replace(
+        ",",
+        ".",
+      );
   }
 
-  const parsed = Number(normalized);
+  const parsed =
+    Number(normalized);
 
   return Number.isFinite(parsed)
     ? parsed
@@ -142,17 +201,25 @@ function booleanToInteger(
     return defaultValue;
   }
 
-  if (typeof value === "boolean") {
+  if (
+    typeof value === "boolean"
+  ) {
     return value ? 1 : 0;
   }
 
-  if (typeof value === "number") {
+  if (
+    typeof value === "number"
+  ) {
     return value !== 0 ? 1 : 0;
   }
 
-  if (typeof value === "string") {
+  if (
+    typeof value === "string"
+  ) {
     const normalized =
-      value.trim().toLowerCase();
+      value
+        .trim()
+        .toLowerCase();
 
     if (
       [
@@ -188,7 +255,9 @@ function booleanToInteger(
   return defaultValue;
 }
 
-function safeUrl(value: unknown): string | null {
+function safeUrl(
+  value: unknown,
+): string | null {
   if (
     typeof value !== "string" ||
     !value.trim()
@@ -197,7 +266,8 @@ function safeUrl(value: unknown): string | null {
   }
 
   try {
-    const url = new URL(value.trim());
+    const url =
+      new URL(value.trim());
 
     if (
       url.protocol !== "https:" &&
@@ -212,7 +282,9 @@ function safeUrl(value: unknown): string | null {
   }
 }
 
-function normalizeGoals(value: unknown): string {
+function normalizeGoals(
+  value: unknown,
+): string {
   const defaults = [
     "cut",
     "bulk",
@@ -220,14 +292,19 @@ function normalizeGoals(value: unknown): string {
   ];
 
   if (Array.isArray(value)) {
-    const goals = value
-      .map((item) =>
-        String(item).trim().toLowerCase(),
-      )
-      .filter(Boolean);
+    const goals =
+      value
+        .map((item) =>
+          String(item)
+            .trim()
+            .toLowerCase(),
+        )
+        .filter(Boolean);
 
     return JSON.stringify(
-      goals.length ? goals : defaults,
+      goals.length
+        ? goals
+        : defaults,
     );
   }
 
@@ -236,34 +313,49 @@ function normalizeGoals(value: unknown): string {
     value.trim()
   ) {
     try {
-      const parsed = JSON.parse(value);
+      const parsed =
+        JSON.parse(value);
 
-      if (Array.isArray(parsed)) {
-        const goals = parsed
-          .map((item) =>
-            String(item).trim().toLowerCase(),
-          )
-          .filter(Boolean);
+      if (
+        Array.isArray(parsed)
+      ) {
+        const goals =
+          parsed
+            .map((item) =>
+              String(item)
+                .trim()
+                .toLowerCase(),
+            )
+            .filter(Boolean);
 
         return JSON.stringify(
-          goals.length ? goals : defaults,
+          goals.length
+            ? goals
+            : defaults,
         );
       }
     } catch {
-      const goals = value
-        .split(/[;,|]/)
-        .map((item) =>
-          item.trim().toLowerCase(),
-        )
-        .filter(Boolean);
+      const goals =
+        value
+          .split(/[;,|]/)
+          .map((item) =>
+            item
+              .trim()
+              .toLowerCase(),
+          )
+          .filter(Boolean);
 
       if (goals.length) {
-        return JSON.stringify(goals);
+        return JSON.stringify(
+          goals,
+        );
       }
     }
   }
 
-  return JSON.stringify(defaults);
+  return JSON.stringify(
+    defaults,
+  );
 }
 
 function calculateDiscountPercent(
@@ -280,7 +372,9 @@ function calculateDiscountPercent(
   }
 
   return Math.round(
-    ((oldPrice - price) / oldPrice) * 100,
+    ((oldPrice - price) /
+      oldPrice) *
+      100,
   );
 }
 
@@ -327,7 +421,10 @@ function getFeedItems(
   }
 
   const object =
-    payload as Record<string, unknown>;
+    payload as Record<
+      string,
+      unknown
+    >;
 
   for (
     const key of [
@@ -337,8 +434,14 @@ function getFeedItems(
       "results",
     ]
   ) {
-    if (Array.isArray(object[key])) {
-      return object[key] as unknown[];
+    if (
+      Array.isArray(
+        object[key],
+      )
+    ) {
+      return object[
+        key
+      ] as unknown[];
     }
   }
 
@@ -350,17 +453,26 @@ function asRecord(
 ): Record<string, unknown> {
   return value &&
     typeof value === "object"
-    ? value as Record<string, unknown>
+    ? value as Record<
+        string,
+        unknown
+      >
     : {};
 }
 
 function firstValue(
-  object: Record<string, unknown>,
+  object: Record<
+    string,
+    unknown
+  >,
   keys: string[],
 ): unknown {
-  for (const key of keys) {
+  for (
+    const key of keys
+  ) {
     if (
-      object[key] !== undefined &&
+      object[key] !==
+        undefined &&
       object[key] !== null &&
       object[key] !== ""
     ) {
@@ -392,24 +504,30 @@ async function syncAwin(
      (network, started_at)
      VALUES (?, ?)`,
   )
-    .bind("AWIN", startedAt)
+    .bind(
+      "AWIN",
+      startedAt,
+    )
     .run();
 
   let imported = 0;
   let updated = 0;
   let failed = 0;
-  let errorMessage: string | null = null;
+  let errorMessage:
+    | string
+    | null = null;
 
   try {
-    const response = await fetch(
-      env.AWIN_FEED_URL,
-      {
-        headers: {
-          accept:
-            "application/json,text/plain,*/*",
+    const response =
+      await fetch(
+        env.AWIN_FEED_URL,
+        {
+          headers: {
+            accept:
+              "application/json,text/plain,*/*",
+          },
         },
-      },
-    );
+      );
 
     if (!response.ok) {
       throw new Error(
@@ -431,10 +549,15 @@ async function syncAwin(
       contentType.includes(
         "application/json",
       ) ||
-      body.trim().startsWith("{") ||
-      body.trim().startsWith("[")
+      body
+        .trim()
+        .startsWith("{") ||
+      body
+        .trim()
+        .startsWith("[")
     ) {
-      payload = JSON.parse(body);
+      payload =
+        JSON.parse(body);
     } else {
       throw new Error(
         "De huidige Awin-import ondersteunt JSON. De ontvangen feed is geen JSON.",
@@ -442,51 +565,67 @@ async function syncAwin(
     }
 
     const items =
-      getFeedItems(payload);
+      getFeedItems(
+        payload,
+      );
 
-    for (const item of items) {
+    for (
+      const item of items
+    ) {
       try {
         const source =
           asRecord(item);
 
         const externalId =
           String(
-            firstValue(source, [
-              "external_id",
-              "externalId",
-              "id",
-              "aw_product_id",
-              "product_id",
-            ]) ?? "",
+            firstValue(
+              source,
+              [
+                "external_id",
+                "externalId",
+                "id",
+                "aw_product_id",
+                "product_id",
+              ],
+            ) ?? "",
           ).trim();
 
         const name =
           String(
-            firstValue(source, [
-              "name",
-              "product_name",
-              "title",
-            ]) ?? "",
+            firstValue(
+              source,
+              [
+                "name",
+                "product_name",
+                "title",
+              ],
+            ) ?? "",
           ).trim();
 
         const productUrl =
           safeUrl(
-            firstValue(source, [
-              "product_url",
-              "productUrl",
-              "url",
-              "deep_link",
-              "deeplink",
-            ]),
+            firstValue(
+              source,
+              [
+                "product_url",
+                "productUrl",
+                "url",
+                "deep_link",
+                "deeplink",
+              ],
+            ),
           );
 
         const price =
           numberOrNull(
-            firstValue(source, [
-              "price",
-              "current_price",
-              "sale_price",
-            ]),
+            firstValue(
+              source,
+              [
+                "price",
+                "current_price",
+                "sale_price",
+              ],
+            ),
           );
 
         if (
@@ -502,113 +641,150 @@ async function syncAwin(
 
         const oldPrice =
           numberOrNull(
-            firstValue(source, [
-              "old_price",
-              "oldPrice",
-              "rrp",
-              "regular_price",
-            ]),
+            firstValue(
+              source,
+              [
+                "old_price",
+                "oldPrice",
+                "rrp",
+                "regular_price",
+              ],
+            ),
           );
 
         const imageUrl =
           safeUrl(
-            firstValue(source, [
-              "image_url",
-              "imageUrl",
-              "image",
-              "aw_image_url",
-            ]),
+            firstValue(
+              source,
+              [
+                "image_url",
+                "imageUrl",
+                "image",
+                "aw_image_url",
+              ],
+            ),
           );
 
         const affiliateUrl =
           safeUrl(
-            firstValue(source, [
-              "affiliate_url",
-              "affiliateUrl",
-              "tracking_url",
-              "trackingUrl",
-            ]),
+            firstValue(
+              source,
+              [
+                "affiliate_url",
+                "affiliateUrl",
+                "tracking_url",
+                "trackingUrl",
+              ],
+            ),
           );
 
         const merchantName =
           String(
-            firstValue(source, [
-              "merchant_name",
-              "merchantName",
-              "advertiser_name",
-            ]) ?? "Awin",
+            firstValue(
+              source,
+              [
+                "merchant_name",
+                "merchantName",
+                "advertiser_name",
+              ],
+            ) ?? "Awin",
           ).trim();
 
         const merchantIdValue =
-          firstValue(source, [
-            "merchant_id",
-            "merchantId",
-            "advertiser_id",
-            "advertiserId",
-          ]);
+          firstValue(
+            source,
+            [
+              "merchant_id",
+              "merchantId",
+              "advertiser_id",
+              "advertiserId",
+            ],
+          );
 
         const merchantId =
           merchantIdValue ===
-            undefined ||
+              undefined ||
           merchantIdValue === null
             ? null
-            : String(merchantIdValue);
+            : String(
+                merchantIdValue,
+              );
 
         const brandValue =
-          firstValue(source, [
-            "brand",
-            "brand_name",
-          ]);
+          firstValue(
+            source,
+            [
+              "brand",
+              "brand_name",
+            ],
+          );
 
         const categoryValue =
-          firstValue(source, [
-            "category",
-            "category_name",
-          ]);
+          firstValue(
+            source,
+            [
+              "category",
+              "category_name",
+            ],
+          );
 
         const descriptionValue =
-          firstValue(source, [
-            "description",
-            "short_description",
-          ]);
+          firstValue(
+            source,
+            [
+              "description",
+              "short_description",
+            ],
+          );
 
         const brand =
-          brandValue === undefined ||
+          brandValue ===
+              undefined ||
           brandValue === null
             ? null
-            : String(brandValue).trim();
+            : String(
+                brandValue,
+              ).trim();
 
         const category =
-          categoryValue === undefined ||
+          categoryValue ===
+              undefined ||
           categoryValue === null
             ? null
-            : String(categoryValue).trim();
+            : String(
+                categoryValue,
+              ).trim();
 
         const description =
-          descriptionValue === undefined ||
+          descriptionValue ===
+              undefined ||
           descriptionValue === null
             ? null
-            : String(descriptionValue).trim();
+            : String(
+                descriptionValue,
+              ).trim();
 
         const goals =
           normalizeGoals(
-            firstValue(source, [
-              "goals",
-              "goal",
-            ]),
+            firstValue(
+              source,
+              [
+                "goals",
+                "goal",
+              ],
+            ),
           );
 
-        /*
-         * Als de feed geen voorraadveld heeft,
-         * gaan we NIET automatisch uit van voorraad.
-         */
         const stockValue =
-          firstValue(source, [
-            "in_stock",
-            "inStock",
-            "availability",
-            "stock",
-          ]);
+          firstValue(
+            source,
+            [
+              "in_stock",
+              "inStock",
+              "availability",
+              "stock",
+            ],
+          );
 
         const inStock =
           booleanToInteger(
@@ -653,7 +829,9 @@ async function syncAwin(
               slug: string;
             }>();
 
-        let slug = existing?.slug ?? baseSlug;
+        let slug =
+          existing?.slug ??
+          baseSlug;
 
         if (!existing) {
           let suffix = 1;
@@ -669,6 +847,7 @@ async function syncAwin(
               .first()
           ) {
             suffix++;
+
             slug =
               `${baseSlug}-${suffix}`;
           }
@@ -747,9 +926,10 @@ async function syncAwin(
               price,
               oldPrice,
               String(
-                firstValue(source, [
-                  "currency",
-                ]) ?? "EUR",
+                firstValue(
+                  source,
+                  ["currency"],
+                ) ?? "EUR",
               ),
               imageUrl,
               productUrl,
@@ -814,7 +994,9 @@ async function syncAwin(
     .run();
 
   if (errorMessage) {
-    throw new Error(errorMessage);
+    throw new Error(
+      errorMessage,
+    );
   }
 
   return {
@@ -858,8 +1040,12 @@ async function handleProducts(
     Math.max(
       1,
       Math.min(
-        Number.isFinite(rawLimit)
-          ? Math.floor(rawLimit)
+        Number.isFinite(
+          rawLimit,
+        )
+          ? Math.floor(
+              rawLimit,
+            )
           : 60,
         100,
       ),
@@ -869,7 +1055,8 @@ async function handleProducts(
     "active = 1",
   ];
 
-  const binds: unknown[] = [];
+  const binds: unknown[] =
+    [];
 
   if (search) {
     conditions.push(
@@ -903,7 +1090,7 @@ async function handleProducts(
     );
 
     binds.push(
-      `%"${goal}"%`,
+      `%\"${goal}\"%`,
     );
   }
 
@@ -944,7 +1131,9 @@ async function handleProducts(
       created_at,
       updated_at
     FROM products
-    WHERE ${conditions.join(" AND ")}
+    WHERE ${conditions.join(
+      " AND ",
+    )}
     ORDER BY
       deal_score DESC,
       price ASC,
@@ -955,7 +1144,9 @@ async function handleProducts(
   binds.push(limit);
 
   const result =
-    await env.DB.prepare(query)
+    await env.DB.prepare(
+      query,
+    )
       .bind(...binds)
       .all<ProductRow>();
 
@@ -963,7 +1154,8 @@ async function handleProducts(
     products:
       result.results ?? [],
     count:
-      result.results?.length ?? 0,
+      result.results?.length ??
+      0,
   });
 }
 
@@ -1004,12 +1196,16 @@ async function handleHealth(
          FROM products
          WHERE active = 1`,
       )
-        .first<{ count: number }>();
+        .first<{
+          count: number;
+        }>();
 
     return json({
       ok: true,
       products:
-        Number(result?.count ?? 0),
+        Number(
+          result?.count ?? 0,
+        ),
       ai: Boolean(env.AI),
       timestamp:
         new Date().toISOString(),
@@ -1041,7 +1237,9 @@ async function handleAffiliateRedirect(
       .first<{
         id: string;
         product_url: string;
-        affiliate_url: string | null;
+        affiliate_url:
+          | string
+          | null;
         active: number;
       }>();
 
@@ -1056,8 +1254,12 @@ async function handleAffiliateRedirect(
   }
 
   const target =
-    safeUrl(product.affiliate_url) ??
-    safeUrl(product.product_url);
+    safeUrl(
+      product.affiliate_url,
+    ) ??
+    safeUrl(
+      product.product_url,
+    );
 
   if (!target) {
     return text(
@@ -1165,11 +1367,29 @@ async function handleAiChat(
   }
 }
 
+/*
+ * ADMIN AUTHENTICATIE
+ *
+ * We controleren eerst of ADMIN_SECRET
+ * überhaupt beschikbaar is in de runtime
+ * van deze Worker.
+ *
+ * Daarna vergelijken we de ingevoerde
+ * waarde met de Cloudflare Secret.
+ */
 function isAuthorized(
   request: Request,
   env: Env,
 ): boolean {
-  if (!env.ADMIN_SECRET) {
+  const configuredSecret =
+    env.ADMIN_SECRET?.trim() ??
+    "";
+
+  if (!configuredSecret) {
+    console.error(
+      "ADMIN_SECRET ontbreekt in de runtime environment.",
+    );
+
     return false;
   }
 
@@ -1182,21 +1402,23 @@ function isAuthorized(
     authorization.startsWith(
       "Bearer ",
     )
-      ? authorization.slice(7)
+      ? authorization
+          .slice(7)
+          .trim()
       : "";
 
   const custom =
-    request.headers.get(
-      "x-admin-secret",
-    ) ?? "";
+    request.headers
+      .get(
+        "x-admin-secret",
+      )
+      ?.trim() ?? "";
 
-  /*
-   * We ondersteunen beide headers.
-   * De bestaande adminpagina gebruikt Authorization.
-   */
   return (
-    bearer === env.ADMIN_SECRET ||
-    custom === env.ADMIN_SECRET
+    bearer ===
+      configuredSecret ||
+    custom ===
+      configuredSecret
   );
 }
 
@@ -1204,6 +1426,23 @@ async function handleAdminSync(
   request: Request,
   env: Env,
 ): Promise<Response> {
+  /*
+   * Eerst controleren of de Secret
+   * daadwerkelijk beschikbaar is
+   * in de actieve Worker.
+   */
+  if (!env.ADMIN_SECRET?.trim()) {
+    return errorResponse(
+      "ADMIN_SECRET ontbreekt in de runtime van deze Worker. De Cloudflare Secret is niet beschikbaar voor deze deployment.",
+      500,
+    );
+  }
+
+  /*
+   * Secret bestaat, maar komt niet
+   * overeen met wat de adminpagina
+   * heeft meegestuurd.
+   */
   if (
     !isAuthorized(
       request,
@@ -1211,7 +1450,7 @@ async function handleAdminSync(
     )
   ) {
     return errorResponse(
-      "Niet geautoriseerd.",
+      "ADMIN_SECRET is aanwezig, maar de ingevoerde waarde komt niet overeen.",
       401,
     );
   }
@@ -1245,6 +1484,13 @@ async function handleAdminLogs(
   request: Request,
   env: Env,
 ): Promise<Response> {
+  if (!env.ADMIN_SECRET?.trim()) {
+    return errorResponse(
+      "ADMIN_SECRET ontbreekt in de runtime van deze Worker. De Cloudflare Secret is niet beschikbaar voor deze deployment.",
+      500,
+    );
+  }
+
   if (
     !isAuthorized(
       request,
@@ -1252,7 +1498,7 @@ async function handleAdminLogs(
     )
   ) {
     return errorResponse(
-      "Niet geautoriseerd.",
+      "ADMIN_SECRET is aanwezig, maar de ingevoerde waarde komt niet overeen.",
       401,
     );
   }
@@ -1290,7 +1536,9 @@ export default {
         request.method === "GET" &&
         path === "/api/health"
       ) {
-        return handleHealth(env);
+        return handleHealth(
+          env,
+        );
       }
 
       if (
@@ -1312,7 +1560,8 @@ export default {
         const slug =
           decodeURIComponent(
             path.slice(
-              "/api/products/".length,
+              "/api/products/"
+                .length,
             ),
           ).trim();
 
@@ -1339,18 +1588,13 @@ export default {
         );
       }
 
-      /*
-       * BELANGRIJKE FIX:
-       * Zowel de huidige adminpagina
-       * (/api/admin/sync) als de oude
-       * route (/api/admin/sync-awin)
-       * worden ondersteund.
-       */
       if (
         request.method === "POST" &&
         (
-          path === "/api/admin/sync" ||
-          path === "/api/admin/sync-awin"
+          path ===
+            "/api/admin/sync" ||
+          path ===
+            "/api/admin/sync-awin"
         )
       ) {
         return handleAdminSync(
@@ -1361,7 +1605,8 @@ export default {
 
       if (
         request.method === "GET" &&
-        path === "/api/admin/sync-logs"
+        path ===
+          "/api/admin/sync-logs"
       ) {
         return handleAdminLogs(
           request,
