@@ -18,7 +18,7 @@ const state = {
 };
 
 /* =========================================================
-   BASIS HELPERS
+   HELPERS
 ========================================================= */
 
 function $(selector) {
@@ -43,10 +43,7 @@ function productText(product) {
     product?.brand,
     product?.merchant_name,
     product?.category,
-    product?.description,
-    Array.isArray(product?.goals)
-      ? product.goals.join(" ")
-      : product?.goals
+    product?.description
   ].join(" "));
 }
 
@@ -80,7 +77,7 @@ function hasAny(text, words) {
 }
 
 /* =========================================================
-   PRODUCT FILTERING
+   PRODUCT FILTER
 ========================================================= */
 
 const BAD_WORDS = [
@@ -102,9 +99,9 @@ const BAD_WORDS = [
   "accessoire",
   "accessories",
   "gym tas",
+  "gymtas",
   "sporttas",
   "voedingsschema",
-  "voedingsplan",
   "voedingsplan",
   "meal plan",
   "dieetplan",
@@ -118,11 +115,12 @@ function isUsableProduct(product) {
   if (!product.id) return false;
   if (!product.name) return false;
 
-  const productUrl =
-    product.product_url ||
-    product.affiliate_url;
-
-  if (!productUrl) return false;
+  if (
+    !product.product_url &&
+    !product.affiliate_url
+  ) {
+    return false;
+  }
 
   const text = productText(product);
 
@@ -132,15 +130,12 @@ function isUsableProduct(product) {
 }
 
 /* =========================================================
-   DOELEN
+   PRODUCT TYPES
 ========================================================= */
 
 const CUT_WORDS = [
-  "cut",
-  "cutting",
   "fat burner",
   "fatburner",
-  "fat burner",
   "thermogenic",
   "weight loss",
   "gewichtsverlies",
@@ -148,66 +143,58 @@ const CUT_WORDS = [
   "l-carnitine",
   "carnitine",
   "cla",
-  "caffeine",
-  "cafeine",
   "green tea",
   "groene thee"
 ];
 
 const BULK_WORDS = [
-  "bulk",
-  "bulking",
-  "mass",
   "mass gainer",
   "massgainer",
-  "gainer",
   "weight gainer",
   "weightgainer",
-  "calorie",
-  "calorien",
-  "muscle gain",
-  "weight gain",
-  "hard gainer"
+  "gainer",
+  "hard gainer",
+  "mega mass",
+  "mass gain",
+  "calorie surplus"
 ];
 
-const LEAN_BULK_WORDS = [
-  "lean bulk",
-  "lean-bulk",
-  "lean mass",
-  "muscle",
-  "muscle gain",
-  "spier",
-  "spieren",
+const PROTEIN_WORDS = [
   "protein",
   "proteine",
   "whey",
   "casein",
   "caseine",
   "isolate",
-  "isolaat",
-  "creatine",
-  "creatine monohydrate",
-  "amino",
-  "bcaa",
+  "isolaat"
+];
+
+const CREATINE_WORDS = [
+  "creatine"
+];
+
+const PRE_WORKOUT_WORDS = [
   "pre workout",
   "pre-workout",
+  "preworkout",
+  "pump",
   "citrulline",
   "beta alanine"
 ];
 
+const MUSCLE_WORDS = [
+  "muscle",
+  "spier",
+  "spieren",
+  "muscle gain",
+  "strength",
+  "kracht"
+];
+
 const GENERAL_SUPPLEMENT_WORDS = [
-  "protein",
-  "proteine",
-  "whey",
-  "casein",
-  "caseine",
-  "isolate",
-  "isolaat",
-  "creatine",
-  "creatine monohydrate",
-  "pre workout",
-  "pre-workout",
-  "preworkout",
+  ...PROTEIN_WORDS,
+  ...CREATINE_WORDS,
+  ...PRE_WORKOUT_WORDS,
   "bcaa",
   "amino",
   "amino acid",
@@ -224,13 +211,9 @@ const GENERAL_SUPPLEMENT_WORDS = [
   "supplement",
   "supplementen",
   "nutrition",
-  "voeding",
-  "mass",
-  "gainer",
   "caffeine",
   "cafeine",
   "carnitine",
-  "l-carnitine",
   "beta alanine",
   "citrulline",
   "pump",
@@ -240,111 +223,98 @@ const GENERAL_SUPPLEMENT_WORDS = [
   "post-workout"
 ];
 
-function productGoals(product) {
-  const raw = product?.goals;
-
-  if (Array.isArray(raw)) {
-    return raw
-      .map(normalize)
-      .filter(Boolean);
-  }
-
-  if (typeof raw === "string") {
-    try {
-      const parsed = JSON.parse(raw);
-
-      if (Array.isArray(parsed)) {
-        return parsed
-          .map(normalize)
-          .filter(Boolean);
-      }
-    } catch (_) {}
-
-    return raw
-      .split(",")
-      .map(normalize)
-      .filter(Boolean);
-  }
-
-  return [];
-}
+/* =========================================================
+   GOAL MATCHING
+========================================================= */
 
 function matchesGoal(product, goal) {
   if (!goal) return true;
 
-  const selectedGoal = normalize(goal);
-  const text = productText(product);
-  const goals = productGoals(product);
+  const selectedGoal =
+    normalize(goal);
 
-  /*
-    Eerst kijken naar het doelveld uit de database.
-  */
-  if (
-    goals.includes(selectedGoal) ||
-    goals.includes(selectedGoal.replace("-", " "))
-  ) {
-    return true;
-  }
+  const text =
+    productText(product);
 
-  const isCutProduct =
+  const isCut =
     hasAny(text, CUT_WORDS);
 
-  const isBulkProduct =
+  const isBulk =
     hasAny(text, BULK_WORDS);
 
-  const isLeanBulkProduct =
-    hasAny(text, LEAN_BULK_WORDS);
+  const isProtein =
+    hasAny(text, PROTEIN_WORDS);
 
-  const isGeneralSupplement =
-    hasAny(text, GENERAL_SUPPLEMENT_WORDS);
+  const isCreatine =
+    hasAny(text, CREATINE_WORDS);
+
+  const isPreWorkout =
+    hasAny(text, PRE_WORKOUT_WORDS);
+
+  const isMuscle =
+    hasAny(text, MUSCLE_WORDS);
 
   /*
-    CUT
-    Geen mass gainers bij cut.
+    BELANGRIJK:
+
+    We gebruiken product.goals NIET meer om automatisch
+    ieder product aan Cut/Bulk/Lean Bulk toe te wijzen.
+
+    De database heeft namelijk een standaardwaarde
+    met alle drie de doelen.
   */
+
   if (selectedGoal === "cut") {
-    if (isBulkProduct) {
+
+    /*
+      Mass gainers horen niet bij Cut.
+    */
+    if (isBulk) {
       return false;
     }
 
     return (
-      isCutProduct ||
-      isGeneralSupplement
+      isCut ||
+      isProtein ||
+      isCreatine ||
+      isPreWorkout
     );
   }
 
-  /*
-    BULK
-    Geen duidelijke fat burners bij bulk.
-  */
   if (selectedGoal === "bulk") {
-    if (isCutProduct && !isGeneralSupplement) {
+
+    /*
+      Duidelijke fat burners horen niet bij Bulk.
+    */
+    if (isCut && !isProtein && !isCreatine) {
       return false;
     }
 
     return (
-      isBulkProduct ||
-      isGeneralSupplement
+      isBulk ||
+      isProtein ||
+      isCreatine ||
+      isMuscle
     );
   }
 
-  /*
-    LEAN BULK
-    Geen klassieke mass gainers.
-    Wel eiwit, creatine, pre-workout,
-    spierproducten en algemene supplementen.
-  */
   if (
     selectedGoal === "lean-bulk" ||
     selectedGoal === "lean bulk"
   ) {
-    if (isBulkProduct) {
+
+    /*
+      Lean bulk is geen klassieke mass-gainer selectie.
+    */
+    if (isBulk) {
       return false;
     }
 
     return (
-      isLeanBulkProduct ||
-      isGeneralSupplement
+      isProtein ||
+      isCreatine ||
+      isPreWorkout ||
+      isMuscle
     );
   }
 
@@ -352,7 +322,7 @@ function matchesGoal(product, goal) {
 }
 
 /* =========================================================
-   CATEGORIEËN
+   CATEGORY MATCHING
 ========================================================= */
 
 function matchesCategory(product, category) {
@@ -366,31 +336,24 @@ function matchesCategory(product, category) {
 
   if (selectedCategory === "proteine") {
     return hasAny(text, [
-      "protein",
-      "proteine",
-      "whey",
-      "casein",
-      "caseine",
-      "isolate",
-      "isolaat",
+      ...PROTEIN_WORDS,
       "gainer",
       "mass"
     ]);
   }
 
   if (selectedCategory === "creatine") {
-    return text.includes("creatine");
+    return hasAny(
+      text,
+      CREATINE_WORDS
+    );
   }
 
   if (selectedCategory === "pre-workout") {
-    return hasAny(text, [
-      "pre workout",
-      "pre-workout",
-      "preworkout",
-      "pump",
-      "citrulline",
-      "beta alanine"
-    ]);
+    return hasAny(
+      text,
+      PRE_WORKOUT_WORDS
+    );
   }
 
   if (selectedCategory === "supplementen") {
@@ -404,13 +367,13 @@ function matchesCategory(product, category) {
 }
 
 /* =========================================================
-   ZOEKEN
+   SEARCH
 ========================================================= */
 
 function matchesSearch(product, query) {
   if (!query) return true;
 
-  const searchWords =
+  const words =
     normalize(query)
       .split(/\s+/)
       .filter(Boolean);
@@ -418,11 +381,7 @@ function matchesSearch(product, query) {
   const text =
     productText(product);
 
-  /*
-    Alle woorden van de zoekopdracht
-    moeten ergens in het product voorkomen.
-  */
-  return searchWords.every(word =>
+  return words.every(word =>
     text.includes(word)
   );
 }
@@ -432,6 +391,7 @@ function matchesSearch(product, query) {
 ========================================================= */
 
 function applyFilters() {
+
   const query =
     normalize(state.search);
 
@@ -442,15 +402,30 @@ function applyFilters() {
         return false;
       }
 
-      if (!matchesSearch(product, query)) {
+      if (
+        !matchesSearch(
+          product,
+          query
+        )
+      ) {
         return false;
       }
 
-      if (!matchesGoal(product, state.goal)) {
+      if (
+        !matchesGoal(
+          product,
+          state.goal
+        )
+      ) {
         return false;
       }
 
-      if (!matchesCategory(product, state.category)) {
+      if (
+        !matchesCategory(
+          product,
+          state.category
+        )
+      ) {
         return false;
       }
 
@@ -460,19 +435,27 @@ function applyFilters() {
   /*
     Beste deals eerst.
   */
-  state.filtered.sort((a, b) => {
-    const scoreA =
-      Number(a.deal_score || 0);
+  state.filtered.sort(
+    (a, b) => {
 
-    const scoreB =
-      Number(b.deal_score || 0);
+      const scoreA =
+        Number(a.deal_score || 0);
 
-    if (scoreB !== scoreA) {
-      return scoreB - scoreA;
+      const scoreB =
+        Number(b.deal_score || 0);
+
+      if (
+        scoreB !== scoreA
+      ) {
+        return scoreB - scoreA;
+      }
+
+      return (
+        price(a) -
+        price(b)
+      );
     }
-
-    return price(a) - price(b);
-  });
+  );
 
   state.visibleCount =
     PRODUCTS_PER_VIEW;
@@ -481,29 +464,35 @@ function applyFilters() {
 }
 
 /* =========================================================
-   PRODUCTEN LADEN
+   PRODUCTS LADEN
 ========================================================= */
 
 async function loadProducts() {
-  if (state.loading) return;
+
+  if (state.loading) {
+    return;
+  }
 
   state.loading = true;
 
   const products = [];
 
   try {
+
     for (
       let offset = 0;
       offset < MAX_PRODUCTS;
       offset += PAGE_SIZE
     ) {
+
       const url =
         `${API_PRODUCTS}?limit=${PAGE_SIZE}&offset=${offset}`;
 
       const response =
         await fetch(url, {
           headers: {
-            Accept: "application/json"
+            Accept:
+              "application/json"
           }
         });
 
@@ -518,44 +507,62 @@ async function loadProducts() {
 
       let batch = [];
 
-      if (Array.isArray(data)) {
+      if (
+        Array.isArray(data)
+      ) {
         batch = data;
+
       } else if (
-        Array.isArray(data.products)
+        Array.isArray(
+          data.products
+        )
       ) {
-        batch = data.products;
+        batch =
+          data.products;
+
       } else if (
-        Array.isArray(data.data)
+        Array.isArray(
+          data.data
+        )
       ) {
-        batch = data.data;
+        batch =
+          data.data;
       }
 
-      products.push(...batch);
+      products.push(
+        ...batch
+      );
 
-      /*
-        Als de API minder dan één volledige pagina
-        terugstuurt, zijn we klaar.
-      */
-      if (batch.length < PAGE_SIZE) {
+      if (
+        batch.length <
+        PAGE_SIZE
+      ) {
         break;
       }
 
-      if (products.length >= MAX_PRODUCTS) {
+      if (
+        products.length >=
+        MAX_PRODUCTS
+      ) {
         break;
       }
     }
 
     /*
-      Dubbele producten verwijderen.
+      Dubbele IDs verwijderen.
     */
     const unique =
       new Map();
 
-    for (const product of products) {
+    for (
+      const product of products
+    ) {
+
       if (
         product &&
         product.id
       ) {
+
         unique.set(
           String(product.id),
           product
@@ -567,13 +574,15 @@ async function loadProducts() {
       [...unique.values()];
 
     console.log(
-      "FitDealFinder producten geladen:",
-      state.products.length
+      "FitDealFinder:",
+      state.products.length,
+      "producten geladen"
     );
 
     applyFilters();
 
   } catch (error) {
+
     console.error(
       "Product loading failed:",
       error
@@ -583,26 +592,35 @@ async function loadProducts() {
       $("#products-grid");
 
     if (grid) {
+
       grid.innerHTML = `
         <div class="empty-state">
-          <h3>Producten konden niet worden geladen</h3>
+
+          <h3>
+            Producten konden niet worden geladen
+          </h3>
+
           <p>
             Ververs de pagina en probeer opnieuw.
           </p>
+
         </div>
       `;
     }
 
   } finally {
-    state.loading = false;
+
+    state.loading =
+      false;
   }
 }
 
 /* =========================================================
-   PRODUCT KAART
+   PRODUCT CARD
 ========================================================= */
 
 function productCard(product) {
+
   const currentPrice =
     price(product);
 
@@ -610,8 +628,11 @@ function productCard(product) {
     Number(product.old_price);
 
   const oldPrice =
-    Number.isFinite(oldPriceValue) &&
-    oldPriceValue > currentPrice
+    Number.isFinite(
+      oldPriceValue
+    ) &&
+    oldPriceValue >
+      currentPrice
       ? `
         <span class="old-price">
           ${money(
@@ -623,14 +644,20 @@ function productCard(product) {
       : "";
 
   const discountValue =
-    Number(product.discount_percent);
+    Number(
+      product.discount_percent
+    );
 
   const discount =
-    Number.isFinite(discountValue) &&
+    Number.isFinite(
+      discountValue
+    ) &&
     discountValue > 0
       ? `
         <span class="discount">
-          -${Math.round(discountValue)}%
+          -${Math.round(
+            discountValue
+          )}%
         </span>
       `
       : "";
@@ -639,10 +666,16 @@ function productCard(product) {
     product.image_url
       ? `
         <img
-          src="${escapeHtml(product.image_url)}"
-          alt="${escapeHtml(product.name)}"
+          src="${escapeHtml(
+            product.image_url
+          )}"
+          alt="${escapeHtml(
+            product.name
+          )}"
           loading="lazy"
-          onerror="this.style.display='none'"
+          onerror="
+            this.style.display='none'
+          "
         >
       `
       : `
@@ -652,7 +685,9 @@ function productCard(product) {
       `;
 
   const stock =
-    Number(product.in_stock) === 1
+    Number(
+      product.in_stock
+    ) === 1
       ? `
         <span class="stock">
           Op voorraad
@@ -667,7 +702,9 @@ function productCard(product) {
   return `
     <article
       class="product-card"
-      data-product-id="${escapeHtml(String(product.id))}"
+      data-product-id="${escapeHtml(
+        String(product.id)
+      )}"
     >
 
       <div class="product-image">
@@ -685,7 +722,9 @@ function productCard(product) {
         </div>
 
         <h3>
-          ${escapeHtml(product.name)}
+          ${escapeHtml(
+            product.name
+          )}
         </h3>
 
         <div class="product-price">
@@ -709,7 +748,8 @@ function productCard(product) {
 
           <span>
             ${escapeHtml(
-              product.merchant_name || ""
+              product.merchant_name ||
+              ""
             )}
           </span>
 
@@ -749,10 +789,13 @@ function productCard(product) {
 ========================================================= */
 
 function renderProducts() {
+
   const grid =
     $("#products-grid");
 
-  if (!grid) return;
+  if (!grid) {
+    return;
+  }
 
   const visible =
     state.filtered.slice(
@@ -789,6 +832,7 @@ function renderProducts() {
     $("#product-count");
 
   if (count) {
+
     count.textContent =
       `${state.filtered.length} producten`;
   }
@@ -798,10 +842,11 @@ function renderProducts() {
 }
 
 /* =========================================================
-   MEER PRODUCTEN
+   LOAD MORE
 ========================================================= */
 
 function renderLoadMore() {
+
   const existing =
     $("#load-more-products");
 
@@ -819,10 +864,14 @@ function renderLoadMore() {
   const grid =
     $("#products-grid");
 
-  if (!grid) return;
+  if (!grid) {
+    return;
+  }
 
   const button =
-    document.createElement("button");
+    document.createElement(
+      "button"
+    );
 
   button.id =
     "load-more-products";
@@ -839,6 +888,7 @@ function renderLoadMore() {
   button.addEventListener(
     "click",
     () => {
+
       state.visibleCount +=
         PRODUCTS_PER_VIEW;
 
@@ -846,41 +896,39 @@ function renderLoadMore() {
     }
   );
 
-  const parent =
-    grid.parentElement;
-
-  if (parent) {
-    parent.appendChild(button);
-  }
+  grid.parentElement
+    ?.appendChild(button);
 }
 
 /* =========================================================
-   ZOEKFORMULIER
+   SEARCH
 ========================================================= */
 
 function setupSearch() {
+
   const form =
     $("#search-form");
 
   const input =
     $("#search");
 
-  if (!input) return;
+  if (!input) {
+    return;
+  }
 
   input.addEventListener(
     "input",
     () => {
+
       state.search =
         input.value;
 
       /*
-        Als iemand gaat zoeken,
-        resetten we doel en categorie.
+        Zoeken staat los van doel
+        en categorie.
       */
-      if (normalize(input.value)) {
-        state.goal = "";
-        state.category = "";
-      }
+      state.goal = "";
+      state.category = "";
 
       applyFilters();
     }
@@ -889,6 +937,7 @@ function setupSearch() {
   input.addEventListener(
     "search",
     () => {
+
       state.search =
         input.value;
 
@@ -897,9 +946,11 @@ function setupSearch() {
   );
 
   if (form) {
+
     form.addEventListener(
       "submit",
       event => {
+
         event.preventDefault();
 
         state.search =
@@ -914,9 +965,12 @@ function setupSearch() {
           $("#deals");
 
         if (deals) {
+
           deals.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
+            behavior:
+              "smooth",
+            block:
+              "start"
           });
         }
       }
@@ -925,10 +979,11 @@ function setupSearch() {
 }
 
 /* =========================================================
-   DOEL KNOPPEN
+   GOAL BUTTONS
 ========================================================= */
 
 function setupGoals() {
+
   $all("[data-goal]")
     .forEach(button => {
 
@@ -938,7 +993,8 @@ function setupGoals() {
 
           state.goal =
             normalize(
-              button.dataset.goal || ""
+              button.dataset.goal ||
+              ""
             );
 
           state.search = "";
@@ -957,39 +1013,43 @@ function setupGoals() {
             $("#deals");
 
           if (deals) {
+
             deals.scrollIntoView({
-              behavior: "smooth",
-              block: "start"
+              behavior:
+                "smooth",
+              block:
+                "start"
             });
           }
         }
       );
-
     });
 }
 
 function updateGoalButtons() {
+
   $all("[data-goal]")
     .forEach(button => {
 
       const value =
         normalize(
-          button.dataset.goal || ""
+          button.dataset.goal ||
+          ""
         );
 
       button.classList.toggle(
         "active",
         value === state.goal
       );
-
     });
 }
 
 /* =========================================================
-   CATEGORIE KNOPPEN
+   CATEGORIES
 ========================================================= */
 
 function setupCategories() {
+
   $all("[data-category]")
     .forEach(button => {
 
@@ -999,7 +1059,8 @@ function setupCategories() {
 
           state.category =
             normalize(
-              button.dataset.category || ""
+              button.dataset.category ||
+              ""
             );
 
           state.goal = "";
@@ -1018,23 +1079,27 @@ function setupCategories() {
             $("#deals");
 
           if (deals) {
+
             deals.scrollIntoView({
-              behavior: "smooth",
-              block: "start"
+              behavior:
+                "smooth",
+              block:
+                "start"
             });
           }
         }
       );
-
     });
 }
 
 /* =========================================================
-   WINKELMANDJE - OPSLAAN
+   CART STORAGE
 ========================================================= */
 
 function loadCart() {
+
   try {
+
     const saved =
       localStorage.getItem(
         CART_KEY
@@ -1052,6 +1117,7 @@ function loadCart() {
       : [];
 
   } catch (error) {
+
     console.warn(
       "Cart load failed:",
       error
@@ -1062,12 +1128,18 @@ function loadCart() {
 }
 
 function saveCart() {
+
   try {
+
     localStorage.setItem(
       CART_KEY,
-      JSON.stringify(state.cart)
+      JSON.stringify(
+        state.cart
+      )
     );
+
   } catch (error) {
+
     console.warn(
       "Cart save failed:",
       error
@@ -1078,190 +1150,99 @@ function saveCart() {
 }
 
 /* =========================================================
-   WINKELMANDJE - TOEVOEGEN
+   CART ELEMENT
 ========================================================= */
 
-function addToCart(productId) {
-  const product =
-    state.products.find(
-      item =>
-        String(item.id) ===
-        String(productId)
-    );
+function getCartElement() {
 
-  if (!product) {
-    console.error(
-      "Product niet gevonden:",
-      productId
-    );
-
-    return;
-  }
-
-  const existing =
-    state.cart.find(
-      item =>
-        String(item.id) ===
-        String(product.id)
-    );
-
-  if (existing) {
-
-    existing.quantity =
-      Number(
-        existing.quantity || 1
-      ) + 1;
-
-  } else {
-
-    state.cart.push({
-      id: product.id,
-      name: product.name,
-      price: Number(product.price) || 0,
-      currency:
-        product.currency || "EUR",
-      merchant_name:
-        product.merchant_name || "",
-      product_url:
-        product.product_url ||
-        product.affiliate_url ||
-        "#",
-      quantity: 1
-    });
-
-  }
-
-  saveCart();
-
-  showCartMessage(
-    `${product.name} is toegevoegd aan je winkelmand.`
-  );
-
-  openCart();
-}
-
-/* =========================================================
-   WINKELMANDJE - VERWIJDEREN
-========================================================= */
-
-function removeFromCart(productId) {
-  state.cart =
-    state.cart.filter(
-      item =>
-        String(item.id) !==
-        String(productId)
-    );
-
-  saveCart();
-}
-
-/* =========================================================
-   WINKELMANDJE - AANTAL
-========================================================= */
-
-function changeCartQuantity(
-  productId,
-  amount
-) {
-  const item =
-    state.cart.find(
-      product =>
-        String(product.id) ===
-        String(productId)
-    );
-
-  if (!item) return;
-
-  item.quantity =
-    Math.max(
-      1,
-      Number(item.quantity || 1) +
-        Number(amount || 0)
-    );
-
-  saveCart();
-}
-
-/* =========================================================
-   WINKELMANDJE - TOTAAL
-========================================================= */
-
-function cartTotal() {
-  return state.cart.reduce(
-    (total, item) => {
-
-      return (
-        total +
-        Number(item.price || 0) *
-        Number(item.quantity || 1)
-      );
-
-    },
-    0
-  );
-}
-
-/* =========================================================
-   WINKELMANDJE - ELEMENT
-========================================================= */
-
-function getOrCreateCartElement() {
   let cart =
     $("#cart");
 
-  if (cart) {
-    return cart;
-  }
-
-  cart =
-    document.createElement("aside");
-
-  cart.id =
-    "cart";
-
-  cart.setAttribute(
-    "aria-label",
-    "Winkelmandje"
-  );
-
   /*
-    Basis styling zodat het winkelmandje
-    ook werkt als er nog geen CSS voor
-    #cart bestaat.
+    Als index.html geen #cart heeft,
+    maken we hem automatisch.
   */
-  Object.assign(
-    cart.style,
-    {
-      position: "fixed",
-      right: "20px",
-      bottom: "20px",
-      width: "min(390px, calc(100vw - 40px))",
-      maxHeight: "70vh",
-      overflowY: "auto",
-      zIndex: "99999",
-      background: "#07111f",
-      color: "#ffffff",
-      border: "1px solid rgba(255,255,255,.15)",
-      borderRadius: "18px",
-      padding: "20px",
-      boxSizing: "border-box",
-      boxShadow:
-        "0 20px 60px rgba(0,0,0,.5)"
-    }
-  );
+  if (!cart) {
 
-  document.body.appendChild(cart);
+    cart =
+      document.createElement(
+        "aside"
+      );
+
+    cart.id =
+      "cart";
+
+    cart.setAttribute(
+      "aria-label",
+      "Winkelmandje"
+    );
+
+    cart.innerHTML =
+      "";
+
+    Object.assign(
+      cart.style,
+      {
+        position:
+          "fixed",
+
+        right:
+          "20px",
+
+        bottom:
+          "20px",
+
+        width:
+          "min(390px, calc(100vw - 40px))",
+
+        maxHeight:
+          "70vh",
+
+        overflowY:
+          "auto",
+
+        zIndex:
+          "99999",
+
+        background:
+          "#07111f",
+
+        color:
+          "#ffffff",
+
+        border:
+          "1px solid rgba(255,255,255,.15)",
+
+        borderRadius:
+          "18px",
+
+        padding:
+          "20px",
+
+        boxSizing:
+          "border-box",
+
+        boxShadow:
+          "0 20px 60px rgba(0,0,0,.5)"
+      }
+    );
+
+    document.body.appendChild(
+      cart
+    );
+  }
 
   return cart;
 }
 
 /* =========================================================
-   WINKELMANDJE - RENDER
+   CART RENDER
 ========================================================= */
 
 function renderCart() {
+
   const cart =
-    getOrCreateCartElement();
+    getCartElement();
 
   if (!state.cart.length) {
 
@@ -1273,9 +1254,9 @@ function renderCart() {
             display:flex;
             justify-content:space-between;
             align-items:center;
-            gap:10px;
           "
         >
+
           <h3 style="margin:0;">
             🛒 Winkelmandje
           </h3>
@@ -1293,14 +1274,10 @@ function renderCart() {
           >
             ×
           </button>
+
         </div>
 
-        <p
-          style="
-            opacity:.7;
-            margin-bottom:0;
-          "
-        >
+        <p style="opacity:.7;">
           Je winkelmandje is nog leeg.
         </p>
 
@@ -1318,7 +1295,6 @@ function renderCart() {
           display:flex;
           justify-content:space-between;
           align-items:center;
-          gap:10px;
           margin-bottom:12px;
         "
       >
@@ -1356,7 +1332,9 @@ function renderCart() {
           >
 
             <strong>
-              ${escapeHtml(item.name)}
+              ${escapeHtml(
+                item.name
+              )}
             </strong>
 
             <small
@@ -1367,7 +1345,8 @@ function renderCart() {
               "
             >
               ${escapeHtml(
-                item.merchant_name || ""
+                item.merchant_name ||
+                ""
               )}
             </small>
 
@@ -1376,7 +1355,6 @@ function renderCart() {
                 display:flex;
                 justify-content:space-between;
                 align-items:center;
-                gap:10px;
               "
             >
 
@@ -1428,10 +1406,10 @@ function renderCart() {
               )}"
               style="
                 margin-top:8px;
-                padding:0;
                 background:none;
                 border:0;
                 color:#aaa;
+                padding:0;
                 cursor:pointer;
               "
             >
@@ -1447,7 +1425,6 @@ function renderCart() {
         style="
           display:flex;
           justify-content:space-between;
-          align-items:center;
           margin-top:18px;
           font-size:18px;
         "
@@ -1471,7 +1448,6 @@ function renderCart() {
           font-size:12px;
           opacity:.6;
           line-height:1.5;
-          margin-bottom:0;
         "
       >
         Prijzen zijn indicatief.
@@ -1484,82 +1460,202 @@ function renderCart() {
 }
 
 /* =========================================================
-   WINKELMANDJE - OPENEN
+   CART ACTIONS
 ========================================================= */
 
-function openCart() {
-  const cart =
-    getOrCreateCartElement();
+function addToCart(productId) {
 
-  cart.style.display =
-    "block";
+  const product =
+    state.products.find(
+      item =>
+        String(item.id) ===
+        String(productId)
+    );
+
+  if (!product) {
+
+    console.error(
+      "Product niet gevonden:",
+      productId
+    );
+
+    return;
+  }
+
+  const existing =
+    state.cart.find(
+      item =>
+        String(item.id) ===
+        String(product.id)
+    );
+
+  if (existing) {
+
+    existing.quantity =
+      Number(
+        existing.quantity || 1
+      ) + 1;
+
+  } else {
+
+    state.cart.push({
+      id:
+        product.id,
+
+      name:
+        product.name,
+
+      price:
+        Number(product.price) || 0,
+
+      currency:
+        product.currency ||
+        "EUR",
+
+      merchant_name:
+        product.merchant_name ||
+        "",
+
+      product_url:
+        product.product_url ||
+        product.affiliate_url ||
+        "#",
+
+      quantity:
+        1
+    });
+  }
+
+  saveCart();
+
+  showCartMessage(
+    `${product.name} is toegevoegd aan je winkelmand.`
+  );
+}
+
+function removeFromCart(productId) {
+
+  state.cart =
+    state.cart.filter(
+      item =>
+        String(item.id) !==
+        String(productId)
+    );
+
+  saveCart();
+}
+
+function changeCartQuantity(
+  productId,
+  amount
+) {
+
+  const item =
+    state.cart.find(
+      product =>
+        String(product.id) ===
+        String(productId)
+    );
+
+  if (!item) return;
+
+  item.quantity =
+    Math.max(
+      1,
+      Number(
+        item.quantity || 1
+      ) + Number(amount || 0)
+    );
+
+  saveCart();
+}
+
+function cartTotal() {
+
+  return state.cart.reduce(
+    (total, item) =>
+      total +
+      Number(item.price || 0) *
+      Number(item.quantity || 1),
+    0
+  );
 }
 
 /* =========================================================
-   WINKELMANDJE - EVENTS
+   CART EVENTS
 ========================================================= */
 
 function setupCartEvents() {
+
   document.addEventListener(
     "click",
     event => {
 
-      const addButton =
+      const add =
         event.target.closest(
           "[data-add-cart]"
         );
 
-      if (addButton) {
+      if (add) {
+
         addToCart(
-          addButton.dataset.addCart
+          add.dataset.addCart
         );
+
         return;
       }
 
-      const removeButton =
+      const remove =
         event.target.closest(
           "[data-cart-remove]"
         );
 
-      if (removeButton) {
+      if (remove) {
+
         removeFromCart(
-          removeButton.dataset.cartRemove
+          remove.dataset.cartRemove
         );
+
         return;
       }
 
-      const plusButton =
+      const plus =
         event.target.closest(
           "[data-cart-plus]"
         );
 
-      if (plusButton) {
+      if (plus) {
+
         changeCartQuantity(
-          plusButton.dataset.cartPlus,
+          plus.dataset.cartPlus,
           1
         );
+
         return;
       }
 
-      const minusButton =
+      const minus =
         event.target.closest(
           "[data-cart-minus]"
         );
 
-      if (minusButton) {
+      if (minus) {
+
         changeCartQuantity(
-          minusButton.dataset.cartMinus,
+          minus.dataset.cartMinus,
           -1
         );
+
         return;
       }
 
-      const closeButton =
+      const close =
         event.target.closest(
           "[data-close-cart]"
         );
 
-      if (closeButton) {
+      if (close) {
+
         const cart =
           $("#cart");
 
@@ -1573,17 +1669,20 @@ function setupCartEvents() {
 }
 
 /* =========================================================
-   WINKELMANDJE MELDING
+   CART MESSAGE
 ========================================================= */
 
 function showCartMessage(message) {
+
   let box =
     $("#cart-message");
 
   if (!box) {
 
     box =
-      document.createElement("div");
+      document.createElement(
+        "div"
+      );
 
     box.id =
       "cart-message";
@@ -1591,25 +1690,47 @@ function showCartMessage(message) {
     Object.assign(
       box.style,
       {
-        position: "fixed",
-        left: "50%",
-        bottom: "25px",
+        position:
+          "fixed",
+
+        left:
+          "50%",
+
+        bottom:
+          "25px",
+
         transform:
           "translateX(-50%)",
-        zIndex: "100000",
-        background: "#102033",
-        color: "#fff",
-        padding: "12px 18px",
-        borderRadius: "10px",
+
+        zIndex:
+          "100000",
+
+        background:
+          "#102033",
+
+        color:
+          "#fff",
+
+        padding:
+          "12px 18px",
+
+        borderRadius:
+          "10px",
+
         boxShadow:
           "0 10px 30px rgba(0,0,0,.35)",
+
         maxWidth:
           "calc(100vw - 40px)",
-        textAlign: "center"
+
+        textAlign:
+          "center"
       }
     );
 
-    document.body.appendChild(box);
+    document.body.appendChild(
+      box
+    );
   }
 
   box.textContent =
@@ -1623,10 +1744,13 @@ function showCartMessage(message) {
   );
 
   box._timer =
-    setTimeout(() => {
-      box.style.display =
-        "none";
-    }, 2500);
+    setTimeout(
+      () => {
+        box.style.display =
+          "none";
+      },
+      2500
+    );
 }
 
 /* =========================================================
@@ -1634,10 +1758,13 @@ function showCartMessage(message) {
 ========================================================= */
 
 function setupPlanner() {
+
   const form =
     $("#planner-form");
 
-  if (!form) return;
+  if (!form) {
+    return;
+  }
 
   form.addEventListener(
     "submit",
@@ -1662,57 +1789,52 @@ function setupPlanner() {
       const result =
         $("#planner-result");
 
-      if (!result) return;
+      if (!result) {
+        return;
+      }
 
       if (
-        !Number.isFinite(budget) ||
+        !Number.isFinite(
+          budget
+        ) ||
         budget <= 0
       ) {
 
         result.innerHTML = `
-          <div class="planner-empty">
-            <h3>
-              Vul een geldig budget in
-            </h3>
-
-            <p>
-              Bijvoorbeeld €70.
-            </p>
-          </div>
+          <p>
+            Vul een geldig budget in.
+          </p>
         `;
 
         return;
       }
 
-      /*
-        Planner gebruikt dezelfde doel-logica
-        als de normale doelknoppen.
-      */
       const candidates =
         state.products
-          .filter(product =>
-            isUsableProduct(product) &&
-            matchesGoal(product, goal)
+          .filter(
+            product =>
+              isUsableProduct(
+                product
+              ) &&
+              matchesGoal(
+                product,
+                goal
+              )
           )
-          .sort((a, b) => {
-
-            const scoreA =
-              Number(a.deal_score || 0);
-
-            const scoreB =
-              Number(b.deal_score || 0);
-
-            return scoreB - scoreA;
-          });
+          .sort(
+            (a, b) =>
+              Number(
+                b.deal_score || 0
+              ) -
+              Number(
+                a.deal_score || 0
+              )
+          );
 
       const selected = [];
 
       let total = 0;
 
-      /*
-        Probeer meerdere verschillende producten
-        binnen het opgegeven budget te plaatsen.
-      */
       for (
         const product of candidates
       ) {
@@ -1727,7 +1849,8 @@ function setupPlanner() {
         }
 
         if (
-          total + productPrice <=
+          total +
+            productPrice <=
           budget
         ) {
 
@@ -1756,8 +1879,7 @@ function setupPlanner() {
             </h3>
 
             <p>
-              Probeer een iets hoger budget
-              of kies een ander doel.
+              Probeer een iets hoger budget.
             </p>
 
           </div>
@@ -1772,80 +1894,84 @@ function setupPlanner() {
           <h3>
             Jouw
             ${escapeHtml(
-              goal || "fitness"
+              goal ||
+              "fitness"
             )}
             selectie
           </h3>
 
-          <div
-            class="planner-products"
-          >
+          <div class="planner-products">
 
-            ${selected.map(product => `
-              <div
-                class="planner-product"
-                style="
-                  display:flex;
-                  justify-content:space-between;
-                  align-items:center;
-                  gap:12px;
-                  padding:12px 0;
-                  border-bottom:
-                    1px solid rgba(255,255,255,.1);
-                "
-              >
-
-                <div>
-
-                  <strong>
-                    ${escapeHtml(
-                      product.name
-                    )}
-                  </strong>
-
-                  <small
-                    style="
-                      display:block;
-                      opacity:.65;
-                    "
-                  >
-                    ${escapeHtml(
-                      product.merchant_name || ""
-                    )}
-                  </small>
-
-                </div>
-
+            ${selected.map(
+              product => `
                 <div
+                  class="planner-product"
                   style="
                     display:flex;
+                    justify-content:space-between;
                     align-items:center;
-                    gap:8px;
-                    white-space:nowrap;
+                    gap:12px;
+                    padding:12px 0;
+                    border-bottom:
+                      1px solid rgba(255,255,255,.1);
                   "
                 >
 
-                  <strong>
-                    ${money(
-                      product.price,
-                      product.currency
-                    )}
-                  </strong>
+                  <div>
 
-                  <button
-                    type="button"
-                    class="cart-button"
-                    data-add-cart="${escapeHtml(
-                      String(product.id)
-                    )}"
+                    <strong>
+                      ${escapeHtml(
+                        product.name
+                      )}
+                    </strong>
+
+                    <small
+                      style="
+                        display:block;
+                        opacity:.65;
+                      "
+                    >
+                      ${escapeHtml(
+                        product.merchant_name ||
+                        ""
+                      )}
+                    </small>
+
+                  </div>
+
+                  <div
+                    style="
+                      display:flex;
+                      align-items:center;
+                      gap:8px;
+                      white-space:nowrap;
+                    "
                   >
-                    🛒
-                  </button>
+
+                    <strong>
+                      ${money(
+                        product.price,
+                        product.currency
+                      )}
+                    </strong>
+
+                    <button
+                      type="button"
+                      class="cart-button"
+                      data-add-cart="${escapeHtml(
+                        String(
+                          product.id
+                        )
+                      )}"
+                    >
+                      🛒
+                    </button>
+
+                  </div>
 
                 </div>
-
-              </div>
-            `).join("")}
+              `
+            ).join("")}
 
           </div>
 
@@ -1871,12 +1997,7 @@ function setupPlanner() {
 
           </div>
 
-          <p
-            style="
-              opacity:.65;
-              font-size:13px;
-            "
-          >
+          <p>
             Budget:
             ${money(
               budget,
@@ -1895,6 +2016,7 @@ function setupPlanner() {
 ========================================================= */
 
 function setupAI() {
+
   const form =
     $("#ai-form");
 
@@ -1937,7 +2059,8 @@ function setupAI() {
           await fetch(
             API_AI,
             {
-              method: "POST",
+              method:
+                "POST",
 
               headers: {
                 "Content-Type":
@@ -1955,6 +2078,7 @@ function setupAI() {
           await response.json();
 
         if (!response.ok) {
+
           throw new Error(
             data?.error ||
             "AI request failed"
@@ -1968,11 +2092,12 @@ function setupAI() {
 
         output.innerHTML = `
           <p>
-            ${escapeHtml(reply)
-              .replace(
-                /\n/g,
-                "<br>"
-              )}
+            ${escapeHtml(
+              reply
+            ).replace(
+              /\n/g,
+              "<br>"
+            )}
           </p>
         `;
 
@@ -2010,12 +2135,12 @@ document.addEventListener(
     setupAI();
 
     /*
-      Winkelmandje direct klaarzetten.
+      Winkelmandje klaarzetten.
     */
     renderCart();
 
     /*
-      Daarna producten laden.
+      Producten ophalen.
     */
     loadProducts();
 
