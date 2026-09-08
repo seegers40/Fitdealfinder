@@ -13,675 +13,481 @@ const state = {
   goal: "",
   category: "",
   visibleCount: PRODUCTS_PER_VIEW,
-  loading: false,
   cart: loadCart()
 };
 
-/* =========================================================
+/* =========================
    HELPERS
-========================================================= */
+========================= */
 
-function clean(value) {
-  return String(value ?? "").trim();
+function $(selector) {
+  return document.querySelector(selector);
+}
+
+function $all(selector) {
+  return [...document.querySelectorAll(selector)];
 }
 
 function normalize(value) {
-  return clean(value)
+  return String(value || "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
 
-function escapeHtml(value) {
-  return clean(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+function productText(product) {
+  return normalize([
+    product.name,
+    product.brand,
+    product.merchant_name,
+    product.category,
+    product.description,
+    Array.isArray(product.goals) ? product.goals.join(" ") : product.goals
+  ].join(" "));
 }
 
-function validUrl(value) {
-  try {
-    const url = new URL(value, window.location.origin);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function productPrice(product) {
-  const value = Number(product?.price);
-  return Number.isFinite(value) ? value : 0;
+function price(product) {
+  const n = Number(product.price);
+  return Number.isFinite(n) ? n : 0;
 }
 
 function money(value, currency = "EUR") {
   return new Intl.NumberFormat("nl-NL", {
     style: "currency",
-    currency
+    currency: currency || "EUR"
   }).format(Number(value) || 0);
 }
 
-function productText(product) {
-  return normalize([
-    product?.name,
-    product?.brand,
-    product?.merchant_name,
-    product?.category,
-    product?.description
-  ].join(" "));
-}
+/* =========================
+   PRODUCT VALIDATION
+========================= */
 
-function discount(product) {
-  const value = Number(product?.discount_percent);
-  return Number.isFinite(value) && value > 0
-    ? Math.round(value)
-    : 0;
-}
-
-/* =========================================================
-   NIET-GESCHIKTE PRODUCTEN
-========================================================= */
-
-const EXCLUDED_TERMS = [
-  "voedingsschema",
-  "voedingsschema's",
-  "voedingsplan",
-  "voedingsplannen",
-  "dieetplan",
-  "meal plan",
-  "mealplan",
-
-  "trainingsschema",
-  "trainingsschema's",
-  "trainingsplan",
-  "workout plan",
-  "workoutplan",
-
+const BAD_WORDS = [
   "drinkbeker",
-  "drinkbekers",
+  "shaker cup",
   "waterfles",
   "water bottle",
-  "drinkfles",
   "bidon",
-
-  "shaker",
-  "shaker bottle",
-
-  "t shirt",
-  "t-shirt",
+  "kleding",
   "shirt",
-  "hoodie",
-  "trui",
+  "t-shirt",
   "broek",
-  "short",
+  "shorts",
   "legging",
-  "sokken",
+  "hoodie",
   "pet",
-  "cap",
-
-  "sporttas",
-  "gym bag",
-  "handdoek",
-  "handdoeken",
-
   "accessoire",
-  "accessoires",
-  "merchandise",
-  "merch",
-
+  "accessories",
+  "voedingsschema",
+  "voedingsplan",
+  "meal plan",
+  "dieetplan",
   "ebook",
-  "e book",
-  "boek",
-  "pdf",
-
-  "coaching",
-  "coachingspakket",
-  "schema op maat"
+  "e-book",
+  "receptenboek"
 ];
 
-function isExcluded(product) {
-  const name = normalize(product?.name);
-  const category = normalize(product?.category);
-
-  return EXCLUDED_TERMS.some(term => {
-    const t = normalize(term);
-
-    return (
-      name.includes(t) ||
-      category.includes(t)
-    );
-  });
-}
-
-function productIsUsable(product) {
+function isUsableProduct(product) {
   if (!product) return false;
-  if (!clean(product.id)) return false;
-  if (!clean(product.name)) return false;
-  if (!validUrl(product.product_url)) return false;
+  if (!product.id) return false;
+  if (!product.name) return false;
+  if (!product.product_url && !product.affiliate_url) return false;
 
-  return !isExcluded(product);
+  const text = productText(product);
+
+  return !BAD_WORDS.some(word => text.includes(normalize(word)));
 }
 
-/* =========================================================
-   DOELEN
-========================================================= */
+/* =========================
+   GOAL FILTERING
+========================= */
 
-const GOAL_RULES = {
-  cut: {
-    positive: [
-      "whey",
-      "protein",
-      "proteine",
-      "eiwit",
-      "isolate",
-      "isolaat",
-      "clear whey",
-      "casein",
-      "caseine",
-      "creatine",
-      "pre workout",
-      "pre-workout",
-      "preworkout",
-      "bcaa",
-      "eaa",
-      "amino",
-      "electrolyte",
-      "electrolytes",
-      "vitamin",
-      "vitamine",
-      "magnesium",
-      "zinc",
-      "zink",
-      "fat burner",
-      "fatburner",
-      "thermogenic"
-    ],
-    negative: [
-      "mass gainer",
-      "weight gainer",
-      "gainer",
-      "mass builder",
-      "mega calorie",
-      "high calorie"
-    ]
-  },
+const CUT_WORDS = [
+  "cut",
+  "cutting",
+  "fat burner",
+  "fatburner",
+  "thermogenic",
+  "weight loss",
+  "gewichtsverlies",
+  "afvallen",
+  "l-carnitine",
+  "carnitine",
+  "cla",
+  "caffeine",
+  "cafeine",
+  "pre workout",
+  "pre-workout"
+];
 
-  bulk: {
-    positive: [
-      "mass gainer",
-      "weight gainer",
-      "gainer",
-      "mass builder",
-      "whey",
-      "protein",
-      "proteine",
-      "eiwit",
-      "creatine",
-      "carbo",
-      "carbs",
-      "koolhydraten",
-      "dextrose",
-      "maltodextrine",
-      "glucose",
-      "amino",
-      "eaa",
-      "bcaa"
-    ],
-    negative: [
-      "fat burner",
-      "fatburner",
-      "thermogenic"
-    ]
-  },
+const BULK_WORDS = [
+  "bulk",
+  "bulking",
+  "mass",
+  "mass gainer",
+  "gainer",
+  "weight gainer",
+  "calorie",
+  "calorien",
+  "muscle gain",
+  "weight gain"
+];
 
-  "lean-bulk": {
-    positive: [
-      "whey",
-      "protein",
-      "proteine",
-      "eiwit",
-      "isolate",
-      "isolaat",
-      "clear whey",
-      "casein",
-      "caseine",
-      "creatine",
-      "pre workout",
-      "pre-workout",
-      "preworkout",
-      "eaa",
-      "bcaa",
-      "amino",
-      "collagen",
-      "collageen"
-    ],
-    negative: [
-      "mass gainer",
-      "weight gainer",
-      "gainer",
-      "mass builder",
-      "mega calorie",
-      "fat burner",
-      "fatburner",
-      "thermogenic"
-    ]
+const LEAN_BULK_WORDS = [
+  "lean bulk",
+  "lean-bulk",
+  "lean mass",
+  "muscle",
+  "muscle gain",
+  "protein",
+  "proteine",
+  "whey",
+  "casein",
+  "caseine",
+  "creatine",
+  "creatine monohydrate",
+  "amino",
+  "bcaa",
+  "pre workout",
+  "pre-workout"
+];
+
+const GENERAL_SUPPLEMENT_WORDS = [
+  "protein",
+  "proteine",
+  "whey",
+  "casein",
+  "caseine",
+  "creatine",
+  "creatine monohydrate",
+  "pre workout",
+  "pre-workout",
+  "bcaa",
+  "amino",
+  "amino acid",
+  "vitamin",
+  "mineral",
+  "magnesium",
+  "zinc",
+  "omega",
+  "collagen",
+  "collageen",
+  "electrolyte",
+  "electrolytes",
+  "supplement",
+  "voeding",
+  "nutrition",
+  "mass",
+  "gainer",
+  "caffeine",
+  "cafeine",
+  "carnitine",
+  "l-carnitine",
+  "beta alanine",
+  "citrulline",
+  "pump"
+];
+
+function hasAny(text, words) {
+  return words.some(word => text.includes(normalize(word)));
+}
+
+function productGoals(product) {
+  const raw = product.goals;
+
+  if (Array.isArray(raw)) {
+    return raw.map(normalize);
   }
-};
+
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map(normalize);
+      }
+    } catch (_) {}
+
+    return raw
+      .split(",")
+      .map(normalize)
+      .filter(Boolean);
+  }
+
+  return [];
+}
 
 function matchesGoal(product, goal) {
-  const selected = normalize(goal);
+  if (!goal) return true;
 
-  if (!selected) {
+  const text = productText(product);
+  const goals = productGoals(product);
+
+  if (goals.includes(normalize(goal))) {
     return true;
   }
 
-  const rules = GOAL_RULES[selected];
+  /*
+    Belangrijk:
+    algemene supplementen mogen bij alle fitnessdoelen
+    zichtbaar blijven. Daardoor wordt Lean Bulk niet leeg.
+  */
+  const isGeneralSupplement =
+    hasAny(text, GENERAL_SUPPLEMENT_WORDS);
 
-  if (!rules) {
-    return false;
+  if (goal === "cut") {
+    return (
+      hasAny(text, CUT_WORDS) ||
+      isGeneralSupplement
+    );
   }
 
-  if (!productIsUsable(product)) {
-    return false;
+  if (goal === "bulk") {
+    return (
+      hasAny(text, BULK_WORDS) ||
+      isGeneralSupplement
+    );
   }
 
-  const text = productText(product);
-
-  if (
-    rules.negative.some(term =>
-      text.includes(normalize(term))
-    )
-  ) {
-    return false;
+  if (goal === "lean-bulk") {
+    return (
+      hasAny(text, LEAN_BULK_WORDS) ||
+      isGeneralSupplement
+    );
   }
 
-  return rules.positive.some(term =>
-    text.includes(normalize(term))
-  );
+  return true;
 }
 
-/* =========================================================
-   RUBRIEKEN
-========================================================= */
-
-const CATEGORY_RULES = {
-  proteine: [
-    "whey",
-    "protein",
-    "proteine",
-    "eiwit",
-    "isolate",
-    "isolaat",
-    "clear whey",
-    "casein",
-    "caseine",
-    "caseïne",
-    "vegan protein",
-    "plant protein",
-    "egg protein",
-    "beef protein"
-  ],
-
-  creatine: [
-    "creatine"
-  ],
-
-  "pre-workout": [
-    "pre workout",
-    "pre-workout",
-    "preworkout",
-    "pump",
-    "citrulline",
-    "beta alanine",
-    "beta-alanine",
-    "nox"
-  ],
-
-  supplementen: [
-    "vitamin",
-    "vitamine",
-    "multivitamin",
-    "multivitamine",
-    "magnesium",
-    "zinc",
-    "zink",
-    "omega",
-    "fish oil",
-    "visolie",
-    "electrolyte",
-    "electrolytes",
-    "collagen",
-    "collageen",
-    "glutamine",
-    "amino",
-    "eaa",
-    "bcaa",
-    "supplement"
-  ]
-};
+/* =========================
+   CATEGORY FILTERING
+========================= */
 
 function matchesCategory(product, category) {
-  const selected = normalize(category);
-  const terms = CATEGORY_RULES[selected];
-
-  if (!selected) {
-    return true;
-  }
-
-  if (!terms || !productIsUsable(product)) {
-    return false;
-  }
+  if (!category) return true;
 
   const text = productText(product);
 
-  return terms.some(term =>
-    text.includes(normalize(term))
-  );
-}
-
-/* =========================================================
-   SORTEREN
-========================================================= */
-
-function sortProducts(products) {
-  return [...products].sort((a, b) => {
-    const discountDifference =
-      discount(b) - discount(a);
-
-    if (discountDifference !== 0) {
-      return discountDifference;
-    }
-
-    const scoreA = Number(a.deal_score) || 0;
-    const scoreB = Number(b.deal_score) || 0;
-
-    if (scoreB !== scoreA) {
-      return scoreB - scoreA;
-    }
-
-    return productPrice(a) - productPrice(b);
-  });
-}
-
-/* =========================================================
-   PRODUCTEN LADEN
-========================================================= */
-
-async function fetchProducts(offset) {
-  const params = new URLSearchParams();
-
-  params.set("limit", String(PAGE_SIZE));
-  params.set("offset", String(offset));
-
-  const response = await fetch(
-    `${API_PRODUCTS}?${params.toString()}`,
-    {
-      headers: {
-        Accept: "application/json"
-      }
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `API fout ${response.status}`
-    );
+  if (category === "proteine") {
+    return hasAny(text, [
+      "protein",
+      "proteine",
+      "whey",
+      "casein",
+      "caseine",
+      "isolate",
+      "isolaat",
+      "gainer",
+      "mass"
+    ]);
   }
 
-  return response.json();
+  if (category === "creatine") {
+    return text.includes("creatine");
+  }
+
+  if (category === "pre-workout") {
+    return hasAny(text, [
+      "pre workout",
+      "pre-workout",
+      "preworkout",
+      "pump",
+      "citrulline",
+      "beta alanine"
+    ]);
+  }
+
+  if (category === "supplementen") {
+    return hasAny(text, GENERAL_SUPPLEMENT_WORDS);
+  }
+
+  return true;
 }
 
+/* =========================
+   SEARCH
+========================= */
+
+function matchesSearch(product, query) {
+  if (!query) return true;
+
+  const words = normalize(query)
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const text = productText(product);
+
+  return words.every(word => text.includes(word));
+}
+
+/* =========================
+   FILTER PIPELINE
+========================= */
+
+function applyFilters() {
+  const query = normalize(state.search);
+
+  state.filtered = state.products.filter(product => {
+    if (!isUsableProduct(product)) return false;
+    if (!matchesSearch(product, query)) return false;
+    if (!matchesGoal(product, state.goal)) return false;
+    if (!matchesCategory(product, state.category)) return false;
+
+    return true;
+  });
+
+  state.visibleCount = PRODUCTS_PER_VIEW;
+
+  renderProducts();
+}
+
+/* =========================
+   API LOADING
+========================= */
+
 async function loadProducts() {
+  if (state.loading) return;
+
   state.loading = true;
-  updateCount();
+
+  const products = [];
 
   try {
-    const allProducts = [];
-    let offset = 0;
+    for (
+      let offset = 0;
+      offset < MAX_PRODUCTS;
+      offset += PAGE_SIZE
+    ) {
+      const url =
+        `${API_PRODUCTS}?limit=${PAGE_SIZE}&offset=${offset}`;
 
-    while (allProducts.length < MAX_PRODUCTS) {
-      const data = await fetchProducts(offset);
+      const response = await fetch(url, {
+        headers: {
+          "Accept": "application/json"
+        }
+      });
 
-      const page = Array.isArray(data?.products)
-        ? data.products
-        : [];
+      if (!response.ok) {
+        throw new Error(`Product API: ${response.status}`);
+      }
 
-      if (page.length === 0) {
+      const data = await response.json();
+
+      const batch =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data.products)
+            ? data.products
+            : Array.isArray(data.data)
+              ? data.data
+              : [];
+
+      products.push(...batch);
+
+      if (batch.length < PAGE_SIZE) {
         break;
       }
 
-      allProducts.push(...page);
-
-      if (page.length < PAGE_SIZE) {
+      if (products.length >= MAX_PRODUCTS) {
         break;
       }
-
-      offset += page.length;
     }
 
-    state.products = sortProducts(
-      allProducts.filter(productIsUsable)
-    );
+    const unique = new Map();
+
+    for (const product of products) {
+      if (product && product.id) {
+        unique.set(String(product.id), product);
+      }
+    }
+
+    state.products = [...unique.values()];
 
     applyFilters();
-
   } catch (error) {
-    console.error(
-      "Producten laden mislukt:",
-      error
-    );
+    console.error("Product loading failed:", error);
 
-    const grid =
-      document.querySelector("#products-grid");
+    const grid = $("#products-grid");
 
     if (grid) {
       grid.innerHTML = `
-        <div style="
-          grid-column:1/-1;
-          padding:30px;
-          text-align:center;
-          color:#9eacbd;
-        ">
-          Producten konden niet worden geladen.
-          Vernieuw de pagina opnieuw.
+        <div class="empty-state">
+          <h3>Producten konden niet worden geladen</h3>
+          <p>Ververs de pagina en probeer opnieuw.</p>
         </div>
       `;
     }
   } finally {
     state.loading = false;
-    updateCount();
   }
 }
 
-/* =========================================================
-   FILTEREN
-========================================================= */
-
-function applyFilters() {
-  const search = normalize(state.search);
-  const goal = normalize(state.goal);
-  const category = normalize(state.category);
-
-  state.filtered = state.products.filter(product => {
-
-    if (
-      search &&
-      !productText(product).includes(search)
-    ) {
-      return false;
-    }
-
-    if (
-      goal &&
-      !matchesGoal(product, goal)
-    ) {
-      return false;
-    }
-
-    if (
-      category &&
-      !matchesCategory(product, category)
-    ) {
-      return false;
-    }
-
-    return true;
-  });
-
-  state.visibleCount =
-    PRODUCTS_PER_VIEW;
-
-  renderProducts();
-  updateCount();
-}
-
-function updateCount() {
-  const count =
-    document.querySelector("#product-count");
-
-  if (!count) return;
-
-  if (state.loading) {
-    count.textContent =
-      "Producten laden…";
-    return;
-  }
-
-  count.textContent =
-    `${state.filtered.length} producten`;
-}
-
-/* =========================================================
-   PRODUCT KAART
-========================================================= */
+/* =========================
+   PRODUCT CARD
+========================= */
 
 function productCard(product) {
   const oldPrice =
-    Number(product.old_price);
+    Number(product.old_price) > Number(product.price)
+      ? `<span class="old-price">${money(
+          product.old_price,
+          product.currency
+        )}</span>`
+      : "";
 
-  const hasOldPrice =
-    Number.isFinite(oldPrice) &&
-    oldPrice > productPrice(product);
+  const discount =
+    Number(product.discount_percent) > 0
+      ? `<span class="discount">-${Math.round(
+          Number(product.discount_percent)
+        )}%</span>`
+      : "";
 
-  const image =
-    validUrl(product.image_url)
-      ? `
-        <img
-          class="product-image"
-          src="${escapeHtml(product.image_url)}"
-          alt="${escapeHtml(product.name)}"
-          loading="lazy"
-        >
-      `
-      : `
-        <div
-          class="product-image"
-          style="
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            background:#172338;
-            font-size:30px;
-          "
-        >
-          💪
-        </div>
-      `;
+  const image = product.image_url
+    ? `
+      <img
+        src="${escapeHtml(product.image_url)}"
+        alt="${escapeHtml(product.name)}"
+        loading="lazy"
+        onerror="this.style.display='none'"
+      >
+    `
+    : "";
+
+  const stock =
+    Number(product.in_stock) === 1
+      ? `<span class="stock">Op voorraad</span>`
+      : `<span class="stock out">Niet op voorraad</span>`;
 
   return `
     <article class="product-card">
 
-      <div class="product-image-wrap">
+      <div class="product-image">
         ${image}
       </div>
 
       <div class="product-content">
 
-        <div style="
-          color:#8fa0b7;
-          font-size:12px;
-          margin-bottom:5px;
-        ">
-          ${escapeHtml(product.merchant_name)}
+        <div class="product-brand">
+          ${escapeHtml(product.brand || product.merchant_name || "")}
         </div>
 
-        <h3>
-          ${escapeHtml(product.name)}
-        </h3>
+        <h3>${escapeHtml(product.name)}</h3>
 
-        <div style="
-          display:flex;
-          align-items:center;
-          gap:8px;
-          flex-wrap:wrap;
-          margin-top:8px;
-        ">
-
-          <strong style="
-            color:#fff;
-            font-size:20px;
-          ">
-            ${money(
-              productPrice(product),
-              product.currency || "EUR"
-            )}
-          </strong>
-
-          ${
-            hasOldPrice
-              ? `
-                <span style="
-                  color:#8290a4;
-                  text-decoration:line-through;
-                  font-size:13px;
-                ">
-                  ${money(
-                    oldPrice,
-                    product.currency || "EUR"
-                  )}
-                </span>
-              `
-              : ""
-          }
-
-          ${
-            discount(product) > 0
-              ? `
-                <span style="
-                  color:#8ee7b4;
-                  font-weight:700;
-                  font-size:12px;
-                ">
-                  -${discount(product)}%
-                </span>
-              `
-              : ""
-          }
-
+        <div class="product-price">
+          <strong>${money(product.price, product.currency)}</strong>
+          ${oldPrice}
+          ${discount}
         </div>
 
-        <div style="
-          color:#8ee7b4;
-          font-size:12px;
-          margin-top:8px;
-        ">
-          ${product.in_stock
-            ? "Op voorraad"
-            : "Niet op voorraad"}
+        <div class="product-meta">
+          ${stock}
+          <span>${escapeHtml(product.merchant_name || "")}</span>
         </div>
 
-        <div style="
-          display:flex;
-          gap:8px;
-          flex-wrap:wrap;
-          margin-top:13px;
-        ">
+        <div class="product-actions">
 
           <a
-            class="button primary"
+            class="deal-button"
             href="/go/${encodeURIComponent(product.id)}"
           >
             Bekijk deal
@@ -689,20 +495,12 @@ function productCard(product) {
 
           <button
             type="button"
-            class="button secondary"
-            data-add-cart="${escapeHtml(product.id)}"
+            class="cart-button"
+            data-add-cart="${escapeHtml(String(product.id))}"
           >
-            + Mandje
+            🛒 In winkelmand
           </button>
 
-        </div>
-
-        <div style="
-          color:#7f8da1;
-          font-size:11px;
-          margin-top:10px;
-        ">
-          Prijsindicatie · controleer de actuele prijs bij de winkel
         </div>
 
       </div>
@@ -710,559 +508,188 @@ function productCard(product) {
   `;
 }
 
+/* =========================
+   RENDER PRODUCTS
+========================= */
+
 function renderProducts() {
-  const grid =
-    document.querySelector("#products-grid");
+  const grid = $("#products-grid");
+  if (!grid) return;
+
+  const visible = state.filtered.slice(
+    0,
+    state.visibleCount
+  );
+
+  if (!visible.length) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <h3>Geen producten gevonden</h3>
+        <p>
+          Probeer een andere zoekterm of kies een ander doel.
+        </p>
+      </div>
+    `;
+  } else {
+    grid.innerHTML = visible
+      .map(productCard)
+      .join("");
+  }
+
+  const count = $("#product-count");
+
+  if (count) {
+    count.textContent =
+      `${state.filtered.length} producten`;
+  }
+
+  renderLoadMore();
+  updateGoalButtons();
+}
+
+/* =========================
+   LOAD MORE
+========================= */
+
+function renderLoadMore() {
+  const existing = $("#load-more-products");
+
+  if (existing) {
+    existing.remove();
+  }
+
+  if (
+    state.visibleCount >= state.filtered.length ||
+    !state.filtered.length
+  ) {
+    return;
+  }
+
+  const grid = $("#products-grid");
 
   if (!grid) return;
 
-  const visible =
-    state.filtered.slice(
-      0,
-      state.visibleCount
-    );
+  const button = document.createElement("button");
 
-  if (visible.length === 0) {
-    grid.innerHTML = `
-      <div style="
-        grid-column:1/-1;
-        padding:35px 15px;
-        text-align:center;
-        color:#9eacbd;
-      ">
-        Geen geschikte producten gevonden.
-      </div>
-    `;
+  button.id = "load-more-products";
+  button.className = "load-more";
+  button.type = "button";
+  button.textContent = "Meer producten laden";
 
-    removeLoadMore();
-    return;
-  }
+  button.addEventListener("click", () => {
+    state.visibleCount += PRODUCTS_PER_VIEW;
+    renderProducts();
+  });
 
-  grid.innerHTML =
-    visible
-      .map(productCard)
-      .join("");
-
-  bindCartButtons();
-
-  removeLoadMore();
-
-  if (
-    state.visibleCount <
-    state.filtered.length
-  ) {
-    const button =
-      document.createElement("button");
-
-    button.type = "button";
-    button.dataset.loadMore = "1";
-    button.className =
-      "button secondary";
-
-    button.style.cssText = `
-      display:block;
-      margin:22px auto;
-    `;
-
-    button.textContent =
-      `Meer producten (${state.filtered.length - state.visibleCount})`;
-
-    button.addEventListener(
-      "click",
-      () => {
-        state.visibleCount +=
-          PRODUCTS_PER_VIEW;
-
-        renderProducts();
-      }
-    );
-
-    grid.parentElement?.appendChild(
-      button
-    );
-  }
+  grid.parentElement?.appendChild(button);
 }
 
-function removeLoadMore() {
-  document
-    .querySelectorAll(
-      "[data-load-more]"
-    )
-    .forEach(element =>
-      element.remove()
-    );
-}
+/* =========================
+   SEARCH EVENTS
+========================= */
 
-/* =========================================================
-   ZOEKEN
-========================================================= */
-
-function bindSearch() {
-  const input =
-    document.querySelector("#search");
-
-  const form =
-    document.querySelector("#search-form");
+function setupSearch() {
+  const form = $("#search-form");
+  const input = $("#search");
 
   if (!input) return;
 
-  input.addEventListener(
-    "input",
-    () => {
-      state.search =
-        input.value || "";
+  input.addEventListener("input", () => {
+    state.search = input.value;
+    applyFilters();
+  });
 
-      applyFilters();
-    }
-  );
+  input.addEventListener("search", () => {
+    state.search = input.value;
+    applyFilters();
+  });
 
-  form?.addEventListener(
-    "submit",
-    event => {
+  if (form) {
+    form.addEventListener("submit", event => {
       event.preventDefault();
 
-      state.search =
-        input.value || "";
-
+      state.search = input.value;
       applyFilters();
 
-      document
-        .querySelector("#deals")
-        ?.scrollIntoView({
-          behavior:"smooth"
+      const deals = $("#deals");
+
+      if (deals) {
+        deals.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
         });
-    }
-  );
-}
-
-/* =========================================================
-   DOELEN + CATEGORIEËN
-========================================================= */
-
-function bindFilters() {
-
-  document
-    .querySelectorAll("[data-goal]")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const goal =
-            button.dataset.goal || "";
-
-          state.goal =
-            state.goal === goal
-              ? ""
-              : goal;
-
-          document
-            .querySelectorAll(
-              "[data-goal]"
-            )
-            .forEach(item => {
-              item.classList.toggle(
-                "active",
-                item.dataset.goal ===
-                  state.goal
-              );
-            });
-
-          applyFilters();
-
-          document
-            .querySelector("#deals")
-            ?.scrollIntoView({
-              behavior:"smooth",
-              block:"start"
-            });
-        }
-      );
+      }
     });
-
-  document
-    .querySelectorAll("[data-category]")
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const category =
-            button.dataset.category || "";
-
-          state.category =
-            state.category === category
-              ? ""
-              : category;
-
-          document
-            .querySelectorAll(
-              "[data-category]"
-            )
-            .forEach(item => {
-              item.classList.toggle(
-                "active",
-                item.dataset.category ===
-                  state.category
-              );
-            });
-
-          applyFilters();
-
-          document
-            .querySelector("#deals")
-            ?.scrollIntoView({
-              behavior:"smooth",
-              block:"start"
-            });
-        }
-      );
-    });
-}
-
-/* =========================================================
-   SHOPPING PLANNER
-========================================================= */
-
-function plannerCard(product) {
-  return `
-    <div style="
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:12px;
-      padding:12px;
-      margin-top:8px;
-      border-radius:12px;
-      background:#111d2f;
-      border:1px solid rgba(255,255,255,.08);
-    ">
-
-      <div style="min-width:0;flex:1;">
-
-        <div style="
-          color:#fff;
-          font-size:13px;
-          font-weight:700;
-          line-height:1.4;
-        ">
-          ${escapeHtml(product.name)}
-        </div>
-
-        <div style="
-          color:#8ee7b4;
-          font-weight:700;
-          margin-top:4px;
-        ">
-          ${money(
-            productPrice(product),
-            product.currency || "EUR"
-          )}
-        </div>
-
-        <div style="
-          color:#8392a5;
-          font-size:11px;
-          margin-top:3px;
-        ">
-          ${escapeHtml(product.merchant_name)}
-        </div>
-
-      </div>
-
-      <button
-        type="button"
-        class="button secondary"
-        data-planner-add="${escapeHtml(product.id)}"
-      >
-        + Mandje
-      </button>
-
-    </div>
-  `;
-}
-
-function bindPlannerButtons(container) {
-  container
-    .querySelectorAll(
-      "[data-planner-add]"
-    )
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const product =
-            state.products.find(
-              item =>
-                String(item.id) ===
-                String(
-                  button.dataset.plannerAdd
-                )
-            );
-
-          if (!product) return;
-
-          addToCart(product);
-
-          button.textContent =
-            "✓ In mandje";
-
-          button.disabled = true;
-        }
-      );
-    });
-}
-
-function renderPlannerCart() {
-  const result =
-    document.querySelector(
-      "#planner-result"
-    );
-
-  if (!result) return;
-
-  const old =
-    result.querySelector(
-      ".planner-cart"
-    );
-
-  if (old) {
-    old.remove();
   }
+}
 
-  if (state.cart.length === 0) {
-    return;
-  }
+/* =========================
+   GOAL BUTTONS
+========================= */
 
-  const cart =
-    document.createElement("div");
+function setupGoals() {
+  $all("[data-goal]").forEach(button => {
+    button.addEventListener("click", () => {
+      state.goal =
+        normalize(button.dataset.goal || "");
 
-  cart.className =
-    "planner-cart";
+      state.category = "";
 
-  cart.style.cssText = `
-    margin-top:18px;
-    padding:15px;
-    border-radius:15px;
-    background:#0d1727;
-    border:1px solid rgba(142,231,180,.25);
-  `;
+      applyFilters();
 
-  cart.innerHTML = `
-    <div style="
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      margin-bottom:10px;
-    ">
+      const deals = $("#deals");
 
-      <strong style="color:#fff">
-        🛒 Jouw boodschappenmand
-      </strong>
-
-      <strong style="color:#8ee7b4">
-        ${money(cartTotal())}
-      </strong>
-
-    </div>
-
-    ${state.cart.map(product => `
-      <div style="
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        gap:10px;
-        padding:8px 0;
-        border-bottom:1px solid rgba(255,255,255,.06);
-      ">
-
-        <span style="
-          color:#c8d2df;
-          font-size:12px;
-        ">
-          ${escapeHtml(product.name)}
-        </span>
-
-        <button
-          type="button"
-          data-remove-planner="${escapeHtml(product.id)}"
-          style="
-            border:0;
-            background:none;
-            color:#ff9898;
-            cursor:pointer;
-            font-size:18px;
-          "
-        >
-          ×
-        </button>
-
-      </div>
-    `).join("")}
-  `;
-
-  result.appendChild(cart);
-
-  cart
-    .querySelectorAll(
-      "[data-remove-planner]"
-    )
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-          removeFromCart(
-            button.dataset.removePlanner
-          );
-        }
-      );
+      if (deals) {
+        deals.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+      }
     });
+  });
 }
 
-function bindPlanner() {
-  const form =
-    document.querySelector(
-      "#planner-form"
+function updateGoalButtons() {
+  $all("[data-goal]").forEach(button => {
+    const value =
+      normalize(button.dataset.goal || "");
+
+    button.classList.toggle(
+      "active",
+      value === state.goal
     );
-
-  if (!form) return;
-
-  form.addEventListener(
-    "submit",
-    event => {
-
-      event.preventDefault();
-
-      const goal =
-        form.querySelector(
-          "[name='goal']"
-        )?.value || "";
-
-      const budget =
-        Number(
-          form.querySelector(
-            "[name='budget']"
-          )?.value || 0
-        );
-
-      let candidates =
-        state.products.filter(
-          productIsUsable
-        );
-
-      if (goal) {
-        candidates =
-          candidates.filter(
-            product =>
-              matchesGoal(
-                product,
-                goal
-              )
-          );
-      }
-
-      if (
-        Number.isFinite(budget) &&
-        budget > 0
-      ) {
-        candidates =
-          candidates.filter(
-            product =>
-              productPrice(product) <=
-              budget
-          );
-      }
-
-      candidates =
-        [...candidates]
-          .sort((a,b) => {
-
-            const priceDifference =
-              productPrice(a) -
-              productPrice(b);
-
-            if (priceDifference !== 0) {
-              return priceDifference;
-            }
-
-            return (
-              discount(b) -
-              discount(a)
-            );
-          })
-          .slice(0,8);
-
-      const result =
-        document.querySelector(
-          "#planner-result"
-        );
-
-      if (!result) return;
-
-      if (candidates.length === 0) {
-
-        result.innerHTML = `
-          <div style="
-            color:#cbd5e1;
-            line-height:1.6;
-          ">
-            <strong style="color:#fff">
-              Geen geschikte producten gevonden.
-            </strong>
-
-            <br>
-
-            Probeer een hoger budget of een ander doel.
-          </div>
-        `;
-
-        renderPlannerCart();
-        return;
-      }
-
-      result.innerHTML = `
-        <div>
-
-          <strong style="
-            color:#fff;
-            font-size:15px;
-          ">
-            ${candidates.length}
-            passende producten
-          </strong>
-
-          <div style="
-            margin-top:5px;
-            color:#9eacbd;
-            font-size:12px;
-          ">
-            Producten die passen bij je doel en budget.
-          </div>
-
-        </div>
-
-        <div style="margin-top:10px;">
-          ${candidates
-            .map(plannerCard)
-            .join("")}
-        </div>
-      `;
-
-      bindPlannerButtons(result);
-      renderPlannerCart();
-    }
-  );
+  });
 }
 
-/* =========================================================
-   WINKELMANDJE
-========================================================= */
+/* =========================
+   CATEGORY BUTTONS
+========================= */
+
+function setupCategories() {
+  $all("[data-category]").forEach(button => {
+    button.addEventListener("click", () => {
+      state.category =
+        normalize(button.dataset.category || "");
+
+      state.goal = "";
+
+      applyFilters();
+
+      const deals = $("#deals");
+
+      if (deals) {
+        deals.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+      }
+    });
+  });
+}
+
+/* =========================
+   CART
+========================= */
 
 function loadCart() {
   try {
@@ -1271,13 +698,13 @@ function loadCart() {
 
     if (!saved) return [];
 
-    const parsed =
-      JSON.parse(saved);
+    const parsed = JSON.parse(saved);
 
     return Array.isArray(parsed)
       ? parsed
       : [];
-  } catch {
+  } catch (error) {
+    console.warn("Cart load failed:", error);
     return [];
   }
 }
@@ -1288,389 +715,442 @@ function saveCart() {
       CART_KEY,
       JSON.stringify(state.cart)
     );
-  } catch {
-    // niets doen
+  } catch (error) {
+    console.warn("Cart save failed:", error);
   }
+
+  renderCart();
+}
+
+function addToCart(productId) {
+  const product =
+    state.products.find(
+      item => String(item.id) === String(productId)
+    );
+
+  if (!product) return;
+
+  const existing =
+    state.cart.find(
+      item => String(item.id) === String(product.id)
+    );
+
+  if (existing) {
+    existing.quantity =
+      Number(existing.quantity || 1) + 1;
+  } else {
+    state.cart.push({
+      id: product.id,
+      name: product.name,
+      price: Number(product.price) || 0,
+      currency: product.currency || "EUR",
+      merchant_name: product.merchant_name || "",
+      product_url:
+        product.product_url ||
+        product.affiliate_url ||
+        "#",
+      quantity: 1
+    });
+  }
+
+  saveCart();
+
+  showCartMessage(
+    `${product.name} is toegevoegd aan je winkelmand.`
+  );
+}
+
+function removeFromCart(productId) {
+  state.cart =
+    state.cart.filter(
+      item =>
+        String(item.id) !== String(productId)
+    );
+
+  saveCart();
+}
+
+function changeCartQuantity(productId, amount) {
+  const item =
+    state.cart.find(
+      product =>
+        String(product.id) === String(productId)
+    );
+
+  if (!item) return;
+
+  item.quantity =
+    Math.max(
+      1,
+      Number(item.quantity || 1) + amount
+    );
+
+  saveCart();
 }
 
 function cartTotal() {
   return state.cart.reduce(
-    (total, product) =>
-      total + productPrice(product),
+    (total, item) =>
+      total +
+      Number(item.price || 0) *
+      Number(item.quantity || 1),
     0
   );
 }
 
-function addToCart(product) {
-  if (!productIsUsable(product)) {
-    return;
-  }
-
-  const exists =
-    state.cart.some(
-      item =>
-        String(item.id) ===
-        String(product.id)
-    );
-
-  if (exists) {
-    return;
-  }
-
-  state.cart.push(product);
-
-  saveCart();
-  renderCart();
-  renderPlannerCart();
-}
-
-function removeFromCart(id) {
-  state.cart =
-    state.cart.filter(
-      product =>
-        String(product.id) !==
-        String(id)
-    );
-
-  saveCart();
-  renderCart();
-  renderPlannerCart();
-}
-
-function bindCartButtons() {
-  document
-    .querySelectorAll(
-      "[data-add-cart]"
-    )
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const product =
-            state.products.find(
-              item =>
-                String(item.id) ===
-                String(
-                  button.dataset.addCart
-                )
-            );
-
-          if (!product) return;
-
-          addToCart(product);
-
-          button.textContent =
-            "✓ In mandje";
-
-          button.disabled = true;
-        }
-      );
-    });
-}
-
 function renderCart() {
-  const old =
-    document.querySelector(
-      "#site-cart"
-    );
+  const cart = $("#cart");
 
-  if (old) {
-    old.remove();
-  }
+  if (!cart) return;
 
-  if (state.cart.length === 0) {
+  if (!state.cart.length) {
+    cart.innerHTML = `
+      <div class="cart-empty">
+        <strong>Je winkelmand is leeg</strong>
+        <p>Voeg producten toe om hier je selectie te zien.</p>
+      </div>
+    `;
     return;
   }
-
-  const cart =
-    document.createElement("div");
-
-  cart.id = "site-cart";
-
-  cart.style.cssText = `
-    position:fixed;
-    right:16px;
-    bottom:16px;
-    z-index:9999;
-    width:min(370px,calc(100vw - 32px));
-    max-height:70vh;
-    overflow:auto;
-    background:#101a2b;
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:18px;
-    padding:16px;
-    box-shadow:0 20px 55px rgba(0,0,0,.45);
-  `;
 
   cart.innerHTML = `
-    <div style="
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      margin-bottom:12px;
-    ">
+    <div class="cart-items">
 
-      <strong style="color:#fff">
-        🛒 Boodschappenmand
-      </strong>
+      ${state.cart.map(item => `
+        <div class="cart-item">
 
-      <strong style="color:#8ee7b4">
-        ${money(cartTotal())}
-      </strong>
+          <div>
+            <strong>
+              ${escapeHtml(item.name)}
+            </strong>
+
+            <small>
+              ${escapeHtml(item.merchant_name || "")}
+            </small>
+
+            <div>
+              ${money(item.price, item.currency)}
+              × ${item.quantity}
+            </div>
+          </div>
+
+          <div class="cart-item-actions">
+
+            <button
+              type="button"
+              data-cart-minus="${escapeHtml(String(item.id))}"
+            >−</button>
+
+            <span>${item.quantity}</span>
+
+            <button
+              type="button"
+              data-cart-plus="${escapeHtml(String(item.id))}"
+            >+</button>
+
+            <button
+              type="button"
+              data-cart-remove="${escapeHtml(String(item.id))}"
+            >
+              Verwijder
+            </button>
+
+          </div>
+
+        </div>
+      `).join("")}
 
     </div>
 
-    ${state.cart.map(product => `
-      <div style="
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        gap:10px;
-        padding:9px 0;
-        border-bottom:1px solid rgba(255,255,255,.06);
-      ">
+    <div class="cart-total">
+      <strong>Totaal indicatie</strong>
+      <strong>
+        ${money(cartTotal(), "EUR")}
+      </strong>
+    </div>
 
-        <div style="
-          color:#d4deea;
-          font-size:12px;
-        ">
-          ${escapeHtml(product.name)}
-        </div>
-
-        <button
-          type="button"
-          data-remove-cart="${escapeHtml(product.id)}"
-          style="
-            border:0;
-            background:none;
-            color:#ff9898;
-            cursor:pointer;
-            font-size:19px;
-          "
-        >
-          ×
-        </button>
-
-      </div>
-    `).join("")}
+    <p class="cart-note">
+      Prijzen zijn indicatief. Controleer de actuele prijs
+      bij de winkel voordat je bestelt.
+    </p>
   `;
-
-  document.body.appendChild(cart);
-
-  cart
-    .querySelectorAll(
-      "[data-remove-cart]"
-    )
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-          removeFromCart(
-            button.dataset.removeCart
-          );
-        }
-      );
-    });
 }
 
-/* =========================================================
-   AI
-========================================================= */
+function setupCartEvents() {
+  document.addEventListener("click", event => {
+    const add =
+      event.target.closest("[data-add-cart]");
 
-function bindAI() {
-  const form =
-    document.querySelector("#ai-form");
+    if (add) {
+      addToCart(add.dataset.addCart);
+      return;
+    }
 
-  const input =
-    document.querySelector("#ai-input");
+    const remove =
+      event.target.closest("[data-cart-remove]");
 
-  const output =
-    document.querySelector("#ai-output");
+    if (remove) {
+      removeFromCart(remove.dataset.cartRemove);
+      return;
+    }
 
-  if (
-    !form ||
-    !input ||
-    !output
-  ) {
-    return;
+    const plus =
+      event.target.closest("[data-cart-plus]");
+
+    if (plus) {
+      changeCartQuantity(
+        plus.dataset.cartPlus,
+        1
+      );
+      return;
+    }
+
+    const minus =
+      event.target.closest("[data-cart-minus]");
+
+    if (minus) {
+      changeCartQuantity(
+        minus.dataset.cartMinus,
+        -1
+      );
+    }
+  });
+}
+
+function showCartMessage(message) {
+  let box = $("#cart-message");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "cart-message";
+    box.className = "cart-message";
+    document.body.appendChild(box);
   }
 
-  form.addEventListener(
-    "submit",
-    async event => {
+  box.textContent = message;
+  box.classList.add("show");
 
-      event.preventDefault();
+  clearTimeout(box._timer);
 
-      const message =
-        input.value.trim();
+  box._timer = setTimeout(() => {
+    box.classList.remove("show");
+  }, 2500);
+}
 
-      if (!message) return;
+/* =========================
+   PLANNER
+========================= */
 
-      output.innerHTML = `
-        <div style="color:#9eacbd">
-          Even nadenken…
-        </div>
+function setupPlanner() {
+  const form = $("#planner-form");
+
+  if (!form) return;
+
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+
+    const goal =
+      normalize(
+        form.querySelector("[name='goal']")?.value
+      );
+
+    const budget =
+      Number(
+        form.querySelector("[name='budget']")?.value
+      );
+
+    const result = $("#planner-result");
+
+    if (!result) return;
+
+    if (!budget || budget <= 0) {
+      result.innerHTML = `
+        <p>Vul een geldig budget in.</p>
       `;
+      return;
+    }
 
-      try {
+    let candidates =
+      state.products.filter(product =>
+        isUsableProduct(product) &&
+        matchesGoal(product, goal)
+      );
 
-        const response =
-          await fetch(
-            API_AI,
-            {
-              method:"POST",
-              headers:{
-                "Content-Type":
-                  "application/json",
-                Accept:
-                  "application/json"
-              },
-              body:JSON.stringify({
-                message
-              })
-            }
-          );
+    candidates.sort((a, b) => {
+      const scoreA =
+        Number(a.deal_score || 0);
 
-        if (!response.ok) {
-          throw new Error(
-            `AI fout ${response.status}`
-          );
-        }
+      const scoreB =
+        Number(b.deal_score || 0);
 
-        const data =
-          await response.json();
+      return scoreB - scoreA;
+    });
 
-        const answer =
-          data.answer ||
-          data.message ||
-          data.response ||
-          "Geen antwoord ontvangen.";
+    const selected = [];
 
-        output.innerHTML = `
-          <div style="
-            color:#d8e2ee;
-            line-height:1.6;
-            white-space:pre-wrap;
-          ">
-            ${escapeHtml(answer)}
-          </div>
-        `;
+    let total = 0;
 
-      } catch (error) {
+    for (const product of candidates) {
+      const p = price(product);
 
-        console.error(error);
+      if (p <= 0) continue;
 
-        output.innerHTML = `
-          <div style="color:#ffaaaa">
-            De AI Coach kon momenteel geen antwoord geven.
-          </div>
-        `;
+      if (total + p <= budget) {
+        selected.push(product);
+        total += p;
+      }
+
+      if (selected.length >= 5) {
+        break;
       }
     }
-  );
+
+    if (!selected.length) {
+      result.innerHTML = `
+        <div class="planner-empty">
+          <h3>Geen passende combinatie gevonden</h3>
+          <p>
+            Probeer een iets hoger budget.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    result.innerHTML = `
+      <div class="planner-success">
+
+        <h3>Jouw ${escapeHtml(goal || "fitness")} selectie</h3>
+
+        <div class="planner-products">
+          ${selected.map(product => `
+            <div class="planner-product">
+
+              <div>
+                <strong>
+                  ${escapeHtml(product.name)}
+                </strong>
+
+                <small>
+                  ${escapeHtml(product.merchant_name || "")}
+                </small>
+              </div>
+
+              <div>
+                ${money(product.price, product.currency)}
+
+                <button
+                  type="button"
+                  class="cart-button"
+                  data-add-cart="${escapeHtml(String(product.id))}"
+                >
+                  🛒
+                </button>
+              </div>
+
+            </div>
+          `).join("")}
+        </div>
+
+        <div class="planner-total">
+          Totaal: <strong>${money(total, "EUR")}</strong>
+          <span>van ${money(budget, "EUR")}</span>
+        </div>
+
+      </div>
+    `;
+  });
 }
 
-/* =========================================================
-   COACH NAAR BOVEN
-========================================================= */
+/* =========================
+   AI COACH
+========================= */
 
-function moveCoachBeforeDeals() {
-  const coach =
-    document.querySelector("#coach");
+function setupAI() {
+  const form = $("#ai-form");
+  const input = $("#ai-input");
+  const output = $("#ai-output");
 
-  const deals =
-    document.querySelector("#deals");
+  if (!form || !input || !output) return;
 
-  if (
-    coach &&
-    deals &&
-    deals.parentNode
-  ) {
-    deals.parentNode.insertBefore(
-      coach,
-      deals
-    );
-  }
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const message =
+      input.value.trim();
+
+    if (!message) return;
+
+    output.innerHTML =
+      `<p>Even nadenken...</p>`;
+
+    try {
+      const response =
+        await fetch(API_AI, {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+          body: JSON.stringify({
+            message
+          })
+        });
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+          "AI request failed"
+        );
+      }
+
+      output.innerHTML =
+        `<p>${escapeHtml(
+          data.reply ||
+          data.message ||
+          "Geen antwoord ontvangen."
+        ).replace(/\n/g, "<br>")}</p>`;
+
+    } catch (error) {
+      console.error(error);
+
+      output.innerHTML = `
+        <p>
+          De AI Coach is tijdelijk niet beschikbaar.
+        </p>
+      `;
+    }
+  });
 }
 
-/* =========================================================
-   EXTRA STYLING
-========================================================= */
+/* =========================
+   HTML ESCAPING
+========================= */
 
-function injectStyles() {
-  if (
-    document.querySelector(
-      "#fitdeal-app-styles"
-    )
-  ) {
-    return;
-  }
-
-  const style =
-    document.createElement("style");
-
-  style.id =
-    "fitdeal-app-styles";
-
-  style.textContent = `
-    .product-image-wrap {
-      width:100%;
-      height:210px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-      background:#fff;
-      border-radius:14px;
-    }
-
-    .product-card .product-image {
-      width:100%;
-      height:100%;
-      object-fit:contain;
-      display:block;
-    }
-
-    .product-image-placeholder {
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:#172338;
-      color:#8fa0b7;
-      font-size:30px;
-    }
-
-    button:disabled {
-      opacity:.65;
-    }
-  `;
-
-  document.head.appendChild(style);
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-/* =========================================================
+/* =========================
    START
-========================================================= */
+========================= */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  () => {
+document.addEventListener("DOMContentLoaded", () => {
+  setupSearch();
+  setupGoals();
+  setupCategories();
+  setupCartEvents();
+  setupPlanner();
+  setupAI();
 
-    injectStyles();
-
-    moveCoachBeforeDeals();
-
-    bindSearch();
-    bindFilters();
-    bindPlanner();
-    bindAI();
-
-    renderCart();
-
-    loadProducts();
-  }
-);
+  renderCart();
+  loadProducts();
+});
