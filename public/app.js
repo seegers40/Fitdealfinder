@@ -1,784 +1,755 @@
-"use strict";
-
 (() => {
+  "use strict";
+
   const state = {
     products: [],
+    filtered: [],
     goal: "",
     category: "",
-    query: "",
-    loading: false
+    search: "",
+    limit: 100
   };
 
   const $ = (selector) => document.querySelector(selector);
-
-  const searchInput = $("#search-input");
-  const categorySelect = $("#category-select");
-  const goalSelect = $("#goal-select");
-  const productGrid = $("#product-grid");
-  const productsStatus = $("#products-status");
-
-  const plannerResult = $("#planner-result");
-  const budgetInput = $("#budget-input");
-  const periodSelect = $("#period-select");
-  const proteinInput = $("#protein-input");
-  const makePlanButton = $("#make-plan-button");
-
-  const aiForm = $("#ai-form");
-  const aiInput = $("#ai-input");
-  const aiSubmit = $("#ai-submit");
-  const aiResponse = $("#ai-response");
+  const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
   function escapeHtml(value) {
     return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
-  function normalize(value) {
-    return String(value ?? "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-  }
-
-  function normalizeCategory(value) {
-    const v = normalize(value);
-
-    if (
-      [
-        "preworkout",
-        "pre-workout",
-        "pre workout"
-      ].includes(v)
-    ) {
-      return "preworkout";
-    }
-
-    if (
-      [
-        "vitamine",
-        "vitamins",
-        "vitamines"
-      ].includes(v)
-    ) {
-      return "vitamins";
-    }
-
-    if (
-      [
-        "eiwit",
-        "protein",
-        "whey",
-        "proteine"
-      ].includes(v)
-    ) {
-      return "whey";
-    }
-
-    if (v === "creatine") {
-      return "creatine";
-    }
-
-    if (
-      [
-        "gainer",
-        "weight gainer"
-      ].includes(v)
-    ) {
-      return "gainer";
-    }
-
-    if (
-      [
-        "snacks",
-        "protein bars",
-        "protein bar"
-      ].includes(v)
-    ) {
-      return "snacks";
-    }
-
-    if (
-      [
-        "maaltijden",
-        "meal replacement",
-        "meals"
-      ].includes(v)
-    ) {
-      return "meals";
-    }
-
-    return v;
-  }
-
-  function parseGoals(value) {
-    if (Array.isArray(value)) {
-      return value.map(normalize);
-    }
-
-    if (!value) {
-      return [];
-    }
-
+  function safeHttpUrl(value) {
     try {
-      const parsed = JSON.parse(value);
-
-      if (Array.isArray(parsed)) {
-        return parsed.map(normalize);
-      }
+      const url = new URL(String(value || ""), window.location.origin);
+      return url.protocol === "http:" || url.protocol === "https:"
+        ? url.href
+        : "";
     } catch {
-      // Gebruik hieronder de normale separator-parser.
+      return "";
     }
-
-    return String(value)
-      .split(/[;,|]/)
-      .map(normalize)
-      .filter(Boolean);
   }
 
-  function formatPrice(product) {
-    const price = Number(product.price);
+  function formatPrice(value, currency = "EUR") {
+    const price = Number(value);
 
     if (!Number.isFinite(price)) {
-      return "Prijs bekijken";
-    }
-
-    const currency = String(product.currency || "EUR").toUpperCase();
-
-    try {
-      return new Intl.NumberFormat("nl-NL", {
-        style: "currency",
-        currency
-      }).format(price);
-    } catch {
-      return `€ ${price.toFixed(2)}`;
-    }
-  }
-
-  function formatOldPrice(product) {
-    const oldPrice = Number(product.old_price);
-
-    if (!Number.isFinite(oldPrice) || oldPrice <= 0) {
       return "";
     }
 
-    const currency = String(product.currency || "EUR").toUpperCase();
-
     try {
       return new Intl.NumberFormat("nl-NL", {
         style: "currency",
-        currency
-      }).format(oldPrice);
+        currency: currency || "EUR"
+      }).format(price);
     } catch {
-      return `€ ${oldPrice.toFixed(2)}`;
+      return `€ ${price.toFixed(2).replace(".", ",")}`;
     }
   }
 
-  function getDiscount(product) {
+  function calculateDiscount(price, oldPrice, discountPercent) {
+    const explicit = Number(discountPercent);
+
+    if (Number.isFinite(explicit) && explicit > 0) {
+      return Math.round(explicit);
+    }
+
+    const current = Number(price);
+    const old = Number(oldPrice);
+
+    if (
+      Number.isFinite(current) &&
+      Number.isFinite(old) &&
+      old > current &&
+      old > 0
+    ) {
+      return Math.round(((old - current) / old) * 100);
+    }
+
+    return 0;
+  }
+
+  function getProductImage(product) {
+    const imageUrl = safeHttpUrl(product.image_url);
+
+    if (!imageUrl) {
+      return `
+        <div class="image-placeholder" aria-hidden="true">
+          <span>FIT</span>
+        </div>
+      `;
+    }
+
+    return `
+      <img
+        class="product-image"
+        src="${escapeHtml(imageUrl)}"
+        alt="${escapeHtml(product.name || "Supplement")}"
+        loading="lazy"
+        decoding="async"
+        referrerpolicy="no-referrer"
+        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+      >
+      <div class="image-placeholder" aria-hidden="true" style="display:none;">
+        <span>FIT</span>
+      </div>
+    `;
+  }
+
+  function goalLabel(goal) {
+    const value = String(goal || "").toLowerCase();
+
+    if (value.includes("cut")) return "Cut";
+    if (value.includes("lean")) return "Lean Bulk";
+    if (value.includes("bulk")) return "Bulk";
+
+    return "";
+  }
+
+  function getGoals(product) {
+    if (Array.isArray(product.goals)) {
+      return product.goals;
+    }
+
+    if (typeof product.goals === "string") {
+      try {
+        const parsed = JSON.parse(product.goals);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch {
+        // Niet-JSON: behandel als komma/pipe-gescheiden tekst.
+      }
+
+      return product.goals
+        .split(/[|,;]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    return [];
+  }
+
+  function renderGoalChips(product) {
+    const goals = getGoals(product)
+      .map(goalLabel)
+      .filter(Boolean);
+
+    const unique = [...new Set(goals)];
+
+    if (!unique.length) {
+      return "";
+    }
+
+    return `
+      <div class="chips" aria-label="Doelen">
+        ${unique
+          .slice(0, 3)
+          .map((goal) => `<span class="chip">${escapeHtml(goal)}</span>`)
+          .join("")}
+      </div>
+    `;
+  }
+
+  function renderProduct(product) {
+    const id = product.id;
+    const name = product.name || "Supplement";
+    const brand = product.brand || "";
+    const merchant = product.merchant_name || "Winkel";
+    const currency = product.currency || "EUR";
+
     const price = Number(product.price);
     const oldPrice = Number(product.old_price);
 
-    if (
-      !Number.isFinite(price) ||
-      !Number.isFinite(oldPrice) ||
-      oldPrice <= price ||
-      oldPrice <= 0
-    ) {
-      return null;
-    }
+    const hasPrice = Number.isFinite(price);
+    const hasOldPrice =
+      Number.isFinite(oldPrice) &&
+      oldPrice > 0 &&
+      (!hasPrice || oldPrice > price);
 
-    return Math.round(
-      ((oldPrice - price) / oldPrice) * 100
+    const discount = calculateDiscount(
+      product.price,
+      product.old_price,
+      product.discount_percent
     );
-  }
 
-  function productMatches(product) {
-    const query = normalize(state.query);
-    const category = normalizeCategory(state.category);
-    const goal = normalize(state.goal);
+    const inStock =
+      product.in_stock === true ||
+      product.in_stock === 1 ||
+      product.in_stock === "1";
 
-    const text = [
-      product.name,
-      product.brand,
-      product.merchant_name,
-      product.category,
-      product.description
-    ]
-      .map(normalize)
-      .join(" ");
+    const goUrl =
+      id !== undefined && id !== null && String(id).trim() !== ""
+        ? `/go/${encodeURIComponent(String(id))}`
+        : safeHttpUrl(product.product_url);
 
-    if (query && !text.includes(query)) {
-      return false;
-    }
+    const safeGoUrl = goUrl || "#";
 
-    if (
-      category &&
-      normalizeCategory(product.category) !== category
-    ) {
-      return false;
-    }
+    return `
+      <article class="product-card">
+        <div class="product-image">
+          ${discount > 0 ? `<span class="deal-badge">-${escapeHtml(discount)}%</span>` : ""}
+          ${getProductImage(product)}
+        </div>
 
-    if (goal) {
-      const goals = parseGoals(product.goals);
+        <div class="product-body">
+          <div class="product-top">
+            <div class="product-brand">
+              ${escapeHtml(brand)}
+            </div>
 
-      if (!goals.includes(goal)) {
-        return false;
-      }
-    }
+            <span class="stock ${inStock ? "in" : "out"}">
+              ${inStock ? "Op voorraad" : "Niet op voorraad"}
+            </span>
+          </div>
 
-    return true;
-  }
+          <h3 class="product-name">
+            ${escapeHtml(name)}
+          </h3>
 
-  function getProductRedirectUrl(product) {
-    if (!product || product.id === undefined || product.id === null) {
-      return null;
-    }
+          <div class="merchant">
+            ${escapeHtml(merchant)}
+          </div>
 
-    return `/go/${encodeURIComponent(String(product.id))}`;
+          <div class="price-row">
+            ${
+              hasPrice
+                ? `<span class="price">${escapeHtml(formatPrice(price, currency))}</span>`
+                : `<span class="price">Prijs bekijken</span>`
+            }
+
+            ${
+              hasOldPrice
+                ? `<span class="old-price">${escapeHtml(formatPrice(oldPrice, currency))}</span>`
+                : ""
+            }
+
+            ${
+              discount > 0
+                ? `<span class="discount">-${escapeHtml(discount)}%</span>`
+                : ""
+            }
+          </div>
+
+          <div class="price-note">
+            Prijsindicatie · controleer de actuele prijs bij de winkel
+          </div>
+
+          ${renderGoalChips(product)}
+
+          <div class="product-action">
+            <a
+              class="shop-button"
+              href="${escapeHtml(safeGoUrl)}"
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              ${safeGoUrl === "#" ? 'aria-disabled="true"' : ""}
+            >
+              Bekijk deal
+            </a>
+          </div>
+        </div>
+      </article>
+    `;
   }
 
   function renderProducts() {
-    if (!productGrid || !productsStatus) {
+    const container =
+      $("#products-grid") ||
+      $("#productsGrid") ||
+      $(".products-grid") ||
+      $("#product-list") ||
+      $("#productList");
+
+    if (!container) {
       return;
     }
 
-    const products = state.products.filter(productMatches);
+    const products = state.filtered.slice(0, state.limit);
 
     if (!products.length) {
-      productsStatus.textContent =
-        state.products.length === 0
-          ? "Er zijn momenteel geen producten geladen."
-          : "Geen producten gevonden voor deze selectie.";
-
-      productGrid.innerHTML = `
+      container.innerHTML = `
         <div class="empty-state">
           <strong>Geen producten gevonden</strong>
           <p>
-            Probeer een andere categorie, doelstelling of zoekterm.
+            Probeer een andere zoekterm of pas je filters aan.
           </p>
         </div>
       `;
-
       return;
     }
 
-    productsStatus.textContent =
-      `${products.length} product${products.length === 1 ? "" : "en"} gevonden`;
+    container.innerHTML = products.map(renderProduct).join("");
+  }
 
-    productGrid.innerHTML = products
-      .map((product) => {
-        const discount = getDiscount(product);
-        const redirectUrl = getProductRedirectUrl(product);
+  function productIsUsable(product) {
+    if (!product || typeof product !== "object") {
+      return false;
+    }
 
-        if (!redirectUrl) {
-          return "";
+    const id =
+      product.id !== undefined &&
+      product.id !== null &&
+      String(product.id).trim() !== "";
+
+    const url = safeHttpUrl(product.product_url);
+
+    return id && url;
+  }
+
+  function applyFilters() {
+    const search = state.search.trim().toLowerCase();
+    const goal = state.goal.trim().toLowerCase();
+    const category = state.category.trim().toLowerCase();
+
+    state.filtered = state.products.filter((product) => {
+      if (!productIsUsable(product)) {
+        return false;
+      }
+
+      if (search) {
+        const haystack = [
+          product.name,
+          product.brand,
+          product.description,
+          product.merchant_name,
+          product.category
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        if (!haystack.includes(search)) {
+          return false;
         }
+      }
 
-        const image = product.image_url
-          ? `
-            <img
-              src="${escapeHtml(product.image_url)}"
-              alt="${escapeHtml(product.name)}"
-              loading="lazy"
-              referrerpolicy="no-referrer"
-            >
-          `
-          : `
-            <div class="product-placeholder">
-              <span>FIT</span>
-            </div>
-          `;
+      if (category) {
+        if (String(product.category || "").toLowerCase() !== category) {
+          return false;
+        }
+      }
 
-        return `
-          <article class="product-card">
-            <div class="product-image">
-              ${image}
+      if (goal) {
+        const goals = getGoals(product)
+          .map((item) => String(item).toLowerCase());
 
-              ${
-                discount
-                  ? `<span class="deal-badge">-${discount}%</span>`
-                  : ""
-              }
-            </div>
+        const productGoal = String(product.goal || "").toLowerCase();
 
-            <div class="product-content">
-              <div class="product-meta">
-                <span>
-                  ${escapeHtml(product.brand || "Supplement")}
-                </span>
+        if (
+          !goals.some((item) => item.includes(goal)) &&
+          !productGoal.includes(goal)
+        ) {
+          return false;
+        }
+      }
 
-                <span>
-                  ${escapeHtml(product.merchant_name || "")}
-                </span>
-              </div>
+      return true;
+    });
 
-              <h3>
-                ${escapeHtml(product.name)}
-              </h3>
+    renderProducts();
+    updateResultCount();
+  }
 
-              ${
-                product.description
-                  ? `
-                    <p>
-                      ${escapeHtml(
-                        String(product.description)
-                          .slice(0, 120)
-                      )}
-                    </p>
-                  `
-                  : ""
-              }
+  function updateResultCount() {
+    const count =
+      $("#product-count") ||
+      $("#productCount") ||
+      $(".product-count");
 
-              <div class="product-price">
-                ${formatPrice(product)}
+    if (!count) {
+      return;
+    }
 
-                ${
-                  discount
-                    ? `
-                      <del>
-                        ${escapeHtml(
-                          formatOldPrice(product)
-                        )}
-                      </del>
-                    `
-                    : ""
-                }
-              </div>
+    const total = state.filtered.length;
 
-              <div class="product-actions">
-                <a
-                  class="product-button"
-                  href="${escapeHtml(redirectUrl)}"
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  aria-label="Bekijk ${escapeHtml(product.name)} bij ${escapeHtml(product.merchant_name || "de winkel")}"
-                >
-                  Bekijk winkel
-                </a>
-              </div>
-
-              <small class="price-note">
-                Prijsindicatie · controleer de actuele prijs bij de winkel
-              </small>
-            </div>
-          </article>
-        `;
-      })
-      .join("");
+    count.textContent =
+      total === 1
+        ? "1 product gevonden"
+        : `${total} producten gevonden`;
   }
 
   async function loadProducts() {
-    state.loading = true;
+    const container =
+      $("#products-grid") ||
+      $("#productsGrid") ||
+      $(".products-grid") ||
+      $("#product-list") ||
+      $("#productList");
 
-    if (productsStatus) {
-      productsStatus.textContent =
-        "Producten laden…";
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <strong>Deals laden...</strong>
+          <p>We halen de actuele productgegevens op.</p>
+        </div>
+      `;
     }
 
     try {
+      const params = new URLSearchParams();
+
+      params.set("limit", "100");
+
+      if (state.search.trim()) {
+        params.set("search", state.search.trim());
+      }
+
+      if (state.goal.trim()) {
+        params.set("goal", state.goal.trim());
+      }
+
+      if (state.category.trim()) {
+        params.set("category", state.category.trim());
+      }
+
       const response = await fetch(
-        "/api/products?limit=100",
+        `/api/products?${params.toString()}`,
         {
           method: "GET",
           headers: {
             Accept: "application/json"
           },
+          credentials: "same-origin",
           cache: "no-store"
         }
       );
 
       if (!response.ok) {
-        throw new Error(
-          `Product API returned ${response.status}`
-        );
+        throw new Error(`Products API returned ${response.status}`);
       }
 
-      const payload = await response.json();
+      const data = await response.json();
 
-      const products = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload.products)
-          ? payload.products
-          : Array.isArray(payload.data)
-            ? payload.data
-            : [];
+      const products = Array.isArray(data)
+        ? data
+        : Array.isArray(data.products)
+          ? data.products
+          : [];
 
-      state.products = products
-        .filter(
-          (product) =>
-            product &&
-            product.active !== 0
-        )
-        .filter(
-          (product) =>
-            product.id !== undefined &&
-            product.id !== null
-        )
-        .filter(
-          (product) =>
-            typeof product.product_url === "string" &&
-            /^https?:\/\//i.test(
-              product.product_url
-            )
-        );
+      state.products = products.filter(productIsUsable);
 
-      renderProducts();
+      applyFilters();
     } catch (error) {
-      console.error(
-        "FitDealFinder product load failed:",
-        error
-      );
+      console.error("FitDealFinder: producten laden mislukt", error);
 
       state.products = [];
+      state.filtered = [];
 
-      if (productsStatus) {
-        productsStatus.textContent =
-          "Productgegevens konden momenteel niet worden geladen.";
-      }
-
-      if (productGrid) {
-        productGrid.innerHTML = `
+      if (container) {
+        container.innerHTML = `
           <div class="empty-state">
-            <strong>
-              Producten tijdelijk niet beschikbaar
-            </strong>
-
+            <strong>Producten konden niet worden geladen</strong>
             <p>
-              Probeer het later opnieuw.
+              Probeer het later opnieuw. Er worden geen verzonnen
+              producten of prijzen getoond.
             </p>
           </div>
         `;
       }
-    } finally {
-      state.loading = false;
+
+      updateResultCount();
     }
   }
 
-  function applyFilters() {
-    state.query =
-      searchInput?.value || "";
+  function bindSearch() {
+    const searchInput =
+      $("#search") ||
+      $("#searchInput") ||
+      $('input[type="search"]');
 
-    state.category =
-      categorySelect?.value || "";
-
-    state.goal =
-      goalSelect?.value || "";
-
-    renderProducts();
-  }
-
-  function setupFilters() {
-    searchInput?.addEventListener(
-      "input",
-      applyFilters
-    );
-
-    categorySelect?.addEventListener(
-      "change",
-      applyFilters
-    );
-
-    goalSelect?.addEventListener(
-      "change",
-      applyFilters
-    );
-
-    document
-      .querySelectorAll(
-        "[data-goal-button]"
-      )
-      .forEach((button) => {
-        button.addEventListener(
-          "click",
-          () => {
-            const goal =
-              button.dataset.goalButton || "";
-
-            state.goal = goal;
-
-            if (goalSelect) {
-              goalSelect.value = goal;
-            }
-
-            document
-              .querySelectorAll(
-                "[data-goal-button]"
-              )
-              .forEach((item) => {
-                item.classList.remove(
-                  "active"
-                );
-              });
-
-            button.classList.add("active");
-
-            renderProducts();
-          }
-        );
-      });
-
-    document
-      .querySelectorAll("[data-category]")
-      .forEach((button) => {
-        button.addEventListener(
-          "click",
-          () => {
-            const category =
-              normalizeCategory(
-                button.dataset.category || ""
-              );
-
-            state.category = category;
-
-            if (categorySelect) {
-              categorySelect.value =
-                category;
-            }
-
-            if (searchInput) {
-              searchInput.value = "";
-            }
-
-            renderProducts();
-
-            document
-              .querySelector("#producten")
-              ?.scrollIntoView({
-                behavior: "smooth",
-                block: "start"
-              });
-          }
-        );
-      });
-  }
-
-  function setupPlanner() {
-    makePlanButton?.addEventListener(
-      "click",
-      () => {
-        const budget =
-          Number(
-            budgetInput?.value || 0
-          );
-
-        const period =
-          periodSelect?.value || "week";
-
-        const protein =
-          Number(
-            proteinInput?.value || 0
-          );
-
-        if (!plannerResult) {
-          return;
-        }
-
-        if (
-          !Number.isFinite(budget) ||
-          budget <= 0
-        ) {
-          plannerResult.innerHTML =
-            "<p>Vul eerst een geldig budget in.</p>";
-
-          return;
-        }
-
-        const periodText =
-          period === "month"
-            ? "maand"
-            : "week";
-
-        const suitable =
-          state.products
-            .filter(productMatches)
-            .filter(
-              (product) =>
-                Number(product.price) <=
-                budget
-            )
-            .sort(
-              (a, b) =>
-                Number(a.price) -
-                Number(b.price)
-            )
-            .slice(0, 5);
-
-        if (!suitable.length) {
-          plannerResult.innerHTML = `
-            <p>
-              Er is momenteel geen passend product
-              binnen dit budget.
-            </p>
-          `;
-
-          return;
-        }
-
-        const proteinText =
-          protein > 0
-            ? ` voor ongeveer ${protein} g eiwit per dag`
-            : "";
-
-        plannerResult.innerHTML = `
-          <strong>
-            Voorstel voor je ${periodText}${proteinText}
-          </strong>
-
-          <ul>
-            ${suitable
-              .map(
-                (product) => `
-                  <li>
-                    ${escapeHtml(product.name)}
-                    — ${escapeHtml(
-                      formatPrice(product)
-                    )}
-                  </li>
-                `
-              )
-              .join("")}
-          </ul>
-
-          <small>
-            Dit is een eenvoudige productselectie
-            en geen medisch of voedingskundig advies.
-          </small>
-        `;
-      }
-    );
-  }
-
-  async function askAI(question) {
-    const cleanQuestion =
-      String(question || "").trim();
-
-    if (!cleanQuestion) {
+    if (!searchInput) {
       return;
     }
 
-    if (aiSubmit) {
-      aiSubmit.disabled = true;
-    }
+    const runSearch = () => {
+      state.search = searchInput.value || "";
+      applyFilters();
+    };
 
-    if (aiResponse) {
-      aiResponse.innerHTML =
-        "<p>Even nadenken…</p>";
-    }
+    searchInput.addEventListener("input", debounce(runSearch, 250));
 
-    try {
-      const response =
-        await fetch(
-          "/api/ai/chat",
-          {
-            method: "POST",
-            headers: {
-              "content-type":
-                "application/json",
-              Accept:
-                "application/json"
-            },
-            body: JSON.stringify({
-              message: cleanQuestion
-            })
-          }
-        );
+    const form = searchInput.closest("form");
 
-      if (!response.ok) {
-        throw new Error(
-          `AI request returned ${response.status}`
-        );
-      }
-
-      const payload =
-        await response.json();
-
-      const answer =
-        payload.answer ||
-        payload.response ||
-        payload.message ||
-        "Ik kon daar momenteel geen antwoord op geven.";
-
-      if (aiResponse) {
-        aiResponse.innerHTML = `
-          <p>
-            ${escapeHtml(answer)
-              .replaceAll(
-                "\n",
-                "<br>"
-              )}
-          </p>
-
-          <small>
-            De AI geeft algemene informatie
-            en geen medisch advies.
-          </small>
-        `;
-      }
-    } catch (error) {
-      console.error(
-        "AI request failed:",
-        error
-      );
-
-      if (aiResponse) {
-        aiResponse.innerHTML = `
-          <p>
-            De AI Coach is momenteel tijdelijk
-            niet beschikbaar.
-          </p>
-        `;
-      }
-    } finally {
-      if (aiSubmit) {
-        aiSubmit.disabled = false;
-      }
+    if (form) {
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        runSearch();
+      });
     }
   }
 
-  function setupAI() {
-    aiForm?.addEventListener(
-      "submit",
-      (event) => {
+  function bindGoalFilters() {
+    const buttons = $$(
+      "[data-goal], [data-filter-goal], [data-filter]"
+    );
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const goal =
+          button.dataset.goal ||
+          button.dataset.filterGoal ||
+          button.dataset.filter ||
+          "";
+
+        if (!goal) {
+          return;
+        }
+
+        state.goal =
+          state.goal.toLowerCase() === goal.toLowerCase()
+            ? ""
+            : goal;
+
+        buttons.forEach((item) => {
+          const itemGoal =
+            item.dataset.goal ||
+            item.dataset.filterGoal ||
+            item.dataset.filter ||
+            "";
+
+          item.classList.toggle(
+            "active",
+            Boolean(state.goal) &&
+              itemGoal.toLowerCase() === state.goal.toLowerCase()
+          );
+        });
+
+        applyFilters();
+      });
+    });
+  }
+
+  function bindCategoryFilters() {
+    const buttons = $$("[data-category]");
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const category = button.dataset.category || "";
+
+        state.category =
+          state.category.toLowerCase() === category.toLowerCase()
+            ? ""
+            : category;
+
+        buttons.forEach((item) => {
+          item.classList.toggle(
+            "active",
+            Boolean(state.category) &&
+              (item.dataset.category || "").toLowerCase() ===
+                state.category.toLowerCase()
+          );
+        });
+
+        applyFilters();
+      });
+    });
+  }
+
+  function debounce(fn, delay) {
+    let timer;
+
+    return (...args) => {
+      clearTimeout(timer);
+
+      timer = setTimeout(() => {
+        fn(...args);
+      }, delay);
+    };
+  }
+
+  function setupPlanner() {
+    const form =
+      $("#planner-form") ||
+      $("#plannerForm") ||
+      document.querySelector("[data-planner-form]");
+
+    if (!form) {
+      return;
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      const goalInput =
+        form.querySelector("[name='goal']") ||
+        form.querySelector("#planner-goal");
+
+      const budgetInput =
+        form.querySelector("[name='budget']") ||
+        form.querySelector("#planner-budget");
+
+      const goal = String(goalInput?.value || "").trim();
+      const budget = Number(budgetInput?.value || 0);
+
+      state.goal = goal;
+      state.search = "";
+
+      const searchInput =
+        $("#search") ||
+        $("#searchInput") ||
+        $('input[type="search"]');
+
+      if (searchInput) {
+        searchInput.value = "";
+      }
+
+      applyFilters();
+
+      const products = state.filtered.filter((product) => {
+        if (!Number.isFinite(budget) || budget <= 0) {
+          return true;
+        }
+
+        const price = Number(product.price);
+
+        return Number.isFinite(price) && price <= budget;
+      });
+
+      const plannerResult =
+        $("#planner-result") ||
+        $("#plannerResult") ||
+        form.parentElement?.querySelector(".planner-result");
+
+      if (plannerResult) {
+        if (!products.length) {
+          plannerResult.innerHTML = `
+            <div class="empty-state">
+              <strong>Geen passende deal gevonden</strong>
+              <p>
+                Pas je doel of budget aan en probeer opnieuw.
+              </p>
+            </div>
+          `;
+          return;
+        }
+
+        plannerResult.innerHTML = `
+          <div class="planner-result">
+            <strong>${products.length} passende ${
+              products.length === 1 ? "deal" : "deals"
+            }</strong>
+          </div>
+        `;
+
+        plannerResult.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest"
+        });
+      }
+    });
+  }
+
+  function setupAiCoach() {
+    const form =
+      $("#ai-form") ||
+      $("#aiForm") ||
+      document.querySelector("[data-ai-form]");
+
+    const input =
+      $("#ai-input") ||
+      $("#aiInput") ||
+      form?.querySelector("textarea") ||
+      form?.querySelector("input[name='message']");
+
+    const output =
+      $("#ai-output") ||
+      $("#aiOutput") ||
+      document.querySelector("[data-ai-output]");
+
+    if (!form || !input || !output) {
+      return;
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const message = String(input.value || "").trim();
+
+      if (!message) {
+        return;
+      }
+
+      output.textContent = "Even denken...";
+
+      try {
+        const response = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json"
+          },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            message
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`AI API returned ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        const answer =
+          data.answer ||
+          data.response ||
+          data.message ||
+          "Ik kon op dit moment geen antwoord geven.";
+
+        output.textContent = String(answer);
+      } catch (error) {
+        console.error("FitDealFinder: AI request mislukt", error);
+
+        output.textContent =
+          "De AI Supplement Coach is tijdelijk niet beschikbaar. Probeer het later opnieuw.";
+      }
+    });
+  }
+
+  function setupNavigation() {
+    $$("a[href^='#']").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        const targetId = link.getAttribute("href");
+
+        if (!targetId || targetId === "#") {
+          return;
+        }
+
+        const target = document.querySelector(targetId);
+
+        if (!target) {
+          return;
+        }
+
         event.preventDefault();
 
-        askAI(
-          aiInput?.value || ""
-        );
-      }
-    );
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+      });
+    });
   }
 
-  function setYear() {
-    const year =
-      $("#current-year");
-
-    if (year) {
-      year.textContent =
-        new Date().getFullYear();
-    }
-  }
-
-  function init() {
-    setupFilters();
+  function setup() {
+    bindSearch();
+    bindGoalFilters();
+    bindCategoryFilters();
     setupPlanner();
-    setupAI();
-    setYear();
+    setupAiCoach();
+    setupNavigation();
     loadProducts();
   }
 
-  if (
-    document.readyState ===
-    "loading"
-  ) {
-    document.addEventListener(
-      "DOMContentLoaded",
-      init
-    );
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setup, {
+      once: true
+    });
   } else {
-    init();
+    setup();
   }
 })();
