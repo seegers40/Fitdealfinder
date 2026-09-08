@@ -1,25 +1,131 @@
--- FitDealFinder final hardening / data-quality migration
+CREATE TABLE IF NOT EXISTS products (
+  id TEXT PRIMARY KEY,
+  external_id TEXT,
 
-CREATE INDEX IF NOT EXISTS products_last_synced_idx
-ON products(last_synced_at);
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
 
-CREATE INDEX IF NOT EXISTS products_in_stock_active_idx
-ON products(active, in_stock);
+  description TEXT,
+  brand TEXT,
+  category TEXT,
 
-CREATE INDEX IF NOT EXISTS products_network_active_idx
-ON products(network, active);
+  goals TEXT NOT NULL
+    DEFAULT '["cut","bulk","lean-bulk"]',
 
--- Product URLs must be present for visible products.
--- Existing rows are not modified automatically.
+  price REAL NOT NULL
+    CHECK (price >= 0),
 
--- Keep affiliate URLs nullable:
--- normal shop links are used until an affiliate program is approved.
+  old_price REAL,
 
--- Add a privacy-safe click timestamp index.
-CREATE INDEX IF NOT EXISTS affiliate_clicks_created_idx
-ON affiliate_clicks(created_at);
+  currency TEXT NOT NULL
+    DEFAULT 'EUR',
 
--- Prevent duplicate external IDs inside a network where possible.
-CREATE UNIQUE INDEX IF NOT EXISTS products_network_external_unique_idx
+  image_url TEXT,
+
+  product_url TEXT NOT NULL,
+
+  affiliate_url TEXT,
+
+  merchant_name TEXT NOT NULL,
+
+  merchant_id TEXT,
+
+  network TEXT NOT NULL
+    DEFAULT 'AWIN',
+
+  commission REAL,
+
+  commission_type TEXT,
+
+  in_stock INTEGER NOT NULL
+    DEFAULT 1
+    CHECK (in_stock IN (0,1)),
+
+  active INTEGER NOT NULL
+    DEFAULT 1
+    CHECK (active IN (0,1)),
+
+  deal_score INTEGER NOT NULL
+    DEFAULT 0
+    CHECK (deal_score BETWEEN 0 AND 100),
+
+  discount_percent INTEGER,
+
+  last_synced_at TEXT,
+
+  created_at TEXT NOT NULL
+    DEFAULT (datetime('now')),
+
+  updated_at TEXT NOT NULL
+    DEFAULT (datetime('now'))
+);
+
+
+CREATE INDEX IF NOT EXISTS products_category_idx
+ON products(category);
+
+CREATE INDEX IF NOT EXISTS products_brand_idx
+ON products(brand);
+
+CREATE INDEX IF NOT EXISTS products_merchant_idx
+ON products(merchant_name);
+
+CREATE INDEX IF NOT EXISTS products_active_idx
+ON products(active);
+
+CREATE INDEX IF NOT EXISTS products_price_idx
+ON products(price);
+
+CREATE INDEX IF NOT EXISTS products_deal_score_idx
+ON products(deal_score);
+
+
+CREATE UNIQUE INDEX IF NOT EXISTS products_network_external_idx
 ON products(network, external_id)
-WHERE external_id IS NOT NULL; 
+WHERE external_id IS NOT NULL;
+
+
+CREATE TABLE IF NOT EXISTS affiliate_clicks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  product_id TEXT NOT NULL
+    REFERENCES products(id)
+    ON DELETE CASCADE,
+
+  created_at TEXT NOT NULL
+    DEFAULT (datetime('now'))
+);
+
+
+CREATE INDEX IF NOT EXISTS affiliate_clicks_product_idx
+ON affiliate_clicks(
+  product_id,
+  created_at
+);
+
+
+CREATE TABLE IF NOT EXISTS sync_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  network TEXT NOT NULL,
+
+  started_at TEXT NOT NULL
+    DEFAULT (datetime('now')),
+
+  finished_at TEXT,
+
+  imported INTEGER NOT NULL
+    DEFAULT 0,
+
+  updated INTEGER NOT NULL
+    DEFAULT 0,
+
+  failed INTEGER NOT NULL
+    DEFAULT 0,
+
+  error_message TEXT
+);
+
+
+CREATE INDEX IF NOT EXISTS sync_logs_started_idx
+ON sync_logs(started_at);
