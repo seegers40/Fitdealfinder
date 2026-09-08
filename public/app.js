@@ -1,10 +1,4 @@
-
 "use strict";
-
-/* =========================================================
-   FitDealFinder - public/app.js
-   Afgestemd op de huidige index.html
-   ========================================================= */
 
 const API_PRODUCTS = "/api/products";
 const API_AI = "/api/ai/chat";
@@ -26,7 +20,7 @@ const state = {
 };
 
 /* =========================================================
-   DOM HELPERS
+   HELPERS
    ========================================================= */
 
 function $(selector, parent = document) {
@@ -36,10 +30,6 @@ function $(selector, parent = document) {
 function $$(selector, parent = document) {
   return Array.from(parent.querySelectorAll(selector));
 }
-
-/* =========================================================
-   GENERAL HELPERS
-   ========================================================= */
 
 function normalize(value) {
   return String(value ?? "")
@@ -90,17 +80,19 @@ function productText(product) {
     product?.brand,
     product?.merchant_name,
     product?.category,
-    product?.description
+    product?.description,
+    product?.goals
   ].join(" "));
 }
 
 /* =========================================================
-   PRODUCT FILTER DEFINITIONS
+   PRODUCT FILTERS
    ========================================================= */
 
 const EXCLUDED_TERMS = [
   "voedingsschema",
   "voedingsschema's",
+  "voedingsplan",
   "voedingsplan",
   "meal plan",
   "mealplan",
@@ -116,85 +108,19 @@ const EXCLUDED_TERMS = [
   "shaker bottle",
   "shakerbeker",
   "bidon",
-  "beker",
-  "bottle",
   "gymtas",
   "sporttas",
   "shirt",
   "t-shirt",
   "hoodie",
   "sweater",
-  "broek",
-  "short",
   "legging",
   "sokken",
   "pet",
   "cap",
   "merchandise",
   "handdoek",
-  "handdoekje",
-  "lifting straps",
-  "wrist wraps",
-  "knieband",
-  "kniebanden"
-];
-
-const PRODUCT_TERMS = [
-  "protein",
-  "proteine",
-  "whey",
-  "casein",
-  "isolate",
-  "isolaat",
-  "creatine",
-  "pre workout",
-  "pre-workout",
-  "preworkout",
-  "post workout",
-  "amino",
-  "bcaa",
-  "eaa",
-  "intra workout",
-  "intra-workout",
-  "collagen",
-  "collageen",
-  "vitamin",
-  "vitamine",
-  "multivitamin",
-  "omega",
-  "magnesium",
-  "zinc",
-  "zink",
-  "caffeine",
-  "cafeine",
-  "electrolyte",
-  "electrolyten",
-  "supplement",
-  "supplementen",
-  "fat burner",
-  "fatburner",
-  "thermogenic",
-  "thermogenics",
-  "mass gainer",
-  "massgainer",
-  "weight gainer",
-  "weightgainer",
-  "gainer",
-  "glutamine",
-  "citrulline",
-  "beta alanine",
-  "beta-alanine",
-  "arginine",
-  "pump",
-  "test booster",
-  "testbooster",
-  "greens",
-  "fiber",
-  "vezels",
-  "carbo",
-  "carbs",
-  "dextrose",
-  "maltodextrine"
+  "handdoekje"
 ];
 
 const CUT_TERMS = [
@@ -210,7 +136,9 @@ const CUT_TERMS = [
   "afvallen",
   "l-carnitine",
   "carnitine",
-  "appetite"
+  "appetite",
+  "metabolism",
+  "metabolisme"
 ];
 
 const BULK_TERMS = [
@@ -223,31 +151,53 @@ const BULK_TERMS = [
   "hardgainer",
   "mega mass",
   "mass gain",
-  "calorie surplus"
+  "calorie surplus",
+  "muscle mass"
 ];
 
-const LEAN_BULK_TERMS = [
-  "lean bulk",
-  "lean-bulk",
-  "leanbulking",
-  "muscle gain",
+const PROTEIN_TERMS = [
+  "protein",
+  "proteine",
+  "proteïne",
+  "whey",
+  "casein",
+  "caseïne",
+  "isolate",
+  "isolaat",
+  "hydrolyzed",
+  "hydrolysate"
+];
+
+const CREATINE_TERMS = [
+  "creatine",
+  "creatine monohydrate",
+  "creapure"
+];
+
+const PRE_WORKOUT_TERMS = [
+  "pre workout",
+  "pre-workout",
+  "preworkout",
+  "pump",
+  "citrulline",
+  "beta alanine",
+  "beta-alanine",
+  "caffeine",
+  "cafeine",
+  "nitric oxide"
+];
+
+const MUSCLE_TERMS = [
+  "muscle",
+  "spier",
   "spiermassa",
   "spiergroei",
   "hypertrophy",
+  "hypertrofie",
   "strength",
   "kracht",
-  "protein",
-  "proteine",
-  "whey",
-  "casein",
-  "isolate",
-  "creatine",
-  "amino",
-  "bcaa",
-  "eaa",
-  "pre workout",
-  "pre-workout",
-  "preworkout"
+  "performance",
+  "prestaties"
 ];
 
 function containsTerm(text, terms) {
@@ -258,10 +208,6 @@ function containsTerm(text, terms) {
     return needle && value.includes(needle);
   });
 }
-
-/* =========================================================
-   PRODUCT VALIDATION
-   ========================================================= */
 
 function productIsUsable(product) {
   if (!product) {
@@ -290,8 +236,15 @@ function productIsUsable(product) {
 }
 
 /* =========================================================
-   GOAL MATCHING
+   DOELEN
    ========================================================= */
+
+function isCutProduct(product) {
+  return containsTerm(
+    productText(product),
+    CUT_TERMS
+  );
+}
 
 function isBulkProduct(product) {
   return containsTerm(
@@ -300,10 +253,31 @@ function isBulkProduct(product) {
   );
 }
 
-function isCutProduct(product) {
+function isProteinProduct(product) {
   return containsTerm(
     productText(product),
-    CUT_TERMS
+    PROTEIN_TERMS
+  );
+}
+
+function isCreatineProduct(product) {
+  return containsTerm(
+    productText(product),
+    CREATINE_TERMS
+  );
+}
+
+function isPreWorkoutProduct(product) {
+  return containsTerm(
+    productText(product),
+    PRE_WORKOUT_TERMS
+  );
+}
+
+function isMuscleProduct(product) {
+  return containsTerm(
+    productText(product),
+    MUSCLE_TERMS
   );
 }
 
@@ -315,93 +289,99 @@ function matchesGoal(product, goal) {
   }
 
   const text = productText(product);
-  const bulk = isBulkProduct(product);
-  const cut = isCutProduct(product);
 
-  const generalTrainingProduct =
-    containsTerm(text, [
-      "protein",
-      "proteine",
-      "whey",
-      "casein",
-      "isolate",
-      "isolaat",
-      "creatine",
-      "pre workout",
-      "pre-workout",
-      "preworkout",
-      "amino",
-      "bcaa",
-      "eaa",
-      "electrolyte",
-      "vitamin",
-      "vitamine",
-      "magnesium",
-      "omega"
-    ]);
+  const cut = isCutProduct(product);
+  const bulk = isBulkProduct(product);
+  const protein = isProteinProduct(product);
+  const creatine = isCreatineProduct(product);
+  const preWorkout = isPreWorkoutProduct(product);
+  const muscle = isMuscleProduct(product);
+
+  /* -------------------------
+     CUT
+     ------------------------- */
 
   if (selected === "cut") {
     if (bulk) {
       return false;
     }
 
-    if (cut) {
-      return true;
-    }
-
-    return generalTrainingProduct;
+    return (
+      cut ||
+      protein ||
+      creatine ||
+      preWorkout ||
+      muscle ||
+      containsTerm(text, [
+        "electrolyte",
+        "electrolyten",
+        "vitamine",
+        "vitamin",
+        "amino",
+        "bcaa",
+        "eaa"
+      ])
+    );
   }
+
+  /* -------------------------
+     BULK
+     ------------------------- */
 
   if (selected === "bulk") {
-    if (bulk) {
-      return true;
-    }
-
-    if (
-      cut &&
-      !containsTerm(text, [
-        "protein",
-        "proteine",
-        "whey",
-        "creatine"
+    return (
+      bulk ||
+      protein ||
+      creatine ||
+      preWorkout ||
+      muscle ||
+      containsTerm(text, [
+        "amino",
+        "bcaa",
+        "eaa",
+        "carbo",
+        "carbs",
+        "dextrose",
+        "maltodextrine"
       ])
-    ) {
-      return false;
-    }
-
-    return containsTerm(text, [
-      "protein",
-      "proteine",
-      "whey",
-      "casein",
-      "isolate",
-      "isolaat",
-      "creatine",
-      "amino",
-      "bcaa",
-      "eaa",
-      "pre workout",
-      "pre-workout",
-      "preworkout",
-      "muscle",
-      "spier",
-      "strength",
-      "kracht"
-    ]);
+    );
   }
+
+  /* -------------------------
+     LEAN BULK
+     ------------------------- */
 
   if (
     selected === "lean-bulk" ||
     selected === "lean bulk" ||
     selected === "leanbulk"
   ) {
+    /*
+     * Een gewone whey of creatine hoeft
+     * niet letterlijk "lean bulk" in de
+     * productnaam te hebben.
+     */
+
     if (bulk) {
       return false;
     }
 
-    return containsTerm(
-      text,
-      LEAN_BULK_TERMS
+    return (
+      protein ||
+      creatine ||
+      preWorkout ||
+      muscle ||
+      containsTerm(text, [
+        "lean bulk",
+        "lean-bulk",
+        "leanbulking",
+        "amino",
+        "bcaa",
+        "eaa",
+        "electrolyte",
+        "vitamin",
+        "vitamine"
+      ])
     );
   }
 
@@ -409,7 +389,7 @@ function matchesGoal(product, goal) {
 }
 
 /* =========================================================
-   CATEGORY MATCHING
+   CATEGORIEËN
    ========================================================= */
 
 function matchesCategory(product, category) {
@@ -422,20 +402,11 @@ function matchesCategory(product, category) {
   const text = productText(product);
 
   if (selected === "proteine") {
-    return containsTerm(text, [
-      "protein",
-      "proteine",
-      "whey",
-      "casein",
-      "isolate",
-      "isolaat"
-    ]);
+    return isProteinProduct(product);
   }
 
   if (selected === "creatine") {
-    return containsTerm(text, [
-      "creatine"
-    ]);
+    return isCreatineProduct(product);
   }
 
   if (
@@ -443,26 +414,38 @@ function matchesCategory(product, category) {
     selected === "pre workout" ||
     selected === "preworkout"
   ) {
-    return containsTerm(text, [
-      "pre workout",
-      "pre-workout",
-      "preworkout",
-      "pump",
-      "citrulline",
-      "beta alanine",
-      "beta-alanine",
-      "caffeine",
-      "cafeine"
-    ]);
+    return isPreWorkoutProduct(product);
   }
 
   if (
     selected === "supplementen" ||
     selected === "supplement"
   ) {
-    return containsTerm(
-      text,
-      PRODUCT_TERMS
+    return (
+      isProteinProduct(product) ||
+      isCreatineProduct(product) ||
+      isPreWorkoutProduct(product) ||
+      containsTerm(text, [
+        "supplement",
+        "supplementen",
+        "vitamin",
+        "vitamine",
+        "omega",
+        "magnesium",
+        "zinc",
+        "zink",
+        "amino",
+        "bcaa",
+        "eaa",
+        "collagen",
+        "collageen",
+        "electrolyte",
+        "electrolyten",
+        "glutamine",
+        "citrulline",
+        "caffeine",
+        "cafeine"
+      ])
     );
   }
 
@@ -470,7 +453,7 @@ function matchesCategory(product, category) {
 }
 
 /* =========================================================
-   SEARCH
+   ZOEKEN
    ========================================================= */
 
 function matchesSearch(product, search) {
@@ -541,6 +524,8 @@ async function loadAllProducts() {
 
   try {
     const all = [];
+    const seen = new Set();
+
     let offset = 0;
 
     while (all.length < MAX_PRODUCTS) {
@@ -554,18 +539,12 @@ async function loadAllProducts() {
       for (const product of page) {
         const id = getProductId(product);
 
-        if (!id) {
+        if (!id || seen.has(id)) {
           continue;
         }
 
-        if (
-          !all.some(
-            item =>
-              getProductId(item) === id
-          )
-        ) {
-          all.push(product);
-        }
+        seen.add(id);
+        all.push(product);
 
         if (all.length >= MAX_PRODUCTS) {
           break;
@@ -601,7 +580,7 @@ async function loadAllProducts() {
 }
 
 /* =========================================================
-   FILTER STATE
+   FILTERS TOEPASSEN
    ========================================================= */
 
 function applyFilters() {
@@ -630,7 +609,7 @@ function applyFilters() {
 }
 
 /* =========================================================
-   PRODUCT DISPLAY
+   PRODUCTKAARTEN
    ========================================================= */
 
 function getDiscount(product) {
@@ -916,7 +895,7 @@ function renderProducts() {
       </div>
     `;
 
-    updateLoadMoreButton();
+    removeLoadMoreButton();
     renderCart();
 
     return;
@@ -949,8 +928,7 @@ function showProductError(message) {
     <div class="empty-state">
 
       <h3>
-        Producten tijdelijk
-        niet beschikbaar
+        Producten tijdelijk niet beschikbaar
       </h3>
 
       <p>
@@ -991,16 +969,20 @@ function setProductLoading(loading) {
 }
 
 /* =========================================================
-   LOAD MORE
+   MEER PRODUCTEN
    ========================================================= */
 
-function updateLoadMoreButton() {
-  const existing =
+function removeLoadMoreButton() {
+  const button =
     $("#load-more");
 
-  if (existing) {
-    existing.remove();
+  if (button) {
+    button.remove();
   }
+}
+
+function updateLoadMoreButton() {
+  removeLoadMoreButton();
 
   if (
     state.visibleCount >=
@@ -1027,6 +1009,7 @@ function updateLoadMoreButton() {
   button.type = "button";
   button.className =
     "button button-secondary";
+
   button.textContent =
     "Meer producten laden";
 
@@ -1046,7 +1029,7 @@ function updateLoadMoreButton() {
 }
 
 /* =========================================================
-   SEARCH
+   ZOEKMACHINE
    ========================================================= */
 
 function setupSearch() {
@@ -1067,16 +1050,6 @@ function setupSearch() {
 
       state.search =
         input.value.trim();
-
-      state.category = "";
-
-      $$("[data-category]")
-        .forEach(element => {
-          element.classList.remove(
-            "active",
-            "selected"
-          );
-        });
 
       applyFilters();
 
@@ -1104,7 +1077,7 @@ function setupSearch() {
 }
 
 /* =========================================================
-   GOALS
+   DOELKNOPPEN
    ========================================================= */
 
 function setupGoals() {
@@ -1154,13 +1127,23 @@ function setupGoals() {
             });
 
           applyFilters();
+
+          const deals =
+            $("#deals");
+
+          if (deals) {
+            deals.scrollIntoView({
+              behavior: "smooth",
+              block: "start"
+            });
+          }
         }
       );
     });
 }
 
 /* =========================================================
-   CATEGORIES
+   CATEGORIEKNOPPEN
    ========================================================= */
 
 function setupCategories() {
@@ -1226,7 +1209,7 @@ function setupCategories() {
 }
 
 /* =========================================================
-   RESET FILTERS
+   FILTERS WISSEN
    ========================================================= */
 
 function resetFilters() {
@@ -1256,7 +1239,7 @@ function resetFilters() {
 }
 
 /* =========================================================
-   SHOPPING CART
+   WINKELMANDJE
    ========================================================= */
 
 function loadCart() {
@@ -1298,7 +1281,7 @@ function saveCart() {
 
 function getCartElement() {
   let cart =
-    $("#cart");
+    $("#fitdeal-cart");
 
   if (cart) {
     return cart;
@@ -1313,7 +1296,7 @@ function getCartElement() {
   cart =
     document.createElement("section");
 
-  cart.id = "cart";
+  cart.id = "fitdeal-cart";
   cart.className =
     "cart-panel";
 
@@ -1626,16 +1609,10 @@ function renderCart() {
 }
 
 /* =========================================================
-   SHOPPING PLANNER
+   PERSOONLIJK DOEL / SHOPPING PLANNER
    ========================================================= */
 
-function plannerScore(
-  product,
-  goal
-) {
-  const text =
-    productText(product);
-
+function plannerScore(product, goal) {
   const selected =
     normalize(goal);
 
@@ -1645,43 +1622,49 @@ function plannerScore(
     selected === "cut" &&
     isCutProduct(product)
   ) {
-    score += 10;
+    score += 20;
   }
 
   if (
     selected === "bulk" &&
     isBulkProduct(product)
   ) {
-    score += 10;
+    score += 20;
   }
 
   if (
     selected === "lean-bulk" &&
-    !isBulkProduct(product) &&
-    containsTerm(text, [
-      "protein",
-      "proteine",
-      "whey",
-      "creatine",
-      "muscle",
-      "spier"
-    ])
+    !isBulkProduct(product)
   ) {
+    score += 15;
+  }
+
+  if (isProteinProduct(product)) {
     score += 10;
   }
 
-  const discount =
-    getDiscount(product);
-
-  if (discount > 0) {
-    score +=
-      discount / 10;
+  if (isCreatineProduct(product)) {
+    score += 8;
   }
+
+  if (isPreWorkoutProduct(product)) {
+    score += 5;
+  }
+
+  if (isMuscleProduct(product)) {
+    score += 5;
+  }
+
+  score +=
+    Math.min(
+      getDiscount(product),
+      20
+    );
 
   if (
     Number(product?.in_stock) === 1
   ) {
-    score += 2;
+    score += 3;
   }
 
   return score;
@@ -1699,64 +1682,72 @@ function getPlannerProducts(
 
   if (
     !selectedGoal ||
-    !Number.isFinite(
-      maxBudget
-    ) ||
+    !Number.isFinite(maxBudget) ||
     maxBudget <= 0
   ) {
     return [];
   }
 
-  return state.products
-    .filter(product => {
-      const price =
-        Number(product?.price);
+  const candidates =
+    state.products
+      .filter(product => {
+        const price =
+          Number(product?.price);
 
-      return (
-        productIsUsable(product) &&
-        matchesGoal(
-          product,
-          selectedGoal
-        ) &&
-        Number.isFinite(price) &&
-        price > 0 &&
-        price <= maxBudget
-      );
-    })
-    .map(product => ({
-      product,
-      score:
-        plannerScore(
-          product,
-          selectedGoal
-        )
-    }))
-    .sort((a, b) => {
-      if (
-        b.score !== a.score
-      ) {
         return (
-          b.score - a.score
+          productIsUsable(product) &&
+          matchesGoal(
+            product,
+            selectedGoal
+          ) &&
+          Number.isFinite(price) &&
+          price > 0 &&
+          price <= maxBudget
         );
-      }
-
-      const discountDifference =
-        getDiscount(b.product) -
-        getDiscount(a.product);
-
-      if (
-        discountDifference !== 0
-      ) {
-        return discountDifference;
-      }
-
-      return (
-        Number(a.product.price) -
-        Number(b.product.price)
+      })
+      .map(product => ({
+        product,
+        score:
+          plannerScore(
+            product,
+            selectedGoal
+          )
+      }))
+      .sort(
+        (a, b) =>
+          b.score - a.score
       );
-    })
-    .slice(0, 5)
-    .map(item => item.product);
+
+  /*
+   * Maak een selectie die echt binnen
+   * het opgegeven budget blijft.
+   */
+  const selected = [];
+  let total = 0;
+
+  for (const candidate of candidates) {
+    const price =
+      Number(
+        candidate.product.price
+      );
+
+    if (
+      total + price <=
+      maxBudget
+    ) {
+      selected.push(
+        candidate.product
+      );
+
+      total += price;
+    }
+
+    if (selected.length >= 5) {
+      break;
+    }
+  }
+
+  return selected;
 }
 
 function renderPlannerResults(
@@ -1776,11 +1767,11 @@ function renderPlannerResults(
       <div class="empty-state">
 
         <h3>
-          Geen passend plan gevonden
+          Geen passend doelplan gevonden
         </h3>
 
         <p>
-          Er zijn momenteel geen
+          We vonden momenteel geen
           passende producten binnen
           ${formatPrice(budget)}
           voor
@@ -1887,24 +1878,24 @@ function renderPlannerResults(
 }
 
 function setupPlanner() {
-  /*
-    De bestaande HTML gebruikt
-    #shopping-planner.
-    We ondersteunen daarnaast
-    #planner-form als dat later
-    aanwezig is.
-  */
-
   const container =
     $("#shopping-planner");
 
+  if (!container) {
+    return;
+  }
+
   const form =
-    $("#planner-form") ||
-    (
-      container
-        ? $("form", container)
-        : null
-    );
+    $("#planner-form", container) ||
+    $("form", container);
+
+  const goalField =
+    $("#planner-goal") ||
+    $('[name="goal"]', container);
+
+  const budgetField =
+    $("#planner-budget") ||
+    $('[name="budget"]', container);
 
   if (!form) {
     return;
@@ -1915,14 +1906,6 @@ function setupPlanner() {
     event => {
       event.preventDefault();
 
-      const goalField =
-        $('[name="goal"]', form) ||
-        $("#planner-goal");
-
-      const budgetField =
-        $('[name="budget"]', form) ||
-        $("#planner-budget");
-
       const goal =
         goalField?.value || "";
 
@@ -1931,16 +1914,14 @@ function setupPlanner() {
           budgetField?.value || 0
         );
 
+      const result =
+        $("#planner-result");
+
       if (
         !goal ||
-        !Number.isFinite(
-          budget
-        ) ||
+        !Number.isFinite(budget) ||
         budget <= 0
       ) {
-        const result =
-          $("#planner-result");
-
         if (result) {
           result.innerHTML = `
             <div class="empty-state">
@@ -1951,8 +1932,7 @@ function setupPlanner() {
 
               <p>
                 Kies bijvoorbeeld
-                Cut en een budget
-                van €70.
+                Cut en €70.
               </p>
 
             </div>
@@ -2077,7 +2057,7 @@ function setupAI() {
 }
 
 /* =========================================================
-   GLOBAL CLICK EVENTS
+   KLIK-EVENTS
    ========================================================= */
 
 function setupGlobalEvents() {
@@ -2093,77 +2073,73 @@ function setupGlobalEvents() {
         return;
       }
 
-      const addCartButton =
+      const addCart =
         target.closest(
           "[data-add-cart]"
         );
 
-      if (addCartButton) {
+      if (addCart) {
         event.preventDefault();
 
         addToCart(
-          addCartButton.dataset
-            .addCart
+          addCart.dataset.addCart
         );
 
         return;
       }
 
-      const plannerButton =
+      const addPlanner =
         target.closest(
           "[data-add-planner]"
         );
 
-      if (plannerButton) {
+      if (addPlanner) {
         event.preventDefault();
 
         addToCart(
-          plannerButton.dataset
+          addPlanner.dataset
             .addPlanner
         );
 
         return;
       }
 
-      const minusButton =
+      const minus =
         target.closest(
           "[data-cart-minus]"
         );
 
-      if (minusButton) {
+      if (minus) {
         changeCartQuantity(
-          minusButton.dataset
-            .cartMinus,
+          minus.dataset.cartMinus,
           -1
         );
 
         return;
       }
 
-      const plusButton =
+      const plus =
         target.closest(
           "[data-cart-plus]"
         );
 
-      if (plusButton) {
+      if (plus) {
         changeCartQuantity(
-          plusButton.dataset
-            .cartPlus,
+          plus.dataset.cartPlus,
           1
         );
 
         return;
       }
 
-      const removeButton =
+      const remove =
         target.closest(
           "[data-cart-remove]"
         );
 
-      if (removeButton) {
+      if (remove) {
         removeFromCart(
-          removeButton.dataset
-            .cartRemove
+          remove.dataset.cartRemove
         );
 
         return;
@@ -2208,7 +2184,7 @@ function setupGlobalEvents() {
 }
 
 /* =========================================================
-   ADD ALL PLANNER PRODUCTS
+   PLANNER → WINKELMAND
    ========================================================= */
 
 function addAllPlannerProducts() {
@@ -2231,8 +2207,7 @@ function addAllPlannerProducts() {
 
   buttons.forEach(button => {
     addToCart(
-      button.dataset
-        .addPlanner
+      button.dataset.addPlanner
     );
   });
 
@@ -2250,7 +2225,7 @@ function addAllPlannerProducts() {
 }
 
 /* =========================================================
-   INITIALIZATION
+   START
    ========================================================= */
 
 async function init() {
@@ -2268,8 +2243,7 @@ async function init() {
 }
 
 if (
-  document.readyState ===
-  "loading"
+  document.readyState === "loading"
 ) {
   document.addEventListener(
     "DOMContentLoaded",
