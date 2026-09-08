@@ -1,6 +1,5 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-
   "name": "fitdealfinder",
   "main": "worker.ts",
   "compatibility_date": "2026-09-04",
@@ -22,5 +21,11 @@
 
   "ai": {
     "binding": "AI"
+  },
+
+  "triggers": {
+    "crons": [
+      "17 * * * *"
+    ]
   }
 }
