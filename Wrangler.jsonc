@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "finder",
+  "name": "fitdealfinder",
   "main": "worker.ts",
   "compatibility_date": "2026-09-04",
 
@@ -27,5 +27,9 @@
     "crons": [
       "17 * * * *"
     ]
+  },
+
+  "secrets": {
+    "required": ["ADMIN_SECRET"]
   }
 }
