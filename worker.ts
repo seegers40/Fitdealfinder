@@ -3,20 +3,15 @@ interface Env {
   ASSETS: Fetcher;
   AI: Ai;
   ADMIN_SECRET?: string;
+  AWIN_FEED_URL?: string;
+  AWIN_PUBLISHER_ID?: string;
   AI_MODEL?: string;
 }
 
-interface ProductSource {
-  id: string;
-  name: string;
-  url: string;
-  retailer: string;
-  brand: string;
-  category: string;
-  goals: string[];
-}
+const DEFAULT_AI_MODEL =
+  "@cf/meta/llama-3.1-8b-instruct-fast";
 
-interface ProductRow {
+type ProductRow = {
   id: string;
   external_id: string | null;
   name: string;
@@ -43,242 +38,49 @@ interface ProductRow {
   last_synced_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=UTF-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+    },
+  });
 }
 
-const DEFAULT_AI_MODEL =
-  "@cf/meta/llama-3.1-8b-instruct-fast";
-
-/*
- * Directe productbronnen.
- *
- * Dit zijn GEEN affiliate-links.
- * De bezoeker gaat rechtstreeks naar de aanbieder.
- *
- * Prijzen worden NIET hier opgeslagen.
- * De Worker leest de actuele prijs van de productpagina.
- */
-const PRODUCT_SOURCES: ProductSource[] = [
-  {
-    id: "xxl-whey-delicious",
-    name: "Whey Delicious",
-    url:
-      "https://xxlnutrition.com/nl/whey-delicious",
-    retailer: "XXL Nutrition",
-    brand: "XXL Nutrition",
-    category: "protein",
-    goals: ["bulk", "lean-bulk", "cut"],
-  },
-
-  {
-    id: "xxl-creatine-monohydraat",
-    name: "Creatine Monohydraat",
-    url:
-      "https://xxlnutrition.com/nl/xxl-creatine-monohydraat",
-    retailer: "XXL Nutrition",
-    brand: "XXL Nutrition",
-    category: "creatine",
-    goals: ["bulk", "lean-bulk", "cut"],
-  },
-
-  {
-    id: "xxl-perfect-whey-protein",
-    name: "Perfect Whey Protein",
-    url:
-      "https://xxlnutrition.com/nl/perfect-whey-protein",
-    retailer: "XXL Nutrition",
-    brand: "XXL Nutrition",
-    category: "protein",
-    goals: ["bulk", "lean-bulk", "cut"],
-  },
-
-  {
-    id: "xxl-clear-whey-isolate",
-    name: "Clear Whey Isolate",
-    url:
-      "https://xxlnutrition.com/nl/clear-whey-isolate",
-    retailer: "XXL Nutrition",
-    brand: "XXL Nutrition",
-    category: "protein",
-    goals: ["cut", "lean-bulk"],
-  },
-
-  {
-    id: "xxl-creatine-capsules",
-    name:
-      "Creatine Monohydraat - 1200 mg - 240 capsules",
-    url:
-      "https://xxlnutrition.com/nl/creatine-monohydraat-1250-mg-240-capsules",
-    retailer: "XXL Nutrition",
-    brand: "XXL Nutrition",
-    category: "creatine",
-    goals: ["bulk", "lean-bulk", "cut"],
-  },
-
-  {
-    id: "xxl-creatine-chewable",
-    name:
-      "Creatine Monohydraat - 1000 mg - 90 kauwtabletten",
-    url:
-      "https://xxlnutrition.com/nl/creatine-monohydraat-1000-mg-90-kauwtabletten",
-    retailer: "XXL Nutrition",
-    brand: "XXL Nutrition",
-    category: "creatine",
-    goals: ["bulk", "lean-bulk", "cut"],
-  },
-
-  {
-    id: "xxl-whey-isolate",
-    name: "Whey Isolaat",
-    url:
-      "https://xxlnutrition.com/nl/whey-isolaat",
-    retailer: "XXL Nutrition",
-    brand: "XXL Nutrition",
-    category: "protein",
-    goals: ["cut", "lean-bulk", "bulk"],
-  },
-
-  {
-    id: "xxl-whey-isolate-zero",
-    name: "Whey Isolate Zero",
-    url:
-      "https://xxlnutrition.com/nl/whey-isolate-zero",
-    retailer: "XXL Nutrition",
-    brand: "XXL Nutrition",
-    category: "protein",
-    goals: ["cut", "lean-bulk", "bulk"],
-  },
-
-  {
-    id: "xxl-diet-shake",
-    name: "Diet Shake",
-    url:
-      "https://xxlnutrition.com/nl/diet-shake",
-    retailer: "XXL Nutrition",
-    brand: "XXL Nutrition",
-    category: "meal-replacement",
-    goals: ["cut"],
-  },
-
-  {
-    id: "xxl-perfect-milk-protein",
-    name: "Perfect Milk Protein",
-    url:
-      "https://xxlnutrition.com/nl/perfect-milk-protein",
-    retailer: "XXL Nutrition",
-    brand: "XXL Nutrition",
-    category: "protein",
-    goals: ["bulk", "lean-bulk", "cut"],
-  },
-];
-
-/* -------------------------------------------------------------------------- */
-/* Algemene helpers                                                           */
-/* -------------------------------------------------------------------------- */
-
-function json(
-  data: unknown,
-  status = 200,
-): Response {
-  return new Response(
-    JSON.stringify(data),
-    {
-      status,
-      headers: {
-        "content-type":
-          "application/json; charset=UTF-8",
-        "cache-control": "no-store",
-        "x-content-type-options":
-          "nosniff",
-      },
+function text(message: string, status = 200): Response {
+  return new Response(message, {
+    status,
+    headers: {
+      "content-type": "text/plain; charset=UTF-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
     },
-  );
-}
-
-function text(
-  value: string,
-  status = 200,
-): Response {
-  return new Response(
-    value,
-    {
-      status,
-      headers: {
-        "content-type":
-          "text/plain; charset=UTF-8",
-        "cache-control": "no-store",
-        "x-content-type-options":
-          "nosniff",
-      },
-    },
-  );
+  });
 }
 
 function errorResponse(
   message: string,
   status = 500,
 ): Response {
-  return json(
-    {
-      error: message,
-    },
-    status,
-  );
+  return json({ error: message }, status);
 }
 
-function safeUrl(
-  value: unknown,
-): string | null {
-  if (
-    typeof value !== "string" ||
-    !value.trim()
-  ) {
-    return null;
-  }
-
-  try {
-    const url =
-      new URL(
-        value.trim(),
-      );
-
-    if (
-      url.protocol !== "https:" &&
-      url.protocol !== "http:"
-    ) {
-      return null;
-    }
-
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
-function slugify(
-  value: string,
-): string {
+function slugify(value: string): string {
   return value
     .normalize("NFKD")
-    .replace(
-      /[\u0300-\u036f]/g,
-      "",
-    )
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim()
-    .replace(
-      /[^a-z0-9]+/g,
-      "-",
-    )
-    .replace(
-      /^-+|-+$/g,
-      "",
-    )
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .slice(0, 180);
 }
 
-function numberOrNull(
-  value: unknown,
-): number | null {
+function numberOrNull(value: unknown): number | null {
   if (
     value === null ||
     value === undefined ||
@@ -294,71 +96,191 @@ function numberOrNull(
     return value;
   }
 
-  let valueString =
-    String(value)
-      .trim()
-      .replace(/[^\d,.-]/g, "");
-
-  if (!valueString) {
+  if (typeof value !== "string") {
     return null;
   }
 
-  const comma =
-    valueString.lastIndexOf(",");
+  let normalized = value
+    .trim()
+    .replace(/[^\d,.-]/g, "");
 
-  const dot =
-    valueString.lastIndexOf(".");
-
-  if (
-    comma >= 0 &&
-    dot >= 0
-  ) {
-    if (comma > dot) {
-      valueString =
-        valueString
-          .replace(/\./g, "")
-          .replace(",", ".");
-    } else {
-      valueString =
-        valueString.replace(
-          /,/g,
-          "",
-        );
-    }
-  } else if (
-    comma >= 0
-  ) {
-    valueString =
-      valueString.replace(
-        ",",
-        ".",
-      );
+  if (!normalized) {
+    return null;
   }
 
-  const parsed =
-    Number(valueString);
+  const comma = normalized.lastIndexOf(",");
+  const dot = normalized.lastIndexOf(".");
+
+  if (comma >= 0 && dot >= 0) {
+    if (comma > dot) {
+      normalized = normalized
+        .replace(/\./g, "")
+        .replace(",", ".");
+    } else {
+      normalized = normalized.replace(/,/g, "");
+    }
+  } else if (comma >= 0) {
+    normalized = normalized.replace(",", ".");
+  }
+
+  const parsed = Number(normalized);
 
   return Number.isFinite(parsed)
     ? parsed
     : null;
 }
 
-function calculateDiscount(
+function booleanToInteger(
+  value: unknown,
+  defaultValue = 0,
+): number {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return defaultValue;
+  }
+
+  if (typeof value === "boolean") {
+    return value ? 1 : 0;
+  }
+
+  if (typeof value === "number") {
+    return value !== 0 ? 1 : 0;
+  }
+
+  if (typeof value === "string") {
+    const normalized =
+      value.trim().toLowerCase();
+
+    if (
+      [
+        "true",
+        "yes",
+        "y",
+        "1",
+        "in stock",
+        "instock",
+        "available",
+        "beschikbaar",
+      ].includes(normalized)
+    ) {
+      return 1;
+    }
+
+    if (
+      [
+        "false",
+        "no",
+        "n",
+        "0",
+        "out of stock",
+        "outofstock",
+        "unavailable",
+        "niet beschikbaar",
+      ].includes(normalized)
+    ) {
+      return 0;
+    }
+  }
+
+  return defaultValue;
+}
+
+function safeUrl(value: unknown): string | null {
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value.trim());
+
+    if (
+      url.protocol !== "https:" &&
+      url.protocol !== "http:"
+    ) {
+      return null;
+    }
+
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeGoals(value: unknown): string {
+  const defaults = [
+    "cut",
+    "bulk",
+    "lean-bulk",
+  ];
+
+  if (Array.isArray(value)) {
+    const goals = value
+      .map((item) =>
+        String(item).trim().toLowerCase(),
+      )
+      .filter(Boolean);
+
+    return JSON.stringify(
+      goals.length ? goals : defaults,
+    );
+  }
+
+  if (
+    typeof value === "string" &&
+    value.trim()
+  ) {
+    try {
+      const parsed = JSON.parse(value);
+
+      if (Array.isArray(parsed)) {
+        const goals = parsed
+          .map((item) =>
+            String(item).trim().toLowerCase(),
+          )
+          .filter(Boolean);
+
+        return JSON.stringify(
+          goals.length ? goals : defaults,
+        );
+      }
+    } catch {
+      const goals = value
+        .split(/[;,|]/)
+        .map((item) =>
+          item.trim().toLowerCase(),
+        )
+        .filter(Boolean);
+
+      if (goals.length) {
+        return JSON.stringify(goals);
+      }
+    }
+  }
+
+  return JSON.stringify(defaults);
+}
+
+function calculateDiscountPercent(
   price: number,
   oldPrice: number | null,
 ): number | null {
   if (
     oldPrice === null ||
-    oldPrice <= price ||
-    oldPrice <= 0
+    oldPrice <= 0 ||
+    price < 0 ||
+    oldPrice <= price
   ) {
     return null;
   }
 
   return Math.round(
-    ((oldPrice - price) /
-      oldPrice) *
-      100,
+    ((oldPrice - price) / oldPrice) * 100,
   );
 }
 
@@ -372,7 +294,7 @@ function calculateDealScore(
   }
 
   const discount =
-    calculateDiscount(
+    calculateDiscountPercent(
       price,
       oldPrice,
     );
@@ -381,1087 +303,518 @@ function calculateDealScore(
     return 20;
   }
 
-  return Math.min(
-    100,
-    Math.max(
-      20,
+  return Math.max(
+    0,
+    Math.min(
+      100,
       20 + discount * 2,
     ),
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* HTML / JSON-LD                                                             */
-/* -------------------------------------------------------------------------- */
-
-function extractJsonLdBlocks(
-  html: string,
+function getFeedItems(
+  payload: unknown,
 ): unknown[] {
-  const blocks =
-    html.match(
-      /<script[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi,
-    ) ?? [];
-
-  const result: unknown[] =
-    [];
-
-  for (
-    const block of blocks
-  ) {
-    const content =
-      block
-        .replace(
-          /<script[^>]*>/i,
-          "",
-        )
-        .replace(
-          /<\/script>\s*$/i,
-          "",
-        )
-        .trim();
-
-    if (!content) {
-      continue;
-    }
-
-    try {
-      result.push(
-        JSON.parse(
-          content,
-        ),
-      );
-    } catch {
-      /*
-       * Sommige winkels zetten ongeldige
-       * JSON-LD blokken op de pagina.
-       * Die slaan we veilig over.
-       */
-    }
-  }
-
-  return result;
-}
-
-function collectProperty(
-  value: unknown,
-  property: string,
-  result: unknown[],
-): void {
-  if (
-    value === null ||
-    value === undefined
-  ) {
-    return;
+  if (Array.isArray(payload)) {
+    return payload;
   }
 
   if (
-    Array.isArray(value)
+    !payload ||
+    typeof payload !== "object"
   ) {
-    for (
-      const item of value
-    ) {
-      collectProperty(
-        item,
-        property,
-        result,
-      );
-    }
-
-    return;
-  }
-
-  if (
-    typeof value !==
-    "object"
-  ) {
-    return;
+    return [];
   }
 
   const object =
-    value as Record<
-      string,
-      unknown
-    >;
-
-  if (
-    Object.prototype.hasOwnProperty.call(
-      object,
-      property,
-    )
-  ) {
-    result.push(
-      object[property],
-    );
-  }
+    payload as Record<string, unknown>;
 
   for (
-    const nested of Object.values(
-      object,
-    )
-  ) {
-    collectProperty(
-      nested,
-      property,
-      result,
-    );
-  }
-}
-
-function jsonLdValues(
-  html: string,
-  property: string,
-): unknown[] {
-  const result: unknown[] =
-    [];
-
-  for (
-    const block of
-      extractJsonLdBlocks(
-        html,
-      )
-  ) {
-    collectProperty(
-      block,
-      property,
-      result,
-    );
-  }
-
-  return result;
-}
-
-function firstString(
-  values: unknown[],
-): string | null {
-  for (
-    const value of values
-  ) {
-    if (
-      typeof value ===
-        "string" &&
-      value.trim()
-    ) {
-      return value.trim();
-    }
-
-    if (
-      Array.isArray(value)
-    ) {
-      const nested =
-        firstString(
-          value,
-        );
-
-      if (nested) {
-        return nested;
-      }
-    }
-
-    if (
-      value &&
-      typeof value ===
-        "object"
-    ) {
-      const object =
-        value as Record<
-          string,
-          unknown
-        >;
-
-      for (
-        const key of [
-          "@id",
-          "url",
-          "contentUrl",
-        ]
-      ) {
-        if (
-          typeof object[
-            key
-          ] === "string"
-        ) {
-          return String(
-            object[key],
-          );
-        }
-      }
-    }
-  }
-
-  return null;
-}
-
-function extractMeta(
-  html: string,
-  property: string,
-): string | null {
-  const escaped =
-    property.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      "\\$&",
-    );
-
-  const patterns = [
-    new RegExp(
-      `<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']+)["']`,
-      "i",
-    ),
-    new RegExp(
-      `<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escaped}["']`,
-      "i",
-    ),
-  ];
-
-  for (
-    const pattern of patterns
-  ) {
-    const match =
-      html.match(pattern);
-
-    if (
-      match &&
-      match[1]
-    ) {
-      return decodeHtml(
-        match[1],
-      ).trim();
-    }
-  }
-
-  return null;
-}
-
-function decodeHtml(
-  value: string,
-): string {
-  return value
-    .replace(
-      /&amp;/g,
-      "&",
-    )
-    .replace(
-      /&quot;/g,
-      '"',
-    )
-    .replace(
-      /&#39;/g,
-      "'",
-    )
-    .replace(
-      /&lt;/g,
-      "<",
-    )
-    .replace(
-      /&gt;/g,
-      ">",
-    )
-    .replace(
-      /&nbsp;/g,
-      " ",
-    );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Prijsdetectie                                                              */
-/* -------------------------------------------------------------------------- */
-
-function extractCurrentPrice(
-  html: string,
-): number | null {
-  /*
-   * 1. JSON-LD Offer price
-   */
-  const jsonPrices =
-    jsonLdValues(
-      html,
-      "price",
-    );
-
-  for (
-    const value of jsonPrices
-  ) {
-    const price =
-      numberOrNull(
-        value,
-      );
-
-    if (
-      price !== null &&
-      price > 0
-    ) {
-      return price;
-    }
-  }
-
-  /*
-   * 2. Meta product:price:amount
-   */
-  for (
-    const property of [
-      "product:price:amount",
-      "og:price:amount",
+    const key of [
+      "products",
+      "items",
+      "data",
+      "results",
     ]
   ) {
-    const meta =
-      extractMeta(
-        html,
-        property,
-      );
-
-    const price =
-      numberOrNull(
-        meta,
-      );
-
-    if (
-      price !== null &&
-      price > 0
-    ) {
-      return price;
+    if (Array.isArray(object[key])) {
+      return object[key] as unknown[];
     }
   }
 
-  /*
-   * 3. itemprop=price
-   */
-  const itemProp =
-    html.match(
-      /itemprop=["']price["'][^>]*content=["']([^"']+)["']/i,
-    );
-
-  if (
-    itemProp &&
-    itemProp[1]
-  ) {
-    const price =
-      numberOrNull(
-        itemProp[1],
-      );
-
-    if (
-      price !== null &&
-      price > 0
-    ) {
-      return price;
-    }
-  }
-
-  /*
-   * 4. Veel voorkomende ecommerce JSON.
-   */
-  const jsonPatterns = [
-    /"price"\s*:\s*"([^"]+)"/i,
-    /"price"\s*:\s*([0-9]+(?:[.,][0-9]{1,2})?)/i,
-    /"currentPrice"\s*:\s*"([^"]+)"/i,
-    /"salePrice"\s*:\s*"([^"]+)"/i,
-  ];
-
-  for (
-    const pattern of
-      jsonPatterns
-  ) {
-    const match =
-      html.match(pattern);
-
-    if (
-      !match ||
-      !match[1]
-    ) {
-      continue;
-    }
-
-    const price =
-      numberOrNull(
-        match[1],
-      );
-
-    if (
-      price !== null &&
-      price > 0
-    ) {
-      return price;
-    }
-  }
-
-  /*
-   * 5. Zichtbare euro-prijs.
-   *
-   * Dit is bewust de laatste fallback.
-   */
-  const euroMatches =
-    html.matchAll(
-      /€\s*([0-9]{1,5}(?:[.,][0-9]{2})?)/gi,
-    );
-
-  const candidates: number[] =
-    [];
-
-  for (
-    const match of
-      euroMatches
-  ) {
-    const price =
-      numberOrNull(
-        match[1],
-      );
-
-    if (
-      price !== null &&
-      price > 0 &&
-      price < 10000
-    ) {
-      candidates.push(
-        price,
-      );
-    }
-  }
-
-  /*
-   * De kleinste redelijke eurowaarde
-   * is bij veel productpagina's de
-   * actuele vanafprijs.
-   */
-  if (
-    candidates.length
-  ) {
-    return Math.min(
-      ...candidates,
-    );
-  }
-
-  return null;
+  return [];
 }
 
-function extractOldPrice(
-  html: string,
-  currentPrice: number,
-): number | null {
-  const highPrices =
-    jsonLdValues(
-      html,
-      "highPrice",
-    );
+function asRecord(
+  value: unknown,
+): Record<string, unknown> {
+  return value &&
+    typeof value === "object"
+    ? value as Record<string, unknown>
+    : {};
+}
 
-  for (
-    const value of
-      highPrices
-  ) {
-    const price =
-      numberOrNull(
-        value,
-      );
-
+function firstValue(
+  object: Record<string, unknown>,
+  keys: string[],
+): unknown {
+  for (const key of keys) {
     if (
-      price !== null &&
-      price > currentPrice
+      object[key] !== undefined &&
+      object[key] !== null &&
+      object[key] !== ""
     ) {
-      return price;
+      return object[key];
     }
   }
 
-  const oldPricePatterns = [
-    /"oldPrice"\s*:\s*"([^"]+)"/i,
-    /"regularPrice"\s*:\s*"([^"]+)"/i,
-    /"compareAtPrice"\s*:\s*"([^"]+)"/i,
-  ];
-
-  for (
-    const pattern of
-      oldPricePatterns
-  ) {
-    const match =
-      html.match(pattern);
-
-    if (
-      !match ||
-      !match[1]
-    ) {
-      continue;
-    }
-
-    const price =
-      numberOrNull(
-        match[1],
-      );
-
-    if (
-      price !== null &&
-      price > currentPrice
-    ) {
-      return price;
-    }
-  }
-
-  return null;
+  return undefined;
 }
 
-function extractAvailability(
-  html: string,
-): boolean {
-  const values =
-    jsonLdValues(
-      html,
-      "availability",
-    );
-
-  for (
-    const value of values
-  ) {
-    const text =
-      String(value)
-        .toLowerCase();
-
-    if (
-      text.includes(
-        "outofstock",
-      ) ||
-      text.includes(
-        "soldout",
-      ) ||
-      text.includes(
-        "discontinued",
-      )
-    ) {
-      return false;
-    }
-
-    if (
-      text.includes(
-        "instock",
-      ) ||
-      text.includes(
-        "limitedavailability",
-      ) ||
-      text.includes(
-        "preorder",
-      )
-    ) {
-      return true;
-    }
-  }
-
-  /*
-   * Geen betrouwbare voorraadinfo:
-   * product blijft zichtbaar.
-   *
-   * We claimen dus niet dat het
-   * gegarandeerd op voorraad is.
-   */
-  return true;
-}
-
-function extractImage(
-  html: string,
-): string | null {
-  const image =
-    firstString(
-      jsonLdValues(
-        html,
-        "image",
-      ),
-    );
-
-  const jsonImage =
-    safeUrl(image);
-
-  if (jsonImage) {
-    return jsonImage;
-  }
-
-  const ogImage =
-    safeUrl(
-      extractMeta(
-        html,
-        "og:image",
-      ),
-    );
-
-  if (ogImage) {
-    return ogImage;
-  }
-
-  return null;
-}
-
-function extractDescription(
-  html: string,
-): string | null {
-  const description =
-    firstString(
-      jsonLdValues(
-        html,
-        "description",
-      ),
-    );
-
-  if (
-    description &&
-    description.length >
-      10
-  ) {
-    return description
-      .replace(
-        /\s+/g,
-        " ",
-      )
-      .trim()
-      .slice(0, 1000);
-  }
-
-  const meta =
-    extractMeta(
-      html,
-      "description",
-    );
-
-  if (
-    meta &&
-    meta.length > 10
-  ) {
-    return meta
-      .replace(
-        /\s+/g,
-        " ",
-      )
-      .trim()
-      .slice(0, 1000);
-  }
-
-  return null;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Product scraping                                                           */
-/* -------------------------------------------------------------------------- */
-
-async function fetchProductSource(
-  source: ProductSource,
-): Promise<
-  Omit<
-    ProductRow,
-    | "created_at"
-    | "updated_at"
-  >
-> {
-  const response =
-    await fetch(
-      source.url,
-      {
-        method: "GET",
-        redirect: "follow",
-        headers: {
-          "User-Agent":
-            "FitDealFinder/1.0",
-          Accept:
-            "text/html,application/xhtml+xml",
-          "Accept-Language":
-            "nl-NL,nl;q=0.9,en;q=0.8",
-        },
-      },
-    );
-
-  if (!response.ok) {
-    throw new Error(
-      `${source.retailer}: productpagina gaf HTTP ${response.status}`,
-    );
-  }
-
-  const html =
-    await response.text();
-
-  if (
-    html.length < 500
-  ) {
-    throw new Error(
-      `${source.retailer}: productpagina bevat onvoldoende inhoud`,
-    );
-  }
-
-  const price =
-    extractCurrentPrice(
-      html,
-    );
-
-  /*
-   * Geen actuele prijs =
-   * niet publiceren.
-   */
-  if (
-    price === null ||
-    price <= 0
-  ) {
-    throw new Error(
-      `${source.name}: actuele prijs niet betrouwbaar gevonden`,
-    );
-  }
-
-  const oldPrice =
-    extractOldPrice(
-      html,
-      price,
-    );
-
-  const inStock =
-    extractAvailability(
-      html,
-    );
-
-  const discount =
-    calculateDiscount(
-      price,
-      oldPrice,
-    );
-
-  const now =
-    new Date().toISOString();
-
-  const slug =
-    slugify(
-      source.name,
-    );
-
-  return {
-    id: source.id,
-    external_id: source.id,
-    name: source.name,
-    slug,
-    description:
-      extractDescription(
-        html,
-      ),
-    brand: source.brand,
-    category:
-      source.category,
-    goals:
-      JSON.stringify(
-        source.goals,
-      ),
-    price,
-    old_price:
-      oldPrice,
-    currency: "EUR",
-    image_url:
-      extractImage(
-        html,
-      ),
-    product_url:
-      source.url,
-    affiliate_url:
-      null,
-    merchant_name:
-      source.retailer,
-    merchant_id:
-      null,
-    network:
-      "DIRECT",
-    commission:
-      null,
-    commission_type:
-      null,
-    in_stock:
-      inStock ? 1 : 0,
-    active: 1,
-    deal_score:
-      calculateDealScore(
-        price,
-        oldPrice,
-        inStock ? 1 : 0,
-      ),
-    discount_percent:
-      discount,
-    last_synced_at:
-      now,
-  };
-}
-
-/* -------------------------------------------------------------------------- */
-/* D1 synchronisatie                                                          */
-/* -------------------------------------------------------------------------- */
-
-async function upsertProduct(
-  env: Env,
-  product: Omit<
-    ProductRow,
-    | "created_at"
-    | "updated_at"
-  >,
-): Promise<
-  "imported" | "updated"
-> {
-  const existing =
-    await env.DB.prepare(
-      `SELECT id
-       FROM products
-       WHERE id = ?
-       LIMIT 1`,
-    )
-      .bind(
-        product.id,
-      )
-      .first<{
-        id: string;
-      }>();
-
-  const now =
-    new Date().toISOString();
-
-  if (existing) {
-    await env.DB.prepare(
-      `UPDATE products
-       SET
-         external_id = ?,
-         name = ?,
-         slug = ?,
-         description = ?,
-         brand = ?,
-         category = ?,
-         goals = ?,
-         price = ?,
-         old_price = ?,
-         currency = ?,
-         image_url = ?,
-         product_url = ?,
-         affiliate_url = ?,
-         merchant_name = ?,
-         merchant_id = ?,
-         network = ?,
-         commission = ?,
-         commission_type = ?,
-         in_stock = ?,
-         active = ?,
-         deal_score = ?,
-         discount_percent = ?,
-         last_synced_at = ?,
-         updated_at = ?
-       WHERE id = ?`,
-    )
-      .bind(
-        product.external_id,
-        product.name,
-        product.slug,
-        product.description,
-        product.brand,
-        product.category,
-        product.goals,
-        product.price,
-        product.old_price,
-        product.currency,
-        product.image_url,
-        product.product_url,
-        product.affiliate_url,
-        product.merchant_name,
-        product.merchant_id,
-        product.network,
-        product.commission,
-        product.commission_type,
-        product.in_stock,
-        product.active,
-        product.deal_score,
-        product.discount_percent,
-        product.last_synced_at,
-        now,
-        product.id,
-      )
-      .run();
-
-    return "updated";
-  }
-
-  await env.DB.prepare(
-    `INSERT INTO products (
-      id,
-      external_id,
-      name,
-      slug,
-      description,
-      brand,
-      category,
-      goals,
-      price,
-      old_price,
-      currency,
-      image_url,
-      product_url,
-      affiliate_url,
-      merchant_name,
-      merchant_id,
-      network,
-      commission,
-      commission_type,
-      in_stock,
-      active,
-      deal_score,
-      discount_percent,
-      last_synced_at,
-      created_at,
-      updated_at
-    )
-    VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?, ?, ?
-    )`,
-  )
-    .bind(
-      product.id,
-      product.external_id,
-      product.name,
-      product.slug,
-      product.description,
-      product.brand,
-      product.category,
-      product.goals,
-      product.price,
-      product.old_price,
-      product.currency,
-      product.image_url,
-      product.product_url,
-      product.affiliate_url,
-      product.merchant_name,
-      product.merchant_id,
-      product.network,
-      product.commission,
-      product.commission_type,
-      product.in_stock,
-      product.active,
-      product.deal_score,
-      product.discount_percent,
-      product.last_synced_at,
-      now,
-      now,
-    )
-    .run();
-
-  return "imported";
-}
-
-async function syncDirectProducts(
+async function syncAwin(
   env: Env,
 ): Promise<{
   imported: number;
   updated: number;
   failed: number;
 }> {
+  if (!env.AWIN_FEED_URL) {
+    throw new Error(
+      "AWIN_FEED_URL is niet ingesteld.",
+    );
+  }
+
   const startedAt =
     new Date().toISOString();
 
   await env.DB.prepare(
-    `INSERT INTO sync_logs (
-      network,
-      started_at
-    )
-    VALUES (?, ?)`,
+    `INSERT INTO sync_logs
+     (network, started_at)
+     VALUES (?, ?)`,
   )
-    .bind(
-      "DIRECT",
-      startedAt,
-    )
+    .bind("AWIN", startedAt)
     .run();
 
   let imported = 0;
   let updated = 0;
   let failed = 0;
+  let errorMessage: string | null = null;
 
-  let errorMessage:
-    | string
-    | null = null;
+  try {
+    const response = await fetch(
+      env.AWIN_FEED_URL,
+      {
+        headers: {
+          accept:
+            "application/json,text/plain,*/*",
+        },
+      },
+    );
 
-  for (
-    const source of PRODUCT_SOURCES
-  ) {
-    try {
-      const product =
-        await fetchProductSource(
-          source,
-        );
-
-      const result =
-        await upsertProduct(
-          env,
-          product,
-        );
-
-      if (
-        result ===
-        "imported"
-      ) {
-        imported++;
-      } else {
-        updated++;
-      }
-    } catch (error) {
-      failed++;
-
-      const message =
-        error instanceof Error
-          ? error.message
-          : String(error);
-
-      errorMessage =
-        message;
-
-      console.error(
-        `FitDealFinder sync fout voor ${source.name}:`,
-        message,
+    if (!response.ok) {
+      throw new Error(
+        `Awin feed gaf HTTP ${response.status}.`,
       );
     }
+
+    const contentType =
+      response.headers.get(
+        "content-type",
+      ) ?? "";
+
+    const body =
+      await response.text();
+
+    let payload: unknown;
+
+    if (
+      contentType.includes(
+        "application/json",
+      ) ||
+      body.trim().startsWith("{") ||
+      body.trim().startsWith("[")
+    ) {
+      payload = JSON.parse(body);
+    } else {
+      throw new Error(
+        "De huidige Awin-import ondersteunt JSON. De ontvangen feed is geen JSON.",
+      );
+    }
+
+    const items =
+      getFeedItems(payload);
+
+    for (const item of items) {
+      try {
+        const source =
+          asRecord(item);
+
+        const externalId =
+          String(
+            firstValue(source, [
+              "external_id",
+              "externalId",
+              "id",
+              "aw_product_id",
+              "product_id",
+            ]) ?? "",
+          ).trim();
+
+        const name =
+          String(
+            firstValue(source, [
+              "name",
+              "product_name",
+              "title",
+            ]) ?? "",
+          ).trim();
+
+        const productUrl =
+          safeUrl(
+            firstValue(source, [
+              "product_url",
+              "productUrl",
+              "url",
+              "deep_link",
+              "deeplink",
+            ]),
+          );
+
+        const price =
+          numberOrNull(
+            firstValue(source, [
+              "price",
+              "current_price",
+              "sale_price",
+            ]),
+          );
+
+        if (
+          !externalId ||
+          !name ||
+          !productUrl ||
+          price === null ||
+          price < 0
+        ) {
+          failed++;
+          continue;
+        }
+
+        const oldPrice =
+          numberOrNull(
+            firstValue(source, [
+              "old_price",
+              "oldPrice",
+              "rrp",
+              "regular_price",
+            ]),
+          );
+
+        const imageUrl =
+          safeUrl(
+            firstValue(source, [
+              "image_url",
+              "imageUrl",
+              "image",
+              "aw_image_url",
+            ]),
+          );
+
+        const affiliateUrl =
+          safeUrl(
+            firstValue(source, [
+              "affiliate_url",
+              "affiliateUrl",
+              "tracking_url",
+              "trackingUrl",
+            ]),
+          );
+
+        const merchantName =
+          String(
+            firstValue(source, [
+              "merchant_name",
+              "merchantName",
+              "advertiser_name",
+            ]) ?? "Awin",
+          ).trim();
+
+        const merchantIdValue =
+          firstValue(source, [
+            "merchant_id",
+            "merchantId",
+            "advertiser_id",
+            "advertiserId",
+          ]);
+
+        const merchantId =
+          merchantIdValue ===
+            undefined ||
+          merchantIdValue === null
+            ? null
+            : String(merchantIdValue);
+
+        const brandValue =
+          firstValue(source, [
+            "brand",
+            "brand_name",
+          ]);
+
+        const categoryValue =
+          firstValue(source, [
+            "category",
+            "category_name",
+          ]);
+
+        const descriptionValue =
+          firstValue(source, [
+            "description",
+            "short_description",
+          ]);
+
+        const brand =
+          brandValue === undefined ||
+          brandValue === null
+            ? null
+            : String(brandValue).trim();
+
+        const category =
+          categoryValue === undefined ||
+          categoryValue === null
+            ? null
+            : String(categoryValue).trim();
+
+        const description =
+          descriptionValue === undefined ||
+          descriptionValue === null
+            ? null
+            : String(descriptionValue).trim();
+
+        const goals =
+          normalizeGoals(
+            firstValue(source, [
+              "goals",
+              "goal",
+            ]),
+          );
+
+        /*
+         * Als de feed geen voorraadveld heeft,
+         * gaan we NIET automatisch uit van voorraad.
+         */
+        const stockValue =
+          firstValue(source, [
+            "in_stock",
+            "inStock",
+            "availability",
+            "stock",
+          ]);
+
+        const inStock =
+          booleanToInteger(
+            stockValue,
+            0,
+          );
+
+        const discountPercent =
+          calculateDiscountPercent(
+            price,
+            oldPrice,
+          );
+
+        const dealScore =
+          calculateDealScore(
+            price,
+            oldPrice,
+            inStock,
+          );
+
+        const now =
+          new Date().toISOString();
+
+        const baseSlug =
+          slugify(name) ||
+          `product-${externalId}`;
+
+        const existing =
+          await env.DB.prepare(
+            `SELECT id, slug
+             FROM products
+             WHERE network = ?
+             AND external_id = ?
+             LIMIT 1`,
+          )
+            .bind(
+              "AWIN",
+              externalId,
+            )
+            .first<{
+              id: string;
+              slug: string;
+            }>();
+
+        let slug = existing?.slug ?? baseSlug;
+
+        if (!existing) {
+          let suffix = 1;
+
+          while (
+            await env.DB.prepare(
+              `SELECT id
+               FROM products
+               WHERE slug = ?
+               LIMIT 1`,
+            )
+              .bind(slug)
+              .first()
+          ) {
+            suffix++;
+            slug =
+              `${baseSlug}-${suffix}`;
+          }
+        }
+
+        const id =
+          existing?.id ??
+          crypto.randomUUID();
+
+        const result =
+          await env.DB.prepare(
+            `INSERT INTO products (
+              id,
+              external_id,
+              name,
+              slug,
+              description,
+              brand,
+              category,
+              goals,
+              price,
+              old_price,
+              currency,
+              image_url,
+              product_url,
+              affiliate_url,
+              merchant_name,
+              merchant_id,
+              network,
+              in_stock,
+              active,
+              deal_score,
+              discount_percent,
+              last_synced_at,
+              updated_at
+            )
+            VALUES (
+              ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, 1, ?, ?, ?, ?
+            )
+            ON CONFLICT(id)
+            DO UPDATE SET
+              external_id = excluded.external_id,
+              name = excluded.name,
+              slug = excluded.slug,
+              description = excluded.description,
+              brand = excluded.brand,
+              category = excluded.category,
+              goals = excluded.goals,
+              price = excluded.price,
+              old_price = excluded.old_price,
+              currency = excluded.currency,
+              image_url = excluded.image_url,
+              product_url = excluded.product_url,
+              affiliate_url = excluded.affiliate_url,
+              merchant_name = excluded.merchant_name,
+              merchant_id = excluded.merchant_id,
+              network = excluded.network,
+              in_stock = excluded.in_stock,
+              active = excluded.active,
+              deal_score = excluded.deal_score,
+              discount_percent = excluded.discount_percent,
+              last_synced_at = excluded.last_synced_at,
+              updated_at = excluded.updated_at`,
+          )
+            .bind(
+              id,
+              externalId,
+              name,
+              slug,
+              description,
+              brand,
+              category,
+              goals,
+              price,
+              oldPrice,
+              String(
+                firstValue(source, [
+                  "currency",
+                ]) ?? "EUR",
+              ),
+              imageUrl,
+              productUrl,
+              affiliateUrl,
+              merchantName,
+              merchantId,
+              "AWIN",
+              inStock,
+              dealScore,
+              discountPercent,
+              now,
+              now,
+            )
+            .run();
+
+        if (result.success) {
+          if (existing) {
+            updated++;
+          } else {
+            imported++;
+          }
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+    }
+  } catch (error) {
+    errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Onbekende synchronisatiefout.";
   }
+
+  const finishedAt =
+    new Date().toISOString();
 
   await env.DB.prepare(
     `UPDATE sync_logs
-     SET
-       finished_at = ?,
-       imported = ?,
-       updated = ?,
-       failed = ?,
-       error_message = ?
-     WHERE network = ?
-       AND started_at = ?`,
+     SET finished_at = ?,
+         imported = ?,
+         updated = ?,
+         failed = ?,
+         error_message = ?
+     WHERE id = (
+       SELECT id
+       FROM sync_logs
+       WHERE network = ?
+       ORDER BY id DESC
+       LIMIT 1
+     )`,
   )
     .bind(
-      new Date().toISOString(),
+      finishedAt,
       imported,
       updated,
       failed,
       errorMessage,
-      "DIRECT",
-      startedAt,
+      "AWIN",
     )
     .run();
 
-  /*
-   * Oude DIRECT-producten die niet meer
-   * in de configuratie staan worden
-   * gedeactiveerd.
-   *
-   * Ze worden NIET verwijderd uit D1.
-   */
-  const activeIds =
-    PRODUCT_SOURCES.map(
-      (product) =>
-        product.id,
-    );
-
-  if (
-    activeIds.length
-  ) {
-    const placeholders =
-      activeIds
-        .map(() => "?")
-        .join(",");
-
-    await env.DB.prepare(
-      `UPDATE products
-       SET active = 0,
-           updated_at = ?
-       WHERE network = 'DIRECT'
-         AND id NOT IN (${placeholders})`,
-    )
-      .bind(
-        new Date().toISOString(),
-        ...activeIds,
-      )
-      .run();
+  if (errorMessage) {
+    throw new Error(errorMessage);
   }
 
   return {
@@ -1471,131 +824,98 @@ async function syncDirectProducts(
   };
 }
 
-/* -------------------------------------------------------------------------- */
-/* Product API                                                                */
-/* -------------------------------------------------------------------------- */
-
-async function getProducts(
+async function handleProducts(
   request: Request,
   env: Env,
 ): Promise<Response> {
   const url =
-    new URL(
-      request.url,
-    );
+    new URL(request.url);
 
   const search =
-    (
-      url.searchParams.get(
-        "search",
-      ) ?? ""
-    )
-      .trim()
-      .toLowerCase();
+    url.searchParams
+      .get("search")
+      ?.trim() ?? "";
 
   const goal =
-    (
-      url.searchParams.get(
-        "goal",
-      ) ?? ""
-    )
-      .trim()
-      .toLowerCase();
+    url.searchParams
+      .get("goal")
+      ?.trim()
+      .toLowerCase() ?? "";
 
   const category =
-    (
-      url.searchParams.get(
-        "category",
-      ) ?? ""
-    )
-      .trim()
-      .toLowerCase();
+    url.searchParams
+      .get("category")
+      ?.trim() ?? "";
 
   const rawLimit =
     Number(
       url.searchParams.get(
         "limit",
-      ) ?? "100",
+      ) ?? "60",
     );
 
   const limit =
-    Math.min(
-      100,
-      Math.max(
-        1,
-        Number.isFinite(
-          rawLimit,
-        )
-          ? Math.floor(
-              rawLimit,
-            )
-          : 100,
+    Math.max(
+      1,
+      Math.min(
+        Number.isFinite(rawLimit)
+          ? Math.floor(rawLimit)
+          : 60,
+        100,
       ),
     );
 
-  const conditions: string[] =
-    [
-      "active = 1",
-      "product_url IS NOT NULL",
-      "product_url != ''",
-      "price >= 0",
-    ];
+  const conditions = [
+    "active = 1",
+  ];
 
-  const parameters: (
-    | string
-    | number
-  )[] = [];
+  const binds: unknown[] = [];
 
   if (search) {
-    const term =
-      `%${search}%`;
-
     conditions.push(
-      `(
-        LOWER(name) LIKE ?
-        OR LOWER(COALESCE(brand, '')) LIKE ?
-        OR LOWER(COALESCE(description, '')) LIKE ?
-        OR LOWER(COALESCE(merchant_name, '')) LIKE ?
-      )`,
+      `(name LIKE ?
+        OR brand LIKE ?
+        OR description LIKE ?
+        OR merchant_name LIKE ?)`,
     );
 
-    parameters.push(
-      term,
-      term,
-      term,
-      term,
+    const pattern =
+      `%${search}%`;
+
+    binds.push(
+      pattern,
+      pattern,
+      pattern,
+      pattern,
     );
   }
 
-  if (goal) {
-    if (
-      [
-        "cut",
-        "bulk",
-        "lean-bulk",
-      ].includes(goal)
-    ) {
-      conditions.push(
-        `LOWER(goals) LIKE ?`,
-      );
+  if (
+    goal &&
+    [
+      "cut",
+      "bulk",
+      "lean-bulk",
+    ].includes(goal)
+  ) {
+    conditions.push(
+      "goals LIKE ?",
+    );
 
-      parameters.push(
-        `%"${goal}"%`,
-      );
-    }
+    binds.push(
+      `%"${goal}"%`,
+    );
   }
 
   if (category) {
     conditions.push(
-      `LOWER(COALESCE(category, '')) LIKE ?`,
+      "category = ?",
     );
 
-    parameters.push(
-      `%${category}%`,
-    );
+    binds.push(category);
   }
 
-  const sql = `
+  const query = `
     SELECT
       id,
       external_id,
@@ -1624,9 +944,7 @@ async function getProducts(
       created_at,
       updated_at
     FROM products
-    WHERE ${conditions.join(
-      " AND ",
-    )}
+    WHERE ${conditions.join(" AND ")}
     ORDER BY
       deal_score DESC,
       price ASC,
@@ -1634,69 +952,34 @@ async function getProducts(
     LIMIT ?
   `;
 
-  parameters.push(
-    limit,
-  );
+  binds.push(limit);
 
   const result =
-    await env.DB.prepare(
-      sql,
-    )
-      .bind(
-        ...parameters,
-      )
+    await env.DB.prepare(query)
+      .bind(...binds)
       .all<ProductRow>();
 
   return json({
     products:
-      result.results,
+      result.results ?? [],
     count:
-      result.results.length,
+      result.results?.length ?? 0,
   });
 }
 
-async function getProduct(
-  request: Request,
-  env: Env,
+async function handleProductBySlug(
   slug: string,
+  env: Env,
 ): Promise<Response> {
   const product =
     await env.DB.prepare(
-      `SELECT
-        id,
-        external_id,
-        name,
-        slug,
-        description,
-        brand,
-        category,
-        goals,
-        price,
-        old_price,
-        currency,
-        image_url,
-        product_url,
-        affiliate_url,
-        merchant_name,
-        merchant_id,
-        network,
-        commission,
-        commission_type,
-        in_stock,
-        active,
-        deal_score,
-        discount_percent,
-        last_synced_at,
-        created_at,
-        updated_at
+      `SELECT *
        FROM products
        WHERE slug = ?
-         AND active = 1
+       AND active = 1
        LIMIT 1`,
     )
-      .bind(
-        slug,
-      )
+      .bind(slug)
       .first<ProductRow>();
 
   if (!product) {
@@ -1711,14 +994,37 @@ async function getProduct(
   });
 }
 
-/* -------------------------------------------------------------------------- */
-/* Kliktracking + directe winkelredirect                                      */
-/* -------------------------------------------------------------------------- */
-
-async function redirectToProduct(
-  request: Request,
+async function handleHealth(
   env: Env,
-  id: string,
+): Promise<Response> {
+  try {
+    const result =
+      await env.DB.prepare(
+        `SELECT COUNT(*) AS count
+         FROM products
+         WHERE active = 1`,
+      )
+        .first<{ count: number }>();
+
+    return json({
+      ok: true,
+      products:
+        Number(result?.count ?? 0),
+      ai: Boolean(env.AI),
+      timestamp:
+        new Date().toISOString(),
+    });
+  } catch {
+    return errorResponse(
+      "Databasecontrole mislukt.",
+      500,
+    );
+  }
+}
+
+async function handleAffiliateRedirect(
+  productId: string,
+  env: Env,
 ): Promise<Response> {
   const product =
     await env.DB.prepare(
@@ -1731,13 +1037,11 @@ async function redirectToProduct(
        WHERE id = ?
        LIMIT 1`,
     )
-      .bind(id)
+      .bind(productId)
       .first<{
         id: string;
         product_url: string;
-        affiliate_url:
-          | string
-          | null;
+        affiliate_url: string | null;
         active: number;
       }>();
 
@@ -1751,172 +1055,40 @@ async function redirectToProduct(
     );
   }
 
-  /*
-   * Affiliate URL wordt pas gebruikt
-   * zodra die later beschikbaar is.
-   *
-   * Voor nu gaat de bezoeker rechtstreeks
-   * naar de aanbieder.
-   */
-  const destination =
-    safeUrl(
-      product.affiliate_url,
-    ) ??
-    safeUrl(
-      product.product_url,
-    );
+  const target =
+    safeUrl(product.affiliate_url) ??
+    safeUrl(product.product_url);
 
-  if (!destination) {
+  if (!target) {
     return text(
-      "Ongeldige productlink.",
-      500,
+      "Geen geldige productlink beschikbaar.",
+      404,
     );
   }
 
-  /*
-   * affiliate_clicks bestaat al in jouw
-   * huidige D1-schema.
-   */
   await env.DB.prepare(
-    `INSERT INTO affiliate_clicks (
-      product_id,
-      created_at
-    )
-    VALUES (?, ?)`,
+    `INSERT INTO affiliate_clicks
+     (product_id)
+     VALUES (?)`,
   )
-    .bind(
-      product.id,
-      new Date().toISOString(),
-    )
+    .bind(product.id)
     .run();
 
   return Response.redirect(
-    destination,
+    target,
     302,
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Health                                                                     */
-/* -------------------------------------------------------------------------- */
-
-async function health(
-  env: Env,
-): Promise<Response> {
-  const counts =
-    await env.DB.prepare(
-      `SELECT
-        COUNT(*) AS total,
-        SUM(
-          CASE
-            WHEN active = 1
-            THEN 1
-            ELSE 0
-          END
-        ) AS active,
-        SUM(
-          CASE
-            WHEN active = 1
-             AND in_stock = 1
-            THEN 1
-            ELSE 0
-          END
-        ) AS in_stock
-       FROM products`,
-    )
-      .first<{
-        total: number;
-        active: number;
-        in_stock: number;
-      }>();
-
-  const lastSync =
-    await env.DB.prepare(
-      `SELECT
-        network,
-        started_at,
-        finished_at,
-        imported,
-        updated,
-        failed,
-        error_message
-       FROM sync_logs
-       WHERE network = 'DIRECT'
-       ORDER BY id DESC
-       LIMIT 1`,
-    )
-      .first<{
-        network: string;
-        started_at: string;
-        finished_at:
-          | string
-          | null;
-        imported: number;
-        updated: number;
-        failed: number;
-        error_message:
-          | string
-          | null;
-      }>();
-
-  return json({
-    ok: true,
-
-    products: {
-      total:
-        Number(
-          counts?.total ??
-            0,
-        ),
-      active:
-        Number(
-          counts?.active ??
-            0,
-        ),
-      in_stock:
-        Number(
-          counts?.in_stock ??
-            0,
-        ),
-    },
-
-    directRetailers:
-      PRODUCT_SOURCES.length,
-
-    lastSync,
-
-    aiConfigured:
-      Boolean(env.AI),
-
-    time:
-      new Date().toISOString(),
-  });
-}
-
-/* -------------------------------------------------------------------------- */
-/* AI                                                                         */
-/* -------------------------------------------------------------------------- */
-
-async function aiChat(
+async function handleAiChat(
   request: Request,
   env: Env,
 ): Promise<Response> {
-  if (!env.AI) {
-    return errorResponse(
-      "AI is niet beschikbaar.",
-      503,
-    );
-  }
-
-  let body: {
-    message?: string;
-  };
+  let body: unknown;
 
   try {
     body =
-      await request.json<{
-        message?: string;
-      }>();
+      await request.json();
   } catch {
     return errorResponse(
       "Ongeldige JSON.",
@@ -1924,100 +1096,152 @@ async function aiChat(
     );
   }
 
+  const object =
+    asRecord(body);
+
   const message =
     String(
-      body.message ?? "",
+      object.message ?? "",
     ).trim();
 
   if (!message) {
     return errorResponse(
-      "Bericht ontbreekt.",
+      "Stel eerst een vraag.",
       400,
     );
   }
 
-  const result =
-    await env.AI.run(
-      env.AI_MODEL ??
-        DEFAULT_AI_MODEL,
-      {
-        messages: [
-          {
-            role: "system",
-            content:
-              `Je bent de FitDealFinder Supplement Coach.
-
-Je geeft algemene, voorzichtige informatie over fitness en voedingssupplementen.
-
-Belangrijke regels:
-
-1. Verzin nooit actuele prijzen.
-2. Verzin nooit actuele aanbiedingen.
-3. Verzin nooit voorraad.
-4. Verzin nooit een winkel of product dat je niet kent.
-5. Verwijs voor actuele prijzen naar de productpagina.
-6. Doe geen medische diagnose.
-7. Geef geen gevaarlijke of extreme doseringen.
-8. Maak duidelijk dat supplementen geen vervanging zijn voor normale voeding.
-9. Houd antwoorden praktisch en beknopt.`,
-          },
-          {
-            role: "user",
-            content:
-              message,
-          },
-        ],
-      },
+  if (message.length > 2000) {
+    return errorResponse(
+      "De vraag is te lang. Gebruik maximaal 2000 tekens.",
+      400,
     );
-
-  let reply: unknown =
-    result;
-
-  if (
-    result &&
-    typeof result ===
-      "object" &&
-    "response" in result
-  ) {
-    reply =
-      (
-        result as {
-          response: unknown;
-        }
-      ).response;
   }
 
-  return json({
-    reply,
-  });
-}
+  const model =
+    env.AI_MODEL?.trim() ||
+    DEFAULT_AI_MODEL;
 
-/* -------------------------------------------------------------------------- */
-/* Admin                                                                      */
-/* -------------------------------------------------------------------------- */
+  try {
+    const response =
+      await env.AI.run(
+        model,
+        {
+          messages: [
+            {
+              role: "system",
+              content:
+                "Je bent de AI-assistent van FitDealFinder, een Nederlandse website voor fitnessproducten en deals. " +
+                "Antwoord in duidelijk en natuurlijk Nederlands. " +
+                "Geef praktische, concrete antwoorden. " +
+                "Verzin geen actuele prijzen, voorraad, aanbiedingen of productgegevens die je niet hebt. " +
+                "Als informatie kan veranderen, zeg dat de gebruiker de actuele productpagina moet controleren. " +
+                "Gebruik eenvoudige opmaak en maak antwoorden volledig af.",
+            },
+            {
+              role: "user",
+              content: message,
+            },
+          ],
+          max_tokens: 1024,
+        },
+      );
+
+    return json({
+      answer:
+        response.response ??
+        "Ik kon helaas geen antwoord genereren.",
+    });
+  } catch (error) {
+    console.error(
+      "Workers AI error:",
+      error,
+    );
+
+    return errorResponse(
+      "AI kon momenteel geen antwoord geven.",
+      502,
+    );
+  }
+}
 
 function isAuthorized(
   request: Request,
   env: Env,
 ): boolean {
-  if (
-    !env.ADMIN_SECRET
-  ) {
+  if (!env.ADMIN_SECRET) {
     return false;
   }
 
-  const header =
+  const authorization =
     request.headers.get(
       "authorization",
-    );
+    ) ?? "";
 
+  const bearer =
+    authorization.startsWith(
+      "Bearer ",
+    )
+      ? authorization.slice(7)
+      : "";
+
+  const custom =
+    request.headers.get(
+      "x-admin-secret",
+    ) ?? "";
+
+  /*
+   * We ondersteunen beide headers.
+   * De bestaande adminpagina gebruikt Authorization.
+   */
   return (
-    header ===
-    `Bearer ${env.ADMIN_SECRET}`
+    bearer === env.ADMIN_SECRET ||
+    custom === env.ADMIN_SECRET
   );
 }
 
-async function adminSync(
+async function handleAdminSync(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  if (
+    !isAuthorized(
+      request,
+      env,
+    )
+  ) {
+    return errorResponse(
+      "Niet geautoriseerd.",
+      401,
+    );
+  }
+
+  try {
+    const result =
+      await syncAwin(env);
+
+    return json({
+      ok: true,
+      network: "AWIN",
+      imported:
+        result.imported,
+      updated:
+        result.updated,
+      failed:
+        result.failed,
+      sync: result,
+    });
+  } catch (error) {
+    return errorResponse(
+      error instanceof Error
+        ? error.message
+        : "Synchronisatie mislukt.",
+      502,
+    );
+  }
+}
+
+async function handleAdminLogs(
   request: Request,
   env: Env,
 ): Promise<Response> {
@@ -2034,21 +1258,18 @@ async function adminSync(
   }
 
   const result =
-    await syncDirectProducts(
-      env,
-    );
+    await env.DB.prepare(
+      `SELECT *
+       FROM sync_logs
+       ORDER BY id DESC
+       LIMIT 20`,
+    ).all();
 
   return json({
-    ok: true,
-    sync: result,
-    syncedAt:
-      new Date().toISOString(),
+    logs:
+      result.results ?? [],
   });
 }
-
-/* -------------------------------------------------------------------------- */
-/* Worker                                                                     */
-/* -------------------------------------------------------------------------- */
 
 export default {
   async fetch(
@@ -2056,214 +1277,135 @@ export default {
     env: Env,
   ): Promise<Response> {
     const url =
-      new URL(
-        request.url,
-      );
+      new URL(request.url);
+
+    const path =
+      url.pathname.replace(
+        /\/+$/,
+        "",
+      ) || "/";
 
     try {
-      /*
-       * Health
-       */
       if (
-        url.pathname ===
-          "/api/health" &&
-        request.method ===
-          "GET"
+        request.method === "GET" &&
+        path === "/api/health"
       ) {
-        return health(
-          env,
-        );
+        return handleHealth(env);
       }
 
-      /*
-       * Productlijst
-       */
       if (
-        url.pathname ===
-          "/api/products" &&
-        request.method ===
-          "GET"
+        request.method === "GET" &&
+        path === "/api/products"
       ) {
-        return getProducts(
+        return handleProducts(
           request,
           env,
         );
       }
 
-      /*
-       * Product detail
-       */
       if (
-        url.pathname.startsWith(
+        request.method === "GET" &&
+        path.startsWith(
           "/api/products/",
-        ) &&
-        request.method ===
-          "GET"
+        )
       ) {
         const slug =
           decodeURIComponent(
-            url.pathname.slice(
-              "/api/products/"
-                .length,
+            path.slice(
+              "/api/products/".length,
             ),
-          );
+          ).trim();
 
         if (!slug) {
           return errorResponse(
-            "Product ontbreekt.",
-            400,
+            "Product niet gevonden.",
+            404,
           );
         }
 
-        return getProduct(
-          request,
-          env,
+        return handleProductBySlug(
           slug,
+          env,
         );
       }
 
-      /*
-       * AI
-       */
       if (
-        url.pathname ===
-          "/api/ai/chat" &&
-        request.method ===
-          "POST"
+        request.method === "POST" &&
+        path === "/api/ai/chat"
       ) {
-        return aiChat(
+        return handleAiChat(
           request,
           env,
         );
       }
 
       /*
-       * Handmatige sync
+       * BELANGRIJKE FIX:
+       * Zowel de huidige adminpagina
+       * (/api/admin/sync) als de oude
+       * route (/api/admin/sync-awin)
+       * worden ondersteund.
        */
       if (
-        url.pathname ===
-          "/api/admin/sync" &&
-        request.method ===
-          "POST"
-      ) {
-        return adminSync(
-          request,
-          env,
-        );
-      }
-
-      /*
-       * Product redirect
-       */
-      if (
-        url.pathname.startsWith(
-          "/go/",
+        request.method === "POST" &&
+        (
+          path === "/api/admin/sync" ||
+          path === "/api/admin/sync-awin"
         )
       ) {
-        const id =
-          decodeURIComponent(
-            url.pathname.slice(
-              4,
-            ),
-          );
-
-        if (!id) {
-          return text(
-            "Product ontbreekt.",
-            400,
-          );
-        }
-
-        return redirectToProduct(
+        return handleAdminSync(
           request,
           env,
-          id,
         );
       }
 
-      /*
-       * Alle andere requests
-       * gaan naar public/.
-       */
-      const response =
-        await env.ASSETS.fetch(
+      if (
+        request.method === "GET" &&
+        path === "/api/admin/sync-logs"
+      ) {
+        return handleAdminLogs(
           request,
+          env,
         );
+      }
 
-      /*
-       * Basis security headers.
-       */
-      const headers =
-        new Headers(
-          response.headers,
+      if (
+        request.method === "GET" &&
+        path.startsWith("/go/")
+      ) {
+        const productId =
+          decodeURIComponent(
+            path.slice(
+              "/go/".length,
+            ),
+          ).trim();
+
+        if (!productId) {
+          return text(
+            "Product niet gevonden.",
+            404,
+          );
+        }
+
+        return handleAffiliateRedirect(
+          productId,
+          env,
         );
+      }
 
-      headers.set(
-        "X-Content-Type-Options",
-        "nosniff",
-      );
-
-      headers.set(
-        "Referrer-Policy",
-        "strict-origin-when-cross-origin",
-      );
-
-      headers.set(
-        "Permissions-Policy",
-        "camera=(), microphone=(), geolocation=()",
-      );
-
-      return new Response(
-        response.body,
-        {
-          status:
-            response.status,
-          statusText:
-            response.statusText,
-          headers,
-        },
+      return env.ASSETS.fetch(
+        request,
       );
     } catch (error) {
       console.error(
-        "FitDealFinder worker error:",
+        "Worker error:",
         error,
       );
 
       return errorResponse(
-        error instanceof Error
-          ? error.message
-          : "Interne serverfout.",
+        "Interne serverfout.",
         500,
       );
     }
   },
-
-  async scheduled(
-    _controller: ScheduledController,
-    env: Env,
-    ctx: ExecutionContext,
-  ): Promise<void> {
-    ctx.waitUntil(
-      syncDirectProducts(
-        env,
-      ).then(
-        (result) => {
-          console.log(
-            "FitDealFinder automatische productsync:",
-            JSON.stringify(
-              result,
-            ),
-          );
-        },
-      ).catch(
-        (error) => {
-          console.error(
-            "FitDealFinder automatische productsync mislukt:",
-            error,
-          );
-        },
-      ),
-    );
-  },
 };
-      
