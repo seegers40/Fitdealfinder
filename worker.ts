@@ -15,13 +15,10 @@ interface Env {
    *
    * WINKELNAAM|https://echte-feed-url.nl/feed.csv
    *
-   * Geen fictieve URL's invullen.
+   * Alleen echte feed-URL's gebruiken.
    */
   DIRECT_CATALOG_URLS?: string;
 }
-
-const DEFAULT_AI_MODEL =
-  "@cf/meta/llama-3.1-8b-instruct-fast";
 
 type ProductRow = {
   id: string;
@@ -32,50 +29,69 @@ type ProductRow = {
   brand: string | null;
   category: string | null;
   goals: string;
+
   price: number;
   old_price: number | null;
   currency: string;
+
   image_url: string | null;
   product_url: string;
   affiliate_url: string | null;
+
   merchant_name: string;
   merchant_id: string | null;
+
   network: string;
+
   commission: number | null;
   commission_type: string | null;
+
   in_stock: number;
   active: number;
+
   deal_score: number;
   discount_percent: number | null;
+
   last_synced_at: string | null;
   created_at: string;
   updated_at: string;
 };
 
-type NormalizedProduct = {
+type ProductInput = {
   external_id: string;
   name: string;
   slug: string;
+
   description: string | null;
   brand: string | null;
   category: string | null;
   goals: string;
+
   price: number;
   old_price: number | null;
   currency: string;
+
   image_url: string | null;
   product_url: string;
   affiliate_url: string | null;
+
   merchant_name: string;
   merchant_id: string | null;
+
   network: string;
+
   commission: number | null;
   commission_type: string | null;
+
   in_stock: number;
   active: number;
+
   deal_score: number;
   discount_percent: number | null;
 };
+
+const DEFAULT_AI_MODEL =
+  "@cf/meta/llama-3.1-8b-instruct-fast";
 
 /* =========================================================
    RESPONSE HELPERS
@@ -137,26 +153,99 @@ function errorResponse(
    GENERAL HELPERS
 ========================================================= */
 
+function asRecord(
+  value: unknown,
+): Record<string, unknown> {
+  if (
+    value &&
+    typeof value === "object"
+  ) {
+    return value as Record<
+      string,
+      unknown
+    >;
+  }
+
+  return {};
+}
+
+function firstValue(
+  object: Record<string, unknown>,
+  keys: string[],
+): unknown {
+  for (
+    const key of keys
+  ) {
+    const value =
+      object[key];
+
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function safeUrl(
+  value: unknown,
+): string | null {
+  if (
+    typeof value !== "string" ||
+    !value.trim()
+  ) {
+    return null;
+  }
+
+  try {
+    const url =
+      new URL(
+        value.trim(),
+      );
+
+    if (
+      url.protocol !== "http:" &&
+      url.protocol !== "https:"
+    ) {
+      return null;
+    }
+
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 function slugify(
   value: string,
 ): string {
-  return value
-    .normalize("NFKD")
-    .replace(
-      /[\u0300-\u036f]/g,
-      "",
-    )
-    .toLowerCase()
-    .trim()
-    .replace(
-      /[^a-z0-9]+/g,
-      "-",
-    )
-    .replace(
-      /^-+|-+$/g,
-      "",
-    )
-    .slice(0, 180);
+  const slug =
+    value
+      .normalize("NFKD")
+      .replace(
+        /[\u0300-\u036f]/g,
+        "",
+      )
+      .toLowerCase()
+      .trim()
+      .replace(
+        /[^a-z0-9]+/g,
+        "-",
+      )
+      .replace(
+        /^-+|-+$/g,
+        "",
+      )
+      .slice(
+        0,
+        180,
+      );
+
+  return slug || "product";
 }
 
 function numberOrNull(
@@ -171,10 +260,13 @@ function numberOrNull(
   }
 
   if (
-    typeof value === "number" &&
-    Number.isFinite(value)
+    typeof value === "number"
   ) {
-    return value;
+    return Number.isFinite(
+      value,
+    )
+      ? value
+      : null;
   }
 
   if (
@@ -205,7 +297,9 @@ function numberOrNull(
     comma >= 0 &&
     dot >= 0
   ) {
-    if (comma > dot) {
+    if (
+      comma > dot
+    ) {
       normalized =
         normalized
           .replace(
@@ -234,37 +328,25 @@ function numberOrNull(
   }
 
   const parsed =
-    Number(normalized);
+    Number(
+      normalized,
+    );
 
-  return Number.isFinite(parsed)
+  return Number.isFinite(
+    parsed,
+  )
     ? parsed
     : null;
 }
 
-function booleanToInteger(
+function stockValue(
   value: unknown,
-  fallback = 1,
 ): number {
   if (
-    value === undefined ||
-    value === null ||
-    value === ""
+    value === false ||
+    value === 0
   ) {
-    return fallback;
-  }
-
-  if (
-    typeof value === "boolean"
-  ) {
-    return value ? 1 : 0;
-  }
-
-  if (
-    typeof value === "number"
-  ) {
-    return value !== 0
-      ? 1
-      : 0;
+    return 0;
   }
 
   if (
@@ -277,109 +359,23 @@ function booleanToInteger(
 
     if (
       [
-        "true",
-        "yes",
-        "y",
-        "1",
-        "available",
-        "beschikbaar",
-        "in stock",
-        "instock",
-      ].includes(normalized)
-    ) {
-      return 1;
-    }
-
-    if (
-      [
         "false",
         "no",
-        "n",
         "0",
-        "unavailable",
-        "niet beschikbaar",
         "out of stock",
         "outofstock",
+        "unavailable",
         "uitverkocht",
-      ].includes(normalized)
+        "niet beschikbaar",
+      ].includes(
+        normalized,
+      )
     ) {
       return 0;
     }
   }
 
-  return fallback;
-}
-
-function safeUrl(
-  value: unknown,
-): string | null {
-  if (
-    typeof value !== "string" ||
-    !value.trim()
-  ) {
-    return null;
-  }
-
-  try {
-    const url =
-      new URL(
-        value.trim(),
-      );
-
-    if (
-      url.protocol !==
-        "http:" &&
-      url.protocol !==
-        "https:"
-    ) {
-      return null;
-    }
-
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
-function asRecord(
-  value: unknown,
-): Record<string, unknown> {
-  if (
-    value &&
-    typeof value === "object"
-  ) {
-    return value as Record<
-      string,
-      unknown
-    >;
-  }
-
-  return {};
-}
-
-function firstValue(
-  object: Record<
-    string,
-    unknown
-  >,
-  keys: string[],
-): unknown {
-  for (
-    const key of keys
-  ) {
-    const value =
-      object[key];
-
-    if (
-      value !== undefined &&
-      value !== null &&
-      value !== ""
-    ) {
-      return value;
-    }
-  }
-
-  return undefined;
+  return 1;
 }
 
 function normalizeGoals(
@@ -396,10 +392,12 @@ function normalizeGoals(
   ) {
     const goals =
       value
-        .map((item) =>
-          String(item)
-            .trim()
-            .toLowerCase(),
+        .map(String)
+        .map(
+          (item) =>
+            item
+              .trim()
+              .toLowerCase(),
         )
         .filter(Boolean);
 
@@ -415,7 +413,7 @@ function normalizeGoals(
     value.trim()
   ) {
     try {
-      const parsed =
+      const parsed: unknown =
         JSON.parse(value);
 
       if (
@@ -423,10 +421,12 @@ function normalizeGoals(
       ) {
         const goals =
           parsed
-            .map((item) =>
-              String(item)
-                .trim()
-                .toLowerCase(),
+            .map(String)
+            .map(
+              (item) =>
+                item
+                  .trim()
+                  .toLowerCase(),
             )
             .filter(Boolean);
 
@@ -437,21 +437,26 @@ function normalizeGoals(
         );
       }
     } catch {
-      const goals =
-        value
-          .split(/[;,|]/)
-          .map((item) =>
+      // Geen JSON; hieronder als tekst verwerken.
+    }
+
+    const goals =
+      value
+        .split(/[;,|]/)
+        .map(
+          (item) =>
             item
               .trim()
               .toLowerCase(),
-          )
-          .filter(Boolean);
+        )
+        .filter(Boolean);
 
-      if (goals.length) {
-        return JSON.stringify(
-          goals,
-        );
-      }
+    if (
+      goals.length
+    ) {
+      return JSON.stringify(
+        goals,
+      );
     }
   }
 
@@ -480,7 +485,7 @@ function discountPercent(
   );
 }
 
-function dealScore(
+function calculateDealScore(
   price: number,
   oldPrice: number | null,
   inStock: number,
@@ -495,7 +500,9 @@ function dealScore(
       oldPrice,
     );
 
-  if (discount === null) {
+  if (
+    discount === null
+  ) {
     return 20;
   }
 
@@ -546,12 +553,56 @@ function getFeedItems(
   return [];
 }
 
+function detectCsvDelimiter(
+  input: string,
+): string {
+  const sample =
+    input
+      .split(/\r?\n/)
+      .slice(0, 5)
+      .join("\n");
+
+  const delimiters = [
+    ",",
+    ";",
+    "|",
+    "\t",
+  ];
+
+  let selected = ",";
+  let bestCount = 0;
+
+  for (
+    const delimiter of delimiters
+  ) {
+    const count =
+      sample.split(
+        delimiter,
+      ).length - 1;
+
+    if (
+      count > bestCount
+    ) {
+      bestCount = count;
+      selected =
+        delimiter;
+    }
+  }
+
+  return selected;
+}
+
 function parseCsv(
   input: string,
 ): Record<
   string,
   string
 >[] {
+  const delimiter =
+    detectCsvDelimiter(
+      input,
+    );
+
   const rows:
     string[][] = [];
 
@@ -572,8 +623,7 @@ function parseCsv(
     ) {
       if (
         quoted &&
-        input[i + 1] ===
-          '"'
+        input[i + 1] === '"'
       ) {
         field += '"';
         i++;
@@ -586,7 +636,7 @@ function parseCsv(
     }
 
     if (
-      char === "," &&
+      char === delimiter &&
       !quoted
     ) {
       row.push(field);
@@ -603,8 +653,7 @@ function parseCsv(
     ) {
       if (
         char === "\r" &&
-        input[i + 1] ===
-          "\n"
+        input[i + 1] === "\n"
       ) {
         i++;
       }
@@ -615,8 +664,7 @@ function parseCsv(
       if (
         row.some(
           (value) =>
-            value.trim() !==
-            "",
+            value.trim() !== "",
         )
       ) {
         rows.push(row);
@@ -635,8 +683,7 @@ function parseCsv(
   if (
     row.some(
       (value) =>
-        value.trim() !==
-        "",
+        value.trim() !== "",
     )
   ) {
     rows.push(row);
@@ -652,6 +699,10 @@ function parseCsv(
     rows[0].map(
       (header) =>
         header
+          .replace(
+            /^\uFEFF/,
+            "",
+          )
           .trim()
           .toLowerCase()
           .replace(
@@ -689,6 +740,21 @@ function parseCsv(
     );
 }
 
+function stripXml(
+  value: string,
+): string {
+  return value
+    .replace(
+      /<!\[CDATA\[([\s\S]*?)\]\]>/gi,
+      "$1",
+    )
+    .replace(
+      /<[^>]+>/g,
+      "",
+    )
+    .trim();
+}
+
 function parseXmlProducts(
   xml: string,
 ): Record<
@@ -701,7 +767,7 @@ function parseXmlProducts(
       string
     >[] = [];
 
-  const matches =
+  const blocks =
     xml.match(
       /<(item|product|offer|entry)\b[\s\S]*?<\/\1>/gi,
     ) ?? [];
@@ -728,7 +794,7 @@ function parseXmlProducts(
   ];
 
   for (
-    const item of matches
+    const block of blocks
   ) {
     const result:
       Record<
@@ -747,12 +813,12 @@ function parseXmlProducts(
 
       const regex =
         new RegExp(
-          `<(?:g:)?${escaped}[^>]*>([\\s\\S]*?)<\\/(?:g:)?${escaped}>`,
+          `<[^>]*${escaped}[^>]*>([\\s\\S]*?)<\\/[^>]*${escaped}\\s*>`,
           "i",
         );
 
       const match =
-        item.match(
+        block.match(
           regex,
         );
 
@@ -760,22 +826,16 @@ function parseXmlProducts(
         result[
           fieldName
         ] =
-          match[1]
-            .replace(
-              /<!CDATA\[([\s\S]*?)\]>/g,
-              "$1",
-            )
-            .replace(
-              /<[^>]+>/g,
-              "",
-            )
-            .trim();
+          stripXml(
+            match[1],
+          );
       }
     }
 
     if (
-      Object.keys(result)
-        .length
+      Object.keys(
+        result,
+      ).length
     ) {
       products.push(
         result,
@@ -791,13 +851,10 @@ function parseXmlProducts(
 ========================================================= */
 
 function normalizeProduct(
-  source: Record<
-    string,
-    unknown
-  >,
+  source: Record<string, unknown>,
   merchantName: string,
   network: string,
-): NormalizedProduct | null {
+): ProductInput | null {
   const externalId =
     String(
       firstValue(
@@ -805,13 +862,12 @@ function normalizeProduct(
         [
           "external_id",
           "externalId",
-          "id",
           "product_id",
           "productId",
+          "id",
           "sku",
           "ean",
           "gtin",
-          "aw_product_id",
         ],
       ) ?? "",
     ).trim();
@@ -829,32 +885,33 @@ function normalizeProduct(
       ) ?? "",
     ).trim();
 
-  const productUrl =
-    safeUrl(
-      firstValue(
-        source,
-        [
-          "product_url",
-          "productUrl",
-          "url",
-          "link",
-          "product_link",
-          "deeplink",
-          "deep_link",
-        ],
-      ),
-    );
-
   const price =
     numberOrNull(
       firstValue(
         source,
         [
+          "sale_price",
+          "salePrice",
           "price",
           "current_price",
           "currentPrice",
-          "sale_price",
-          "selling_price",
+        ],
+      ),
+    );
+
+  const productUrl =
+    safeUrl(
+      firstValue(
+        source,
+        [
+          "affiliate_url",
+          "affiliateUrl",
+          "deep_link",
+          "deeplink",
+          "product_url",
+          "productUrl",
+          "link",
+          "url",
         ],
       ),
     );
@@ -862,9 +919,8 @@ function normalizeProduct(
   if (
     !externalId ||
     !name ||
-    !productUrl ||
     price === null ||
-    price < 0
+    !productUrl
   ) {
     return null;
   }
@@ -876,68 +932,16 @@ function normalizeProduct(
         [
           "old_price",
           "oldPrice",
-          "original_price",
           "regular_price",
-          "was_price",
+          "regularPrice",
           "rrp",
+          "recommended_retail_price",
         ],
       ),
     );
-
-  const imageUrl =
-    safeUrl(
-      firstValue(
-        source,
-        [
-          "image_url",
-          "imageUrl",
-          "image",
-          "image_link",
-          "picture",
-          "thumbnail",
-        ],
-      ),
-    );
-
-  const description =
-    String(
-      firstValue(
-        source,
-        [
-          "description",
-          "product_description",
-          "short_description",
-        ],
-      ) ?? "",
-    ).trim();
-
-  const brand =
-    String(
-      firstValue(
-        source,
-        [
-          "brand",
-          "brand_name",
-          "manufacturer",
-        ],
-      ) ?? "",
-    ).trim();
-
-  const category =
-    String(
-      firstValue(
-        source,
-        [
-          "category",
-          "category_name",
-          "product_type",
-          "google_product_category",
-        ],
-      ) ?? "",
-    ).trim();
 
   const inStock =
-    booleanToInteger(
+    stockValue(
       firstValue(
         source,
         [
@@ -948,67 +952,42 @@ function normalizeProduct(
           "available",
         ],
       ),
-      1,
     );
 
-  const oldPriceValue =
-    oldPrice !== null &&
-    oldPrice > price
-      ? oldPrice
-      : null;
-
-  const discount =
-    discountPercent(
-      price,
-      oldPriceValue,
-    );
-
-  const score =
-    dealScore(
-      price,
-      oldPriceValue,
-      inStock,
-    );
-
-  const merchantId =
+  const resolvedMerchant =
     String(
       firstValue(
         source,
         [
-          "merchant_id",
-          "merchantId",
-          "advertiser_id",
-          "advertiserId",
-          "store_id",
+          "merchant_name",
+          "merchantName",
+          "advertiser_name",
+          "advertiser",
+          "shop_name",
+          "store_name",
         ],
-      ) ?? "",
-    ).trim();
+      ) ??
+        merchantName,
+    ).trim() ||
+    merchantName;
 
   const affiliateUrl =
-    network === "AWIN"
-      ? safeUrl(
-          firstValue(
-            source,
-            [
-              "affiliate_url",
-              "affiliateUrl",
-              "tracking_url",
-              "trackingUrl",
-              "deep_link",
-              "deeplink",
-            ],
-          ),
-        )
-      : null;
+    safeUrl(
+      firstValue(
+        source,
+        [
+          "affiliate_url",
+          "affiliateUrl",
+          "deep_link",
+          "deeplink",
+        ],
+      ),
+    );
 
-  /*
-   * Slug bevat winkel + external ID.
-   * Daardoor kunnen twee winkels hetzelfde
-   * product aanbieden zonder UNIQUE-conflict.
-   */
-  const baseSlug =
-    slugify(
-      `${merchantName}-${name}-${externalId}`,
+  const discount =
+    discountPercent(
+      price,
+      oldPrice,
     );
 
   return {
@@ -1018,18 +997,46 @@ function normalizeProduct(
     name,
 
     slug:
-      baseSlug ||
-      slugify(name) ||
-      `product-${externalId}`,
+      slugify(
+        `${resolvedMerchant}-${name}-${externalId}`,
+      ),
 
     description:
-      description || null,
+      String(
+        firstValue(
+          source,
+          [
+            "description",
+            "product_description",
+          ],
+        ) ?? "",
+      ).trim() || null,
 
     brand:
-      brand || null,
+      String(
+        firstValue(
+          source,
+          [
+            "brand",
+            "brand_name",
+            "brandName",
+          ],
+        ) ?? "",
+      ).trim() || null,
 
     category:
-      category || null,
+      String(
+        firstValue(
+          source,
+          [
+            "category",
+            "merchant_category",
+            "merchantCategory",
+            "product_type",
+            "productType",
+          ],
+        ) ?? "",
+      ).trim() || null,
 
     goals:
       normalizeGoals(
@@ -1038,7 +1045,6 @@ function normalizeProduct(
           [
             "goals",
             "goal",
-            "tags",
           ],
         ),
       ),
@@ -1046,7 +1052,7 @@ function normalizeProduct(
     price,
 
     old_price:
-      oldPriceValue,
+      oldPrice,
 
     currency:
       String(
@@ -1055,12 +1061,27 @@ function normalizeProduct(
           [
             "currency",
             "currency_code",
+            "currencyCode",
           ],
         ) ?? "EUR",
-      ).trim() || "EUR",
+      )
+        .trim()
+        .toUpperCase() ||
+      "EUR",
 
     image_url:
-      imageUrl,
+      safeUrl(
+        firstValue(
+          source,
+          [
+            "image_url",
+            "imageUrl",
+            "image_link",
+            "imageLink",
+            "image",
+          ],
+        ),
+      ),
 
     product_url:
       productUrl,
@@ -1069,10 +1090,22 @@ function normalizeProduct(
       affiliateUrl,
 
     merchant_name:
-      merchantName,
+      resolvedMerchant,
 
     merchant_id:
-      merchantId || null,
+      String(
+        firstValue(
+          source,
+          [
+            "merchant_id",
+            "merchantId",
+            "advertiser_id",
+            "advertiserId",
+            "program_id",
+            "programId",
+          ],
+        ) ?? "",
+      ).trim() || null,
 
     network,
 
@@ -1083,6 +1116,7 @@ function normalizeProduct(
           [
             "commission",
             "commission_rate",
+            "commissionRate",
           ],
         ),
       ),
@@ -1105,7 +1139,11 @@ function normalizeProduct(
       1,
 
     deal_score:
-      score,
+      calculateDealScore(
+        price,
+        oldPrice,
+        inStock,
+      ),
 
     discount_percent:
       discount,
@@ -1131,12 +1169,14 @@ async function fetchCatalog(
           "User-Agent":
             "FitDealFinder/1.0",
           Accept:
-            "application/json,text/csv,application/xml,text/xml,*/*",
+            "text/csv,application/csv,application/xml,text/xml,application/json,*/*",
         },
       },
     );
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
     throw new Error(
       `Feed gaf HTTP ${response.status}.`,
     );
@@ -1147,40 +1187,38 @@ async function fetchCatalog(
       response.headers.get(
         "content-type",
       ) ?? "",
+
     body:
       await response.text(),
   };
 }
 
 /* =========================================================
-   D1 UPSERT
+   D1 PRODUCT UPSERT
 ========================================================= */
 
 async function upsertProducts(
   env: Env,
-  products: NormalizedProduct[],
+  products: ProductInput[],
 ): Promise<{
   inserted: number;
   updated: number;
   failed: number;
 }> {
   /*
-   * Eerst dedupliceren binnen de ontvangen feed.
+   * Dedupliceren binnen de ontvangen feed.
    */
   const unique =
     new Map<
       string,
-      NormalizedProduct
+      ProductInput
     >();
 
   for (
     const product of products
   ) {
-    const key =
-      `${product.network}::${product.external_id}`;
-
     unique.set(
-      key,
+      `${product.network}::${product.external_id}`,
       product,
     );
   }
@@ -1198,11 +1236,14 @@ async function upsertProducts(
     new Date().toISOString();
 
   /*
-   * Eerst bepalen we per product of het al bestaat.
+   * Bestaande producten eerst opzoeken.
    *
-   * Dit is bewust vóór de INSERT/UPDATE:
-   * daarmee zijn we niet afhankelijk van
-   * ON CONFLICT(id) met een willekeurige UUID.
+   * We gebruiken bewust niet:
+   *
+   * ON CONFLICT(id)
+   *
+   * met een nieuwe UUID. Dat zou bestaande
+   * producten niet correct bijwerken.
    */
   const existing =
     new Map<
@@ -1212,7 +1253,8 @@ async function upsertProducts(
 
   for (
     let start = 0;
-    start < cleanProducts.length;
+    start <
+      cleanProducts.length;
     start += 50
   ) {
     const chunk =
@@ -1221,41 +1263,55 @@ async function upsertProducts(
         start + 50,
       );
 
-    for (
-      const product of chunk
-    ) {
-      const row =
-        await env.DB
-          .prepare(
-            `
-            SELECT id
-            FROM products
-            WHERE network = ?
-              AND external_id = ?
-            LIMIT 1
-            `,
-          )
-          .bind(
-            product.network,
-            product.external_id,
-          )
-          .first<{
-            id: string;
-          }>();
+    const lookups =
+      chunk.map(
+        (product) =>
+          env.DB
+            .prepare(
+              `
+              SELECT id
+              FROM products
+              WHERE network = ?
+                AND external_id = ?
+              LIMIT 1
+              `,
+            )
+            .bind(
+              product.network,
+              product.external_id,
+            ),
+      );
 
-      if (row?.id) {
-        existing.set(
-          `${product.network}::${product.external_id}`,
-          row.id,
-        );
-      }
-    }
+    const results =
+      await env.DB.batch(
+        lookups,
+      );
+
+    results.forEach(
+      (
+        result,
+        index,
+      ) => {
+        const rows =
+          result.results as
+            | Array<{
+                id: string;
+              }>
+            | undefined;
+
+        const id =
+          rows?.[0]?.id;
+
+        if (id) {
+          existing.set(
+            `${chunk[index].network}::${chunk[index].external_id}`,
+            id,
+          );
+        }
+      },
+    );
   }
 
-  /*
-   * We maken per product een UPSERT op basis van
-   * het bestaande primaire ID wanneer dat bestaat.
-   */
   const insertSql = `
     INSERT INTO products (
       id,
@@ -1345,7 +1401,8 @@ async function upsertProducts(
 
   for (
     let start = 0;
-    start < cleanProducts.length;
+    start <
+      cleanProducts.length;
     start += 50
   ) {
     const chunk =
@@ -1361,9 +1418,13 @@ async function upsertProducts(
             `${product.network}::${product.external_id}`;
 
           const existingId =
-            existing.get(key);
+            existing.get(
+              key,
+            );
 
-          if (existingId) {
+          if (
+            existingId
+          ) {
             return env.DB
               .prepare(
                 updateSql,
@@ -1462,7 +1523,9 @@ async function upsertProducts(
           }
         },
       );
-    } catch (error) {
+    } catch (
+      error
+    ) {
       console.error(
         "D1 batch failed:",
         error,
@@ -1523,7 +1586,7 @@ async function syncDirectCatalogs(
         ok: false,
         source,
         error:
-          "Gebruik exact: WINKELNAAM|FEED_URL",
+          "Gebruik: WINKELNAAM|FEED_URL",
       });
 
       continue;
@@ -1566,10 +1629,17 @@ async function syncDirectCatalogs(
         );
 
       const contentType =
-        feed.contentType.toLowerCase();
+        feed.contentType
+          .toLowerCase();
 
       const body =
         feed.body.trim();
+
+      if (!body) {
+        throw new Error(
+          "De feed is leeg.",
+        );
+      }
 
       let rawProducts:
         Record<
@@ -1596,7 +1666,9 @@ async function syncDirectCatalogs(
       } else if (
         contentType.includes(
           "csv",
-        )
+        ) ||
+        body.includes(",") ||
+        body.includes(";")
       ) {
         rawProducts =
           parseCsv(
@@ -1620,7 +1692,10 @@ async function syncDirectCatalogs(
           >[];
       } else {
         throw new Error(
-          `Niet ondersteund feedformaat: ${feed.contentType || "onbekend"}`,
+          `Niet ondersteund feedformaat: ${
+            feed.contentType ||
+            "onbekend"
+          }`,
         );
       }
 
@@ -1637,7 +1712,7 @@ async function syncDirectCatalogs(
           .filter(
             (
               item,
-            ): item is NormalizedProduct =>
+            ): item is ProductInput =>
               item !== null,
           );
 
@@ -1645,7 +1720,7 @@ async function syncDirectCatalogs(
         products.length === 0
       ) {
         throw new Error(
-          "De feed bevat geen geldige producten.",
+          "Geen geldige producten in feed.",
         );
       }
 
@@ -1665,7 +1740,9 @@ async function syncDirectCatalogs(
           products.length,
         ...result,
       });
-    } catch (error) {
+    } catch (
+      error
+    ) {
       results.push({
         ok: false,
         merchant,
@@ -1690,17 +1767,20 @@ async function syncDirectCatalogs(
 async function syncAwin(
   env: Env,
 ): Promise<{
-  imported: number;
+  inserted: number;
   updated: number;
   failed: number;
 }> {
   if (
-    !env.AWIN_FEED_URL
+    !env.AWIN_FEED_URL?.trim()
   ) {
     throw new Error(
       "AWIN_FEED_URL is niet ingesteld.",
     );
   }
+
+  const startedAt =
+    new Date().toISOString();
 
   const log =
     await env.DB
@@ -1715,14 +1795,943 @@ async function syncAwin(
       )
       .bind(
         "AWIN",
-        new Date().toISOString(),
+        startedAt,
       )
       .run();
 
   const logId =
-    log.meta.last_row_id;
+    Number(
+      log.meta.last_row_id ?? 0,
+    );
+
+  let result = {
+    inserted: 0,
+    updated: 0,
+    failed: 0,
+  };
+
+  let errorMessage:
+    | string
+    | null = null;
 
   try {
     const feed =
       await fetchCatalog(
-        env.AWIN_FEED_URL
+        env.AWIN_FEED_URL,
+      );
+
+    const body =
+      feed.body.trim();
+
+    if (!body) {
+      throw new Error(
+        "De Awin-feed is leeg.",
+      );
+    }
+
+    const contentType =
+      feed.contentType
+        .toLowerCase();
+
+    let rawProducts:
+      Record<
+        string,
+        unknown
+      >[] = [];
+
+    if (
+      contentType.includes(
+        "json",
+      ) ||
+      body.startsWith("{") ||
+      body.startsWith("[")
+    ) {
+      const payload =
+        JSON.parse(body);
+
+      rawProducts =
+        getFeedItems(
+          payload,
+        ).map(
+          asRecord,
+        );
+    } else if (
+      contentType.includes(
+        "csv",
+      ) ||
+      body.includes(",") ||
+      body.includes(";")
+    ) {
+      rawProducts =
+        parseCsv(
+          body,
+        ) as Record<
+          string,
+          unknown
+        >[];
+    } else if (
+      contentType.includes(
+        "xml",
+      ) ||
+      body.startsWith("<")
+    ) {
+      rawProducts =
+        parseXmlProducts(
+          body,
+        ) as Record<
+          string,
+          unknown
+        >[];
+    } else {
+      throw new Error(
+        `Niet ondersteund Awin-feedformaat: ${
+          feed.contentType ||
+          "onbekend"
+        }`,
+      );
+    }
+
+    if (
+      rawProducts.length === 0
+    ) {
+      throw new Error(
+        "De Awin-feed bevat geen producten.",
+      );
+    }
+
+    const products =
+      rawProducts
+        .map(
+          (item) =>
+            normalizeProduct(
+              item,
+              "Awin",
+              "AWIN",
+            ),
+        )
+        .filter(
+          (
+            item,
+          ): item is ProductInput =>
+            item !== null,
+        );
+
+    if (
+      products.length === 0
+    ) {
+      throw new Error(
+        "Geen geldige producten in Awin-feed.",
+      );
+    }
+
+    result =
+      await upsertProducts(
+        env,
+        products,
+      );
+  } catch (
+    error
+  ) {
+    errorMessage =
+      error instanceof Error
+        ? error.message
+        : String(error);
+  }
+
+  await env.DB
+    .prepare(
+      `
+      UPDATE sync_logs
+      SET
+        finished_at = ?,
+        imported = ?,
+        updated = ?,
+        failed = ?,
+        error_message = ?
+      WHERE id = ?
+      `,
+    )
+    .bind(
+      new Date().toISOString(),
+      result.inserted,
+      result.updated,
+      result.failed,
+      errorMessage,
+      logId,
+    )
+    .run();
+
+  if (
+    errorMessage
+  ) {
+    throw new Error(
+      errorMessage,
+    );
+  }
+
+  return result;
+}
+
+/* =========================================================
+   AUTH
+========================================================= */
+
+function isAuthorized(
+  request: Request,
+  env: Env,
+): boolean {
+  if (
+    !env.ADMIN_SECRET
+  ) {
+    return false;
+  }
+
+  const authorization =
+    request.headers.get(
+      "authorization",
+    ) ?? "";
+
+  const adminSecret =
+    request.headers.get(
+      "x-admin-secret",
+    ) ?? "";
+
+  return (
+    authorization ===
+      `Bearer ${env.ADMIN_SECRET}` ||
+    adminSecret ===
+      env.ADMIN_SECRET
+  );
+}
+
+/* =========================================================
+   PRODUCTS API
+========================================================= */
+
+async function handleProducts(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const url =
+    new URL(
+      request.url,
+    );
+
+  const search =
+    url.searchParams
+      .get("search")
+      ?.trim() ?? "";
+
+  const goal =
+    url.searchParams
+      .get("goal")
+      ?.trim()
+      .toLowerCase() ?? "";
+
+  const category =
+    url.searchParams
+      .get("category")
+      ?.trim() ?? "";
+
+  const requestedLimit =
+    Number(
+      url.searchParams.get(
+        "limit",
+      ) ?? "100",
+    );
+
+  const limit =
+    Math.max(
+      1,
+      Math.min(
+        Number.isFinite(
+          requestedLimit,
+        )
+          ? Math.floor(
+              requestedLimit,
+            )
+          : 100,
+        100,
+      ),
+    );
+
+  const conditions: string[] =
+    [
+      "active = 1",
+    ];
+
+  const binds: unknown[] =
+    [];
+
+  if (search) {
+    conditions.push(
+      `
+      (
+        name LIKE ?
+        OR brand LIKE ?
+        OR description LIKE ?
+        OR merchant_name LIKE ?
+      )
+      `,
+    );
+
+    const pattern =
+      `%${search}%`;
+
+    binds.push(
+      pattern,
+      pattern,
+      pattern,
+      pattern,
+    );
+  }
+
+  if (
+    [
+      "cut",
+      "bulk",
+      "lean-bulk",
+    ].includes(goal)
+  ) {
+    conditions.push(
+      "goals LIKE ?",
+    );
+
+    binds.push(
+      `%\"${goal}\"%`,
+    );
+  }
+
+  if (category) {
+    conditions.push(
+      "category = ?",
+    );
+
+    binds.push(
+      category,
+    );
+  }
+
+  binds.push(
+    limit,
+  );
+
+  const query = `
+    SELECT *
+    FROM products
+    WHERE ${conditions.join(
+      " AND ",
+    )}
+    ORDER BY
+      deal_score DESC,
+      price ASC,
+      name ASC
+    LIMIT ?
+  `;
+
+  const result =
+    await env.DB
+      .prepare(
+        query,
+      )
+      .bind(
+        ...binds,
+      )
+      .all<ProductRow>();
+
+  return json({
+    products:
+      result.results ?? [],
+    count:
+      result.results?.length ??
+      0,
+  });
+}
+
+/* =========================================================
+   PRODUCT DETAIL
+========================================================= */
+
+async function handleProduct(
+  slug: string,
+  env: Env,
+): Promise<Response> {
+  const product =
+    await env.DB
+      .prepare(
+        `
+        SELECT *
+        FROM products
+        WHERE slug = ?
+          AND active = 1
+        LIMIT 1
+        `,
+      )
+      .bind(
+        slug,
+      )
+      .first<ProductRow>();
+
+  if (!product) {
+    return errorResponse(
+      "Product niet gevonden.",
+      404,
+    );
+  }
+
+  return json({
+    product,
+  });
+}
+
+/* =========================================================
+   HEALTH
+========================================================= */
+
+async function handleHealth(
+  env: Env,
+): Promise<Response> {
+  try {
+    const result =
+      await env.DB
+        .prepare(
+          `
+          SELECT COUNT(*) AS count
+          FROM products
+          WHERE active = 1
+          `,
+        )
+        .first<{
+          count: number;
+        }>();
+
+    return json({
+      ok: true,
+      products:
+        Number(
+          result?.count ?? 0,
+        ),
+      timestamp:
+        new Date().toISOString(),
+    });
+  } catch (
+    error
+  ) {
+    console.error(
+      "Health check failed:",
+      error,
+    );
+
+    return errorResponse(
+      "Databasecontrole mislukt.",
+      500,
+    );
+  }
+}
+
+/* =========================================================
+   PRODUCT REDIRECT
+========================================================= */
+
+async function handleRedirect(
+  productId: string,
+  env: Env,
+): Promise<Response> {
+  const product =
+    await env.DB
+      .prepare(
+        `
+        SELECT
+          id,
+          product_url,
+          affiliate_url,
+          active
+        FROM products
+        WHERE id = ?
+        LIMIT 1
+        `,
+      )
+      .bind(
+        productId,
+      )
+      .first<{
+        id: string;
+        product_url: string;
+        affiliate_url:
+          | string
+          | null;
+        active: number;
+      }>();
+
+  if (
+    !product ||
+    product.active !== 1
+  ) {
+    return text(
+      "Product niet gevonden.",
+      404,
+    );
+  }
+
+  const target =
+    safeUrl(
+      product.affiliate_url,
+    ) ??
+    safeUrl(
+      product.product_url,
+    );
+
+  if (!target) {
+    return text(
+      "Geen geldige productlink beschikbaar.",
+      404,
+    );
+  }
+
+  await env.DB
+    .prepare(
+      `
+      INSERT INTO affiliate_clicks (
+        product_id
+      )
+      VALUES (?)
+      `,
+    )
+    .bind(
+      product.id,
+    )
+    .run();
+
+  return Response.redirect(
+    target,
+    302,
+  );
+}
+
+/* =========================================================
+   AI
+========================================================= */
+
+async function handleAi(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  let body: unknown;
+
+  try {
+    body =
+      await request.json();
+  } catch {
+    return errorResponse(
+      "Ongeldige JSON.",
+      400,
+    );
+  }
+
+  const object =
+    asRecord(body);
+
+  const message =
+    String(
+      object.message ?? "",
+    ).trim();
+
+  if (!message) {
+    return errorResponse(
+      "Stel eerst een vraag.",
+      400,
+    );
+  }
+
+  if (
+    message.length > 2000
+  ) {
+    return errorResponse(
+      "De vraag is te lang. Gebruik maximaal 2000 tekens.",
+      400,
+    );
+  }
+
+  const model =
+    env.AI_MODEL?.trim() ||
+    DEFAULT_AI_MODEL;
+
+  try {
+    const response =
+      await env.AI.run(
+        model,
+        {
+          messages: [
+            {
+              role: "system",
+              content:
+                "Je bent de AI-assistent van FitDealFinder. " +
+                "Antwoord in het Nederlands. " +
+                "Geef duidelijke en praktische antwoorden. " +
+                "Verzin geen actuele prijzen, voorraad, aanbiedingen of productgegevens. " +
+                "Als actuele informatie nodig is, adviseer dan de actuele productpagina te controleren.",
+            },
+            {
+              role: "user",
+              content:
+                message,
+            },
+          ],
+          max_tokens: 1024,
+        },
+      );
+
+    const result =
+      response as {
+        response?: string;
+      };
+
+    return json({
+      answer:
+        result.response ??
+        "Ik kon helaas geen antwoord genereren.",
+    });
+  } catch (
+    error
+  ) {
+    console.error(
+      "AI error:",
+      error,
+    );
+
+    return errorResponse(
+      "AI kon momenteel geen antwoord geven.",
+      502,
+    );
+  }
+}
+
+/* =========================================================
+   ADMIN SYNC
+========================================================= */
+
+async function handleSync(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  if (
+    !isAuthorized(
+      request,
+      env,
+    )
+  ) {
+    return errorResponse(
+      "Niet geautoriseerd.",
+      401,
+    );
+  }
+
+  try {
+    const result =
+      await syncAwin(
+        env,
+      );
+
+    return json({
+      ok: true,
+      network: "AWIN",
+      ...result,
+    });
+  } catch (
+    error
+  ) {
+    return errorResponse(
+      error instanceof Error
+        ? error.message
+        : "Synchronisatie mislukt.",
+      502,
+    );
+  }
+}
+
+async function handleDirectSync(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  if (
+    !isAuthorized(
+      request,
+      env,
+    )
+  ) {
+    return errorResponse(
+      "Niet geautoriseerd.",
+      401,
+    );
+  }
+
+  try {
+    const result =
+      await syncDirectCatalogs(
+        env,
+      );
+
+    return json({
+      ok: true,
+      network: "DIRECT",
+      ...result,
+    });
+  } catch (
+    error
+  ) {
+    return errorResponse(
+      error instanceof Error
+        ? error.message
+        : "Directe synchronisatie mislukt.",
+      502,
+    );
+  }
+}
+
+/* =========================================================
+   ADMIN LOGS
+========================================================= */
+
+async function handleLogs(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  if (
+    !isAuthorized(
+      request,
+      env,
+    )
+  ) {
+    return errorResponse(
+      "Niet geautoriseerd.",
+      401,
+    );
+  }
+
+  const result =
+    await env.DB
+      .prepare(
+        `
+        SELECT *
+        FROM sync_logs
+        ORDER BY id DESC
+        LIMIT 20
+        `,
+      )
+      .all();
+
+  return json({
+    logs:
+      result.results ?? [],
+  });
+}
+
+/* =========================================================
+   WORKER
+========================================================= */
+
+export default {
+  async fetch(
+    request: Request,
+    env: Env,
+  ): Promise<Response> {
+    const url =
+      new URL(
+        request.url,
+      );
+
+    const path =
+      url.pathname
+        .replace(
+          /\/+$/,
+          "",
+        ) || "/";
+
+    try {
+      /* Health */
+      if (
+        request.method === "GET" &&
+        path === "/api/health"
+      ) {
+        return handleHealth(
+          env,
+        );
+      }
+
+      /* Product list */
+      if (
+        request.method === "GET" &&
+        path === "/api/products"
+      ) {
+        return handleProducts(
+          request,
+          env,
+        );
+      }
+
+      /* Product detail */
+      if (
+        request.method === "GET" &&
+        path.startsWith(
+          "/api/products/",
+        )
+      ) {
+        const slug =
+          decodeURIComponent(
+            path.slice(
+              "/api/products/"
+                .length,
+            ),
+          ).trim();
+
+        if (!slug) {
+          return errorResponse(
+            "Product niet gevonden.",
+            404,
+          );
+        }
+
+        return handleProduct(
+          slug,
+          env,
+        );
+      }
+
+      /* AI */
+      if (
+        request.method === "POST" &&
+        [
+          "/api/ai",
+          "/api/ai/chat",
+          "/api/coach",
+        ].includes(path)
+      ) {
+        return handleAi(
+          request,
+          env,
+        );
+      }
+
+      /* Awin admin sync */
+      if (
+        request.method === "POST" &&
+        [
+          "/api/admin/sync",
+          "/api/admin/sync-awin",
+        ].includes(path)
+      ) {
+        return handleSync(
+          request,
+          env,
+        );
+      }
+
+      /* Direct catalog sync */
+      if (
+        request.method === "POST" &&
+        path ===
+          "/api/admin/sync-direct"
+      ) {
+        return handleDirectSync(
+          request,
+          env,
+        );
+      }
+
+      /* Sync logs */
+      if (
+        request.method === "GET" &&
+        path ===
+          "/api/admin/sync-logs"
+      ) {
+        return handleLogs(
+          request,
+          env,
+        );
+      }
+
+      /* Product redirect */
+      if (
+        request.method === "GET" &&
+        path.startsWith(
+          "/go/",
+        )
+      ) {
+        const productId =
+          decodeURIComponent(
+            path.slice(
+              "/go/".length,
+            ),
+          ).trim();
+
+        if (!productId) {
+          return text(
+            "Product niet gevonden.",
+            404,
+          );
+        }
+
+        return handleRedirect(
+          productId,
+          env,
+        );
+      }
+
+      /* Static assets */
+      return env.ASSETS.fetch(
+        request,
+      );
+    } catch (
+      error
+    ) {
+      console.error(
+        "Worker error:",
+        error,
+      );
+
+      return errorResponse(
+        "Interne serverfout.",
+        500,
+      );
+    }
+  },
+
+  async scheduled(
+    _controller: ScheduledController,
+    env: Env,
+  ): Promise<void> {
+    if (
+      env.DIRECT_CATALOG_URLS?.trim()
+    ) {
+      try {
+        await syncDirectCatalogs(
+          env,
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Scheduled direct sync failed:",
+          error,
+        );
+      }
+    }
+
+    if (
+      env.AWIN_FEED_URL?.trim()
+    ) {
+      try {
+        await syncAwin(
+          env,
+        );
+      } catch (
+        error
+      ) {
+        console.error(
+          "Scheduled Awin sync failed:",
+          error,
+        );
+      }
+    }
+  },
+};
