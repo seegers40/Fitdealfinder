@@ -1,793 +1,559 @@
 "use strict";
 
-const FALLBACK_PRODUCTS = [
-  {
-    id: 1,
-    name: "Whey Delicious",
-    brand: "XXL Nutrition",
-    category: "whey",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 19.99,
-    productUrl: "https://xxlnutrition.com/nl/whey-delicious",
-    protein: 24
-  },
-  {
-    id: 2,
-    name: "Perfect Whey Protein",
-    brand: "XXL Nutrition",
-    category: "whey",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 25.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 24
-  },
-  {
-    id: 3,
-    name: "Whey Isolaat",
-    brand: "XXL Nutrition",
-    category: "whey",
-    goals: ["cut", "lean-bulk"],
-    price: 25.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 25
-  },
-  {
-    id: 4,
-    name: "Clear Whey Isolate",
-    brand: "XXL Nutrition",
-    category: "whey",
-    goals: ["cut", "lean-bulk"],
-    price: 29.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 20
-  },
-  {
-    id: 5,
-    name: "Whey Isolate Zero",
-    brand: "XXL Nutrition",
-    category: "whey",
-    goals: ["cut", "lean-bulk"],
-    price: 28.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 25
-  },
-  {
-    id: 6,
-    name: "Green Protein",
-    brand: "XXL Nutrition",
-    category: "whey",
-    goals: ["cut", "lean-bulk"],
-    price: 18.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 20
-  },
-  {
-    id: 7,
-    name: "Perfect Milk Protein",
-    brand: "XXL Nutrition",
-    category: "whey",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 9.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 22
-  },
-  {
-    id: 8,
-    name: "Creatine Monohydraat",
-    brand: "XXL Nutrition",
-    category: "creatine",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 8.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 0
-  },
-  {
-    id: 9,
-    name: "Muscle Grow",
-    brand: "XXL Nutrition",
-    category: "gainer",
-    goals: ["bulk", "lean-bulk"],
-    price: 28.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 20
-  },
-  {
-    id: 10,
-    name: "Protein Lemonade",
-    brand: "XXL Nutrition",
-    category: "whey",
-    goals: ["cut", "lean-bulk"],
-    price: 2.25,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 10
-  },
-  {
-    id: 11,
-    name: "Diet Shake",
-    brand: "XXL Nutrition",
-    category: "meals",
-    goals: ["cut"],
-    price: 15.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 20
-  },
-  {
-    id: 12,
-    name: "Protein Drink Zero",
-    brand: "XXL Nutrition",
-    category: "whey",
-    goals: ["cut", "lean-bulk"],
-    price: 8.49,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 20
-  },
-  {
-    id: 13,
-    name: "High Protein Bar",
-    brand: "XXL Nutrition",
-    category: "snacks",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 2.59,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 20
-  },
-  {
-    id: 14,
-    name: "Blast! Pre-Workout",
-    brand: "XXL Nutrition",
-    category: "preworkout",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 27.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 0
-  },
-  {
-    id: 15,
-    name: "Multivit - 120 tabletten",
-    brand: "XXL Nutrition",
-    category: "vitamins",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 17.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 0
-  },
-  {
-    id: 16,
-    name: "Omega 3 Ultra Pure",
-    brand: "XXL Nutrition",
-    category: "vitamins",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 13.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 0
-  },
-  {
-    id: 17,
-    name: "Hydrate - 20 bruistabletten",
-    brand: "XXL Nutrition",
-    category: "vitamins",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 4.99,
-    productUrl: "https://xxlnutrition.com/nl/alle-producten",
-    protein: 0
-  },
-  {
-    id: 18,
-    name: "Perfection Whey",
-    brand: "Body & Fit",
-    category: "whey",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 34.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 24
-  },
-  {
-    id: 19,
-    name: "GOLD STANDARD 100% Whey Protein",
-    brand: "Optimum Nutrition",
-    category: "whey",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 22.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 24
-  },
-  {
-    id: 20,
-    name: "Creatine Monohydrate",
-    brand: "Body & Fit",
-    category: "creatine",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 6.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 0
-  },
-  {
-    id: 21,
-    name: "Creatine Creapure",
-    brand: "Body & Fit",
-    category: "creatine",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 29.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 0
-  },
-  {
-    id: 22,
-    name: "Mass Perfection Weight Gainer",
-    brand: "Body & Fit",
-    category: "gainer",
-    goals: ["bulk"],
-    price: 72.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 20
-  },
-  {
-    id: 23,
-    name: "Massive Gainer",
-    brand: "Body & Fit",
-    category: "gainer",
-    goals: ["bulk"],
-    price: 56.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 20
-  },
-  {
-    id: 24,
-    name: "Micellar Casein Perfection",
-    brand: "Body & Fit",
-    category: "whey",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 29.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 24
-  },
-  {
-    id: 25,
-    name: "Perfection Pre-Workout",
-    brand: "Body & Fit",
-    category: "preworkout",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 27.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 0
-  },
-  {
-    id: 26,
-    name: "BF10 Pre-workout",
-    brand: "Body & Fit",
-    category: "preworkout",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 14.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 0
-  },
-  {
-    id: 27,
-    name: "High Fibre Protein Bar",
-    brand: "Body & Fit",
-    category: "snacks",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 24.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 20
-  },
-  {
-    id: 28,
-    name: "Perfection Protein Bar",
-    brand: "Body & Fit",
-    category: "snacks",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 24.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 20
-  },
-  {
-    id: 29,
-    name: "Protein Cookies",
-    brand: "Body & Fit",
-    category: "snacks",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 16.19,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 20
-  },
-  {
-    id: 30,
-    name: "Smart Chips",
-    brand: "Body & Fit",
-    category: "snacks",
-    goals: ["cut", "lean-bulk"],
-    price: 0.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 10
-  },
-  {
-    id: 31,
-    name: "Smart Pasta",
-    brand: "Body & Fit",
-    category: "meals",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 2.79,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 10
-  },
-  {
-    id: 32,
-    name: "Smart Crunchy Wafels",
-    brand: "Body & Fit",
-    category: "snacks",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 18.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 10
-  },
-  {
-    id: 33,
-    name: "All In One",
-    brand: "Body & Fit",
-    category: "meals",
-    goals: ["bulk", "lean-bulk"],
-    price: 32.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 20
-  },
-  {
-    id: 34,
-    name: "Low Calorie Meal Replacement",
-    brand: "Body & Fit",
-    category: "meals",
-    goals: ["cut"],
-    price: 20.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 20
-  },
-  {
-    id: 35,
-    name: "Perfection Whey Lemonade",
-    brand: "Body & Fit",
-    category: "whey",
-    goals: ["cut", "lean-bulk"],
-    price: 26.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 20
-  },
-  {
-    id: 36,
-    name: "Whey Isolate XP",
-    brand: "Body & Fit",
-    category: "whey",
-    goals: ["cut", "lean-bulk"],
-    price: 41.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 25
-  },
-  {
-    id: 37,
-    name: "Isolate Perfection",
-    brand: "Body & Fit",
-    category: "whey",
-    goals: ["cut", "lean-bulk"],
-    price: 39.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 25
-  },
-  {
-    id: 38,
-    name: "Smart Protein",
-    brand: "Body & Fit",
-    category: "whey",
-    goals: ["cut", "bulk", "lean-bulk"],
-    price: 35.99,
-    productUrl: "https://www.bodyandfit.com/",
-    protein: 24
-  }
-];
-
-const state = {
-  products: [],
-  goal: "cut",
-  search: "",
-  category: ""
-};
-
-const elements = {
-  goalButtons: document.querySelectorAll("[data-goal-button]"),
-  goalSelect: document.getElementById("goal-select"),
-  budgetInput: document.getElementById("budget-input"),
-  periodSelect: document.getElementById("period-select"),
-  proteinInput: document.getElementById("protein-input"),
-  makePlanButton: document.getElementById("make-plan-button"),
-  plannerResult: document.getElementById("planner-result"),
-  searchInput: document.getElementById("search-input"),
-  categorySelect: document.getElementById("category-select"),
-  productsStatus: document.getElementById("products-status"),
-  productGrid: document.getElementById("product-grid"),
-  currentYear: document.getElementById("current-year")
-};
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function formatPrice(value) {
-  const number = Number(value);
-
-  if (!Number.isFinite(number)) {
-    return "Prijs onbekend";
-  }
-
-  return new Intl.NumberFormat("nl-NL", {
-    style: "currency",
-    currency: "EUR"
-  }).format(number);
-}
-
-function normalizeProduct(product, fallbackId) {
-  const goals = Array.isArray(product.goals)
-    ? product.goals
-        .map((goal) => String(goal).trim().toLowerCase())
-        .filter(Boolean)
-    : ["cut", "bulk", "lean-bulk"];
-
-  return {
-    id: product.id ?? fallbackId,
-    name: String(product.name ?? "Onbekend product"),
-    brand: String(product.brand ?? "Onbekend merk"),
-    category: String(product.category ?? "overig").toLowerCase(),
-    goals,
-    price: Number(product.price) || 0,
-    productUrl: String(
-      product.productUrl ??
-      product.product_url ??
-      product.url ??
-      ""
-    ),
-    protein: Number(product.protein) || 0
+(() => {
+  const state = {
+    products: [],
+    goal: "",
+    category: "",
+    query: "",
+    loading: false
   };
-}
 
-function productMatchesGoal(product, goal) {
-  return (
-    Array.isArray(product.goals) &&
-    product.goals.includes(goal)
-  );
-}
+  const $ = (selector) => document.querySelector(selector);
 
-function getFilteredProducts() {
-  const search = state.search.trim().toLowerCase();
+  const searchInput = $("#search-input");
+  const categorySelect = $("#category-select");
+  const goalSelect = $("#goal-select");
+  const productGrid = $("#product-grid");
+  const productsStatus = $("#products-status");
 
-  return state.products.filter((product) => {
-    const matchesSearch =
-      !search ||
-      product.name.toLowerCase().includes(search) ||
-      product.brand.toLowerCase().includes(search);
+  const plannerResult = $("#planner-result");
+  const budgetInput = $("#budget-input");
+  const periodSelect = $("#period-select");
+  const proteinInput = $("#protein-input");
+  const makePlanButton = $("#make-plan-button");
 
-    const matchesCategory =
-      !state.category ||
-      product.category === state.category;
+  const aiForm = $("#ai-form");
+  const aiInput = $("#ai-input");
+  const aiSubmit = $("#ai-submit");
+  const aiResponse = $("#ai-response");
 
-    return matchesSearch && matchesCategory;
-  });
-}
-
-function getProductLink(product) {
-  const hasApiProductId =
-    typeof product.id === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      product.id
-    );
-
-  if (hasApiProductId) {
-    return `/go/${encodeURIComponent(product.id)}`;
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
   }
 
-  return product.productUrl || "#";
-}
-function renderProducts() {
-  const products = getFilteredProducts();
-
-  if (!elements.productGrid) {
-    return;
+  function normalize(value) {
+    return String(value ?? "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
   }
 
-  if (elements.productsStatus) {
-    elements.productsStatus.textContent =
-      `${products.length} product${products.length === 1 ? "" : "en"} gevonden`;
+  function normalizeCategory(value) {
+    const v = normalize(value);
+
+    if (["preworkout", "pre-workout", "pre workout"].includes(v)) {
+      return "preworkout";
+    }
+
+    if (["vitamine", "vitamins", "vitamines"].includes(v)) {
+      return "vitamins";
+    }
+
+    if (["eiwit", "protein", "whey", "proteine"].includes(v)) {
+      return "whey";
+    }
+
+    if (["creatine"].includes(v)) {
+      return "creatine";
+    }
+
+    if (["gainer", "weight gainer"].includes(v)) {
+      return "gainer";
+    }
+
+    if (["snacks", "protein bars", "protein bar"].includes(v)) {
+      return "snacks";
+    }
+
+    if (["maaltijden", "meal replacement", "meals"].includes(v)) {
+      return "meals";
+    }
+
+    return v;
   }
 
-  if (products.length === 0) {
-    elements.productGrid.innerHTML = `
-      <div class="empty-state">
-        Geen producten gevonden met deze zoekopdracht.
-      </div>
-    `;
-    return;
+  function parseGoals(value) {
+    if (Array.isArray(value)) {
+      return value.map(normalize);
+    }
+
+    if (!value) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map(normalize);
+      }
+    } catch {
+      // Continue with separator parsing.
+    }
+
+    return String(value)
+      .split(/[;,|]/)
+      .map(normalize)
+      .filter(Boolean);
   }
 
-  elements.productGrid.innerHTML = products
-    .map((product) => {
-      const goals = product.goals
-        .map((goal) => {
-          const labels = {
-            cut: "Cut",
-            bulk: "Bulk",
-            "lean-bulk": "Lean Bulk"
-          };
+  function formatPrice(product) {
+    const price = Number(product.price);
 
-          return `
-            <span class="product-goal">
-              ${escapeHtml(labels[goal] || goal)}
-            </span>
-          `;
-        })
-        .join("");
+    if (!Number.isFinite(price)) {
+      return "Prijs bekijken";
+    }
 
-      return `
-        <article class="product-card">
-          <span class="product-category">
-            ${escapeHtml(product.category)}
-          </span>
+    return new Intl.NumberFormat("nl-NL", {
+      style: "currency",
+      currency: product.currency || "EUR"
+    }).format(price);
+  }
 
-          <h3>${escapeHtml(product.name)}</h3>
+  function getDiscount(product) {
+    const price = Number(product.price);
+    const oldPrice = Number(product.old_price);
 
-          <p class="product-brand">
-            ${escapeHtml(product.brand)}
+    if (
+      !Number.isFinite(price) ||
+      !Number.isFinite(oldPrice) ||
+      oldPrice <= price ||
+      oldPrice <= 0
+    ) {
+      return null;
+    }
+
+    return Math.round(((oldPrice - price) / oldPrice) * 100);
+  }
+
+  function productMatches(product) {
+    const query = normalize(state.query);
+    const category = normalizeCategory(state.category);
+    const goal = normalize(state.goal);
+
+    const text = [
+      product.name,
+      product.brand,
+      product.merchant_name,
+      product.category,
+      product.description
+    ]
+      .map(normalize)
+      .join(" ");
+
+    if (query && !text.includes(query)) {
+      return false;
+    }
+
+    if (
+      category &&
+      normalizeCategory(product.category) !== category
+    ) {
+      return false;
+    }
+
+    if (goal) {
+      const goals = parseGoals(product.goals);
+
+      if (!goals.includes(goal)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function renderProducts() {
+    if (!productGrid || !productsStatus) {
+      return;
+    }
+
+    const products = state.products.filter(productMatches);
+
+    if (!products.length) {
+      productsStatus.textContent =
+        state.products.length === 0
+          ? "Er zijn momenteel geen producten geladen."
+          : "Geen producten gevonden voor deze selectie.";
+
+      productGrid.innerHTML = `
+        <div class="empty-state">
+          <strong>Geen producten gevonden</strong>
+          <p>
+            Probeer een andere categorie, doelstelling of zoekterm.
           </p>
+        </div>
+      `;
 
-          <div class="product-goals">
-            ${goals}
-          </div>
+      return;
+    }
 
-          <div class="product-bottom">
-            <div class="product-price">
-              ${formatPrice(product.price)}
+    productsStatus.textContent =
+      `${products.length} product${products.length === 1 ? "" : "en"} gevonden`;
+
+    productGrid.innerHTML = products
+      .map((product) => {
+        const discount = getDiscount(product);
+        const image = product.image_url
+          ? `
+            <img
+              src="${escapeHtml(product.image_url)}"
+              alt="${escapeHtml(product.name)}"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+            >
+          `
+          : `
+            <div class="product-placeholder">
+              <span>FIT</span>
+            </div>
+          `;
+
+        return `
+          <article class="product-card">
+            <div class="product-image">
+              ${image}
               ${
-                product.protein > 0
-                  ? `<small>${escapeHtml(product.protein)} g eiwit</small>`
+                discount
+                  ? `<span class="deal-badge">-${discount}%</span>`
                   : ""
               }
             </div>
 
-            <a
-              class="product-link"
-              href="${escapeHtml(getProductLink(product))}"
-            >
-              Bekijk deal
-            </a>
-          </div>
-        </article>
-      `;
-    })
-    .join("");
-}
+            <div class="product-content">
+              <div class="product-meta">
+                <span>${escapeHtml(product.brand || "Supplement")}</span>
+                <span>${escapeHtml(product.merchant_name || "")}</span>
+              </div>
 
-function setGoal(goal) {
-  const validGoals = ["cut", "bulk", "lean-bulk"];
+              <h3>${escapeHtml(product.name)}</h3>
 
-  if (!validGoals.includes(goal)) {
-    return;
-  }
+              ${
+                product.description
+                  ? `<p>${escapeHtml(product.description).slice(0, 120)}</p>`
+                  : ""
+              }
 
-  state.goal = goal;
+              <div class="product-price">
+                ${formatPrice(product)}
+                ${
+                  discount
+                    ? `<del>${new Intl.NumberFormat("nl-NL", {
+                        style: "currency",
+                        currency: product.currency || "EUR"
+                      }).format(Number(product.old_price))}</del>`
+                    : ""
+                }
+              </div>
 
-  if (elements.goalSelect) {
-    elements.goalSelect.value = goal;
-  }
+              <div class="product-actions">
+                <a
+                  class="product-button"
+                  href="${escapeHtml(product.product_url)}"
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                >
+                  Bekijk winkel
+                </a>
+              </div>
 
-  elements.goalButtons.forEach((button) => {
-    button.classList.toggle(
-      "active",
-      button.dataset.goalButton === goal
-    );
-  });
-}
-
-function createPlan() {
-  const budget = Number(elements.budgetInput?.value);
-  const period = elements.periodSelect?.value || "week";
-  const proteinTarget = Number(elements.proteinInput?.value);
-
-  if (!Number.isFinite(budget) || budget <= 0) {
-    elements.plannerResult.innerHTML = `
-      <div class="plan-summary">
-        <h3>Vul een geldig budget in</h3>
-        <p>Gebruik een bedrag groter dan €0.</p>
-      </div>
-    `;
-    return;
-  }
-
-  const candidates = state.products
-    .filter((product) => productMatchesGoal(product, state.goal))
-    .filter((product) => Number.isFinite(product.price) && product.price > 0)
-    .sort((a, b) => a.price - b.price);
-
-  const selected = [];
-  let total = 0;
-
-  for (const product of candidates) {
-    if (selected.length >= 5) {
-      break;
-    }
-
-    if (total + product.price <= budget) {
-      selected.push(product);
-      total += product.price;
-    }
-  }
-
-  const goalLabels = {
-    cut: "Cut",
-    bulk: "Bulk",
-    "lean-bulk": "Lean Bulk"
-  };
-
-  const periodLabel =
-    period === "month" ? "per maand" : "per week";
-
-  const proteinText =
-    Number.isFinite(proteinTarget) && proteinTarget > 0
-      ? `Je ingevoerde eiwitdoel is ${proteinTarget} g per dag.`
-      : "Er is geen eiwitdoel ingesteld.";
-
-  if (selected.length === 0) {
-    elements.plannerResult.innerHTML = `
-      <div class="plan-summary">
-        <h3>Geen pakket binnen budget</h3>
-        <p>
-          Er zijn momenteel geen geschikte producten binnen
-          ${formatPrice(budget)}.
-        </p>
-        <p>${escapeHtml(proteinText)}</p>
-      </div>
-    `;
-    return;
-  }
-
-  const remaining = Math.max(0, budget - total);
-
-  const productsHtml = selected
-    .map(
-      (product) => `
-        <div class="plan-product">
-          <div>
-            <div class="plan-product-name">
-              ${escapeHtml(product.name)}
+              <small class="price-note">
+                Prijsindicatie · controleer de actuele prijs bij de winkel
+              </small>
             </div>
+          </article>
+        `;
+      })
+      .join("");
+  }
 
-            <div class="plan-product-meta">
-              ${escapeHtml(product.brand)}
-            </div>
-          </div>
+  async function loadProducts() {
+    state.loading = true;
 
-          <div class="plan-product-price">
-            ${formatPrice(product.price)}
-          </div>
-        </div>
-      `
-    )
-    .join("");
-
-  elements.plannerResult.innerHTML = `
-    <div class="plan-summary">
-      <h3>Jouw ${escapeHtml(goalLabels[state.goal])}-pakket</h3>
-
-      <p>
-        ${selected.length} producten voor
-        ${formatPrice(total)} ${escapeHtml(periodLabel)}.
-      </p>
-
-      <p>
-        Resterend budget:
-        ${formatPrice(remaining)}.
-      </p>
-
-      <p>${escapeHtml(proteinText)}</p>
-
-      <div class="plan-products">
-        ${productsHtml}
-      </div>
-
-      <div class="plan-warning">
-        De planner gebruikt prijs en doel om maximaal vijf producten
-        binnen het budget te selecteren. Het ingevoerde eiwitdoel wordt
-        momenteel alleen weergegeven en nog niet gebruikt voor de selectie.
-      </div>
-    </div>
-  `;
-}
-
-async function loadProducts() {
-  state.products = FALLBACK_PRODUCTS.map((product) =>
-    normalizeProduct(product, product.id)
-  );
-
-  renderProducts();
-
-  try {
-    const response = await fetch("/api/products?limit=100", {
-      method: "GET",
-      headers: {
-        Accept: "application/json"
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`API returned ${response.status}`);
+    if (productsStatus) {
+      productsStatus.textContent = "Producten laden…";
     }
 
-    const data = await response.json();
-
-    const apiProducts = Array.isArray(data)
-      ? data
-      : Array.isArray(data.products)
-        ? data.products
-        : [];
-
-    if (apiProducts.length > 0) {
-      state.products = apiProducts.map((product, index) =>
-        normalizeProduct(product, index + 1)
+    try {
+      const response = await fetch(
+        "/api/products?limit=100",
+        {
+          headers: {
+            Accept: "application/json"
+          },
+          cache: "no-store"
+        }
       );
 
-      if (elements.productsStatus) {
-        elements.productsStatus.textContent =
-          `${state.products.length} actuele producten geladen`;
+      if (!response.ok) {
+        throw new Error("Product API unavailable");
       }
 
+      const payload = await response.json();
+
+      const products = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload.products)
+          ? payload.products
+          : Array.isArray(payload.data)
+            ? payload.data
+            : [];
+
+      state.products = products
+        .filter((product) => product && product.active !== 0)
+        .filter((product) => {
+          return (
+            typeof product.product_url === "string" &&
+            /^https?:\/\//i.test(product.product_url)
+          );
+        });
+
       renderProducts();
-    }
-  } catch {
-    if (elements.productsStatus) {
-      elements.productsStatus.textContent =
-        `${state.products.length} producten beschikbaar`;
+    } catch (error) {
+      console.error("FitDealFinder product load failed:", error);
+
+      state.products = [];
+
+      if (productsStatus) {
+        productsStatus.textContent =
+          "Productgegevens konden momenteel niet worden geladen.";
+      }
+
+      if (productGrid) {
+        productGrid.innerHTML = `
+          <div class="empty-state">
+            <strong>Producten tijdelijk niet beschikbaar</strong>
+            <p>
+              Probeer het later opnieuw.
+            </p>
+          </div>
+        `;
+      }
+    } finally {
+      state.loading = false;
     }
   }
-}
 
-function initializeEvents() {
-  elements.goalButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      setGoal(button.dataset.goalButton);
-      createPlan();
+  function applyFilters() {
+    state.query = searchInput?.value || "";
+    state.category = categorySelect?.value || "";
+    state.goal = goalSelect?.value || "";
+
+    renderProducts();
+  }
+
+  function setupFilters() {
+    searchInput?.addEventListener("input", applyFilters);
+    categorySelect?.addEventListener("change", applyFilters);
+    goalSelect?.addEventListener("change", applyFilters);
+
+    document.querySelectorAll("[data-goal-button]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const goal = button.dataset.goalButton || "";
+
+        state.goal = goal;
+
+        if (goalSelect) {
+          goalSelect.value = goal;
+        }
+
+        document
+          .querySelectorAll("[data-goal-button]")
+          .forEach((item) => item.classList.remove("active"));
+
+        button.classList.add("active");
+
+        renderProducts();
+      });
     });
-  });
 
-  elements.goalSelect?.addEventListener("change", (event) => {
-    setGoal(event.target.value);
-    createPlan();
-  });
+    document.querySelectorAll("[data-category]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const category = normalizeCategory(
+          button.dataset.category || ""
+        );
 
-  elements.makePlanButton?.addEventListener(
-    "click",
-    createPlan
-  );
+        state.category = category;
 
-  elements.searchInput?.addEventListener("input", (event) => {
-    state.search = event.target.value;
-    renderProducts();
-  });
+        if (categorySelect) {
+          categorySelect.value = category;
+        }
 
-  elements.categorySelect?.addEventListener("change", (event) => {
-    state.category = event.target.value;
-    renderProducts();
-  });
-}
+        if (searchInput) {
+          searchInput.value = "";
+        }
 
-function initialize() {
-  if (elements.currentYear) {
-    elements.currentYear.textContent = String(
-      new Date().getFullYear()
-    );
+        renderProducts();
+
+        document
+          .querySelector("#producten")
+          ?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+      });
+    });
   }
 
-  setGoal("cut");
-  initializeEvents();
-  loadProducts();
-}
+  function setupPlanner() {
+    makePlanButton?.addEventListener("click", () => {
+      const budget = Number(budgetInput?.value || 0);
+      const period = periodSelect?.value || "week";
+      const protein = Number(proteinInput?.value || 0);
 
-document.addEventListener("DOMContentLoaded", initialize);
+      if (!plannerResult) {
+        return;
+      }
+
+      if (!Number.isFinite(budget) || budget <= 0) {
+        plannerResult.innerHTML =
+          "<p>Vul eerst een geldig budget in.</p>";
+        return;
+      }
+
+      const periodText =
+        period === "month" ? "maand" : "week";
+
+      const suitable = state.products
+        .filter((product) => productMatches(product))
+        .filter((product) => Number(product.price) <= budget)
+        .sort((a, b) => {
+          return Number(a.price) - Number(b.price);
+        })
+        .slice(0, 5);
+
+      if (!suitable.length) {
+        plannerResult.innerHTML = `
+          <p>
+            Er is momenteel geen passend product binnen dit budget.
+          </p>
+        `;
+        return;
+      }
+
+      const proteinText =
+        protein > 0
+          ? ` voor ongeveer ${protein} g eiwit per dag`
+          : "";
+
+      plannerResult.innerHTML = `
+        <strong>Voorstel voor je ${periodText}${proteinText}</strong>
+        <ul>
+          ${suitable
+            .map(
+              (product) => `
+                <li>
+                  ${escapeHtml(product.name)}
+                  — ${formatPrice(product)}
+                </li>
+              `
+            )
+            .join("")}
+        </ul>
+        <small>
+          Dit is een eenvoudige productselectie en geen medisch of
+          voedingskundig advies.
+        </small>
+      `;
+    });
+  }
+
+  async function askAI(question) {
+    if (!question.trim()) {
+      return;
+    }
+
+    if (aiSubmit) {
+      aiSubmit.disabled = true;
+    }
+
+    if (aiResponse) {
+      aiResponse.innerHTML =
+        "<p>Even nadenken…</p>";
+    }
+
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({
+          message: question.trim()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("AI request failed");
+      }
+
+      const payload = await response.json();
+
+      const answer =
+        payload.answer ||
+        payload.response ||
+        payload.message ||
+        "Ik kon daar momenteel geen antwoord op geven.";
+
+      if (aiResponse) {
+        aiResponse.innerHTML = `
+          <p>${escapeHtml(answer).replaceAll("\n", "<br>")}</p>
+          <small>
+            De AI geeft algemene informatie en geen medisch advies.
+          </small>
+        `;
+      }
+    } catch (error) {
+      console.error("AI request failed:", error);
+
+      if (aiResponse) {
+        aiResponse.innerHTML = `
+          <p>
+            De AI Coach is momenteel tijdelijk niet beschikbaar.
+          </p>
+        `;
+      }
+    } finally {
+      if (aiSubmit) {
+        aiSubmit.disabled = false;
+      }
+    }
+  }
+
+  function setupAI() {
+    aiForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      askAI(aiInput?.value || "");
+    });
+  }
+
+  function setYear() {
+    const year = $("#current-year");
+
+    if (year) {
+      year.textContent = new Date().getFullYear();
+    }
+  }
+
+  function init() {
+    setupFilters();
+    setupPlanner();
+    setupAI();
+    setYear();
+    loadProducts();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
