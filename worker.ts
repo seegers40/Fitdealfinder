@@ -2,21 +2,10 @@ interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   AI: Ai;
-
   ADMIN_SECRET?: string;
-
   AWIN_FEED_URL?: string;
   AWIN_PUBLISHER_ID?: string;
-
   AI_MODEL?: string;
-
-  /*
-   * Eén catalogus per regel:
-   *
-   * WINKELNAAM|https://echte-feed-url.nl/feed.csv
-   *
-   * JSON, CSV en XML worden ondersteund.
-   */
   DIRECT_CATALOG_URLS?: string;
 }
 
@@ -24,109 +13,47 @@ type ProductInput = {
   external_id: string;
   name: string;
   slug: string;
-
   description: string | null;
   brand: string | null;
   category: string | null;
   goals: string;
-
   price: number;
   old_price: number | null;
   currency: string;
-
   image_url: string | null;
   product_url: string;
   affiliate_url: string | null;
-
   merchant_name: string;
   merchant_id: string | null;
-
   network: string;
-
   commission: number | null;
   commission_type: string | null;
-
   in_stock: number;
   active: number;
-
   deal_score: number;
   discount_percent: number | null;
 };
 
-const DEFAULT_AI_MODEL =
-  "@cf/meta/llama-3.1-8b-instruct-fast";
+const DEFAULT_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
 
-/* =========================================================
-   RESPONSE HELPERS
-========================================================= */
-
-function json(
-  data: unknown,
-  status = 200,
-): Response {
-  return new Response(
-    JSON.stringify(data),
-    {
-      status,
-      headers: {
-        "content-type":
-          "application/json; charset=UTF-8",
-        "cache-control":
-          "no-store",
-        "x-content-type-options":
-          "nosniff",
-      },
-    },
-  );
-}
-
-function text(
-  value: string,
-  status = 200,
-): Response {
-  return new Response(
-    value,
-    {
-      status,
-      headers: {
-        "content-type":
-          "text/plain; charset=UTF-8",
-        "cache-control":
-          "no-store",
-        "x-content-type-options":
-          "nosniff",
-      },
-    },
-  );
-}
-
-function errorResponse(
-  message: string,
-  status = 500,
-): Response {
-  return json(
-    {
-      error: message,
-    },
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
     status,
-  );
+    headers: {
+      "content-type": "application/json; charset=UTF-8",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+    },
+  });
 }
 
-/* =========================================================
-   GENERAL HELPERS
-========================================================= */
+function errorResponse(message: string, status = 500): Response {
+  return json({ error: message }, status);
+}
 
-function asRecord(
-  value: unknown,
-): Record<string, unknown> {
-  if (
-    value &&
-    typeof value === "object"
-  ) {
-    return value as Record<
-      string,
-      unknown
-    >;
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object") {
+    return value as Record<string, unknown>;
   }
 
   return {};
@@ -136,11 +63,8 @@ function firstValue(
   object: Record<string, unknown>,
   keys: string[],
 ): unknown {
-  for (
-    const key of keys
-  ) {
-    const value =
-      object[key];
+  for (const key of keys) {
+    const value = object[key];
 
     if (
       value !== undefined &&
@@ -166,11 +90,7 @@ function safeUrl(
   }
 
   try {
-    const url =
-      new URL(
-        value.trim(),
-        base,
-      );
+    const url = new URL(value.trim(), base);
 
     if (
       url.protocol !== "http:" &&
@@ -185,30 +105,15 @@ function safeUrl(
   }
 }
 
-function slugify(
-  value: string,
-): string {
-  const slug =
-    value
-      .normalize("NFKD")
-      .replace(
-        /[\u0300-\u036f]/g,
-        "",
-      )
-      .toLowerCase()
-      .trim()
-      .replace(
-        /[^a-z0-9]+/g,
-        "-",
-      )
-      .replace(
-        /^-+|-+$/g,
-        "",
-      )
-      .slice(
-        0,
-        180,
-      );
+function slugify(value: string): string {
+  const slug = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 180);
 
   return slug || "product";
 }
@@ -224,89 +129,47 @@ function numberOrNull(
     return null;
   }
 
-  if (
-    typeof value === "number"
-  ) {
-    return Number.isFinite(
-      value,
-    )
+  if (typeof value === "number") {
+    return Number.isFinite(value)
       ? value
       : null;
   }
 
-  if (
-    typeof value !== "string"
-  ) {
+  if (typeof value !== "string") {
     return null;
   }
 
-  let normalized =
-    value
-      .trim()
-      .replace(
-        /[^\d,.-]/g,
-        "",
-      );
+  let normalized = value
+    .trim()
+    .replace(/[^\d,.-]/g, "");
 
   if (!normalized) {
     return null;
   }
 
-  const comma =
-    normalized.lastIndexOf(",");
+  const comma = normalized.lastIndexOf(",");
+  const dot = normalized.lastIndexOf(".");
 
-  const dot =
-    normalized.lastIndexOf(".");
-
-  if (
-    comma >= 0 &&
-    dot >= 0
-  ) {
-    if (
-      comma > dot
-    ) {
-      normalized =
-        normalized
-          .replace(
-            /\./g,
-            "",
-          )
-          .replace(
-            ",",
-            ".",
-          );
+  if (comma >= 0 && dot >= 0) {
+    if (comma > dot) {
+      normalized = normalized
+        .replace(/\./g, "")
+        .replace(",", ".");
     } else {
-      normalized =
-        normalized.replace(
-          /,/g,
-          "",
-        );
+      normalized = normalized.replace(/,/g, "");
     }
-  } else if (
-    comma >= 0
-  ) {
-    normalized =
-      normalized.replace(
-        ",",
-        ".",
-      );
+  } else if (comma >= 0) {
+    normalized = normalized.replace(",", ".");
   }
 
-  const parsed =
-    Number(
-      normalized,
-    );
+  const parsed = Number(normalized);
 
-  return Number.isFinite(
-    parsed,
-  )
+  return Number.isFinite(parsed)
     ? parsed
     : null;
 }
 
-function stockValue(
-  value: unknown,
-): number {
+function stockValue(value: unknown): number {
   if (
     value === false ||
     value === 0
@@ -314,13 +177,10 @@ function stockValue(
     return 0;
   }
 
-  if (
-    typeof value === "string"
-  ) {
-    const normalized =
-      value
-        .trim()
-        .toLowerCase();
+  if (typeof value === "string") {
+    const normalized = value
+      .trim()
+      .toLowerCase();
 
     if (
       [
@@ -332,9 +192,7 @@ function stockValue(
         "unavailable",
         "uitverkocht",
         "niet beschikbaar",
-      ].includes(
-        normalized,
-      )
+      ].includes(normalized)
     ) {
       return 0;
     }
@@ -352,19 +210,13 @@ function normalizeGoals(
     "lean-bulk",
   ];
 
-  if (
-    Array.isArray(value)
-  ) {
-    const goals =
-      value
-        .map(String)
-        .map(
-          (item) =>
-            item
-              .trim()
-              .toLowerCase(),
-        )
-        .filter(Boolean);
+  if (Array.isArray(value)) {
+    const goals = value
+      .map(String)
+      .map((item) =>
+        item.trim().toLowerCase(),
+      )
+      .filter(Boolean);
 
     return JSON.stringify(
       goals.length
@@ -381,19 +233,13 @@ function normalizeGoals(
       const parsed: unknown =
         JSON.parse(value);
 
-      if (
-        Array.isArray(parsed)
-      ) {
-        const goals =
-          parsed
-            .map(String)
-            .map(
-              (item) =>
-                item
-                  .trim()
-                  .toLowerCase(),
-            )
-            .filter(Boolean);
+      if (Array.isArray(parsed)) {
+        const goals = parsed
+          .map(String)
+          .map((item) =>
+            item.trim().toLowerCase(),
+          )
+          .filter(Boolean);
 
         return JSON.stringify(
           goals.length
@@ -402,32 +248,22 @@ function normalizeGoals(
         );
       }
     } catch {
-      // Geen JSON; als tekst verwerken.
+      // Tekstformaat.
     }
 
-    const goals =
-      value
-        .split(/[;,|]/)
-        .map(
-          (item) =>
-            item
-              .trim()
-              .toLowerCase(),
-        )
-        .filter(Boolean);
+    const goals = value
+      .split(/[;,|]/)
+      .map((item) =>
+        item.trim().toLowerCase(),
+      )
+      .filter(Boolean);
 
-    if (
-      goals.length
-    ) {
-      return JSON.stringify(
-        goals,
-      );
+    if (goals.length) {
+      return JSON.stringify(goals);
     }
   }
 
-  return JSON.stringify(
-    defaults,
-  );
+  return JSON.stringify(defaults);
 }
 
 function discountPercent(
@@ -443,10 +279,9 @@ function discountPercent(
   }
 
   return Math.round(
-    (
-      (oldPrice - price) /
-      oldPrice
-    ) * 100,
+    ((oldPrice - price) /
+      oldPrice) *
+      100,
   );
 }
 
@@ -465,53 +300,36 @@ function calculateDealScore(
       oldPrice,
     );
 
-  if (
-    discount === null
-  ) {
+  if (discount === null) {
     return 20;
   }
 
   return Math.min(
     100,
-    20 +
-      discount * 2,
+    20 + discount * 2,
   );
 }
-
-/* =========================================================
-   FEED PARSING
-========================================================= */
 
 function getFeedItems(
   payload: unknown,
 ): unknown[] {
-  if (
-    Array.isArray(payload)
-  ) {
+  if (Array.isArray(payload)) {
     return payload;
   }
 
   const object =
     asRecord(payload);
 
-  for (
-    const key of [
-      "products",
-      "items",
-      "data",
-      "results",
-      "offers",
-      "catalog",
-    ]
-  ) {
-    if (
-      Array.isArray(
-        object[key],
-      )
-    ) {
-      return object[
-        key
-      ] as unknown[];
+  for (const key of [
+    "products",
+    "items",
+    "data",
+    "results",
+    "offers",
+    "catalog",
+  ]) {
+    if (Array.isArray(object[key])) {
+      return object[key] as unknown[];
     }
   }
 
@@ -521,11 +339,10 @@ function getFeedItems(
 function detectCsvDelimiter(
   input: string,
 ): string {
-  const sample =
-    input
-      .split(/\r?\n/)
-      .slice(0, 5)
-      .join("\n");
+  const sample = input
+    .split(/\r?\n/)
+    .slice(0, 5)
+    .join("\n");
 
   const delimiters = [
     ",",
@@ -537,20 +354,14 @@ function detectCsvDelimiter(
   let selected = ",";
   let bestCount = 0;
 
-  for (
-    const delimiter of delimiters
-  ) {
+  for (const delimiter of delimiters) {
     const count =
-      sample.split(
-        delimiter,
-      ).length - 1;
+      sample.split(delimiter)
+        .length - 1;
 
-    if (
-      count > bestCount
-    ) {
+    if (count > bestCount) {
       bestCount = count;
-      selected =
-        delimiter;
+      selected = delimiter;
     }
   }
 
@@ -559,17 +370,11 @@ function detectCsvDelimiter(
 
 function parseCsv(
   input: string,
-): Record<
-  string,
-  string
->[] {
+): Record<string, string>[] {
   const delimiter =
-    detectCsvDelimiter(
-      input,
-    );
+    detectCsvDelimiter(input);
 
-  const rows:
-    string[][] = [];
+  const rows: string[][] = [];
 
   let row: string[] = [];
   let field = "";
@@ -580,12 +385,9 @@ function parseCsv(
     i < input.length;
     i++
   ) {
-    const char =
-      input[i];
+    const char = input[i];
 
-    if (
-      char === '"'
-    ) {
+    if (char === '"') {
       if (
         quoted &&
         input[i + 1] === '"'
@@ -593,8 +395,7 @@ function parseCsv(
         field += '"';
         i++;
       } else {
-        quoted =
-          !quoted;
+        quoted = !quoted;
       }
 
       continue;
@@ -636,7 +437,6 @@ function parseCsv(
       }
 
       row = [];
-
       continue;
     }
 
@@ -654,55 +454,42 @@ function parseCsv(
     rows.push(row);
   }
 
-  if (
-    rows.length < 2
-  ) {
+  if (rows.length < 2) {
     return [];
   }
 
   const headers =
-    rows[0].map(
-      (header) =>
-        header
-          .replace(
-            /^\uFEFF/,
-            "",
-          )
-          .trim()
-          .toLowerCase()
-          .replace(
-            /[\s-]+/g,
-            "_",
-          ),
+    rows[0].map((header) =>
+      header
+        .replace(/^\uFEFF/, "")
+        .trim()
+        .toLowerCase()
+        .replace(
+          /[\s-]+/g,
+          "_",
+        ),
     );
 
   return rows
     .slice(1)
-    .map(
-      (values) => {
-        const result:
-          Record<
-            string,
-            string
-          > = {};
+    .map((values) => {
+      const result: Record<
+        string,
+        string
+      > = {};
 
-        headers.forEach(
-          (
-            header,
-            index,
-          ) => {
-            result[
-              header
-            ] =
-              values[
-                index
-              ] ?? "";
-          },
-        );
+      headers.forEach(
+        (
+          header,
+          index,
+        ) => {
+          result[header] =
+            values[index] ?? "";
+        },
+      );
 
-        return result;
-      },
-    );
+      return result;
+    });
 }
 
 function stripXml(
@@ -722,15 +509,11 @@ function stripXml(
 
 function parseXmlProducts(
   xml: string,
-): Record<
-  string,
-  string
->[] {
-  const products:
-    Record<
-      string,
-      string
-    >[] = [];
+): Record<string, string>[] {
+  const products: Record<
+    string,
+    string
+  >[] = [];
 
   const blocks =
     xml.match(
@@ -758,18 +541,13 @@ function parseXmlProducts(
     "image_url",
   ];
 
-  for (
-    const block of blocks
-  ) {
-    const result:
-      Record<
-        string,
-        string
-      > = {};
+  for (const block of blocks) {
+    const result: Record<
+      string,
+      string
+    > = {};
 
-    for (
-      const fieldName of fields
-    ) {
+    for (const fieldName of fields) {
       const escaped =
         fieldName.replace(
           /[.*+?^${}()|[\]\\]/g,
@@ -783,30 +561,19 @@ function parseXmlProducts(
         );
 
       const match =
-        block.match(
-          regex,
-        );
+        block.match(regex);
 
-      if (
-        match
-      ) {
-        result[
-          fieldName
-        ] =
-          stripXml(
-            match[1],
-          );
+      if (match) {
+        result[fieldName] =
+          stripXml(match[1]);
       }
     }
 
     if (
-      Object.keys(
-        result,
-      ).length
+      Object.keys(result)
+        .length
     ) {
-      products.push(
-        result,
-      );
+      products.push(result);
     }
   }
 
@@ -817,21 +584,16 @@ async function fetchCatalog(
   url: string,
 ): Promise<unknown> {
   const response =
-    await fetch(
-      url,
-      {
-        headers: {
-          accept:
-            "application/json,text/csv,text/xml,application/xml;q=0.9,*/*;q=0.8",
-          "user-agent":
-            "FitDealFinder/3.0 catalog-sync",
-        },
+    await fetch(url, {
+      headers: {
+        accept:
+          "application/json,text/csv,text/xml,application/xml;q=0.9,*/*;q=0.8",
+        "user-agent":
+          "FitDealFinder/3.0 catalog-sync",
       },
-    );
+    });
 
-  if (
-    !response.ok
-  ) {
+  if (!response.ok) {
     throw new Error(
       `Catalogus HTTP ${response.status}: ${url}`,
     );
@@ -839,9 +601,7 @@ async function fetchCatalog(
 
   const contentType =
     response.headers
-      .get(
-        "content-type",
-      )
+      .get("content-type")
       ?.toLowerCase() ?? "";
 
   const body =
@@ -851,50 +611,27 @@ async function fetchCatalog(
     body.trim();
 
   if (
-    contentType.includes(
-      "json",
-    ) ||
-    trimmed.startsWith(
-      "{",
-    ) ||
-    trimmed.startsWith(
-      "[",
-    )
+    contentType.includes("json") ||
+    trimmed.startsWith("{") ||
+    trimmed.startsWith("[")
   ) {
     try {
-      return JSON.parse(
-        body,
-      );
+      return JSON.parse(body);
     } catch {
-      // Verder proberen als CSV/XML.
+      // Verder als CSV/XML.
     }
   }
 
   if (
-    contentType.includes(
-      "xml",
-    ) ||
-    contentType.includes(
-      "rss",
-    ) ||
-    trimmed.startsWith(
-      "<",
-    )
+    contentType.includes("xml") ||
+    contentType.includes("rss") ||
+    trimmed.startsWith("<")
   ) {
-    return parseXmlProducts(
-      body,
-    );
+    return parseXmlProducts(body);
   }
 
-  return parseCsv(
-    body,
-  );
+  return parseCsv(body);
 }
-
-/* =========================================================
-   PRODUCT NORMALIZATION
-   Ondersteunt gewone feeds en Shopify products.json
-========================================================= */
 
 function normalizeProduct(
   source: Record<string, unknown>,
@@ -979,9 +716,7 @@ function normalizeProduct(
       ) ??
         firstValue(
           variant,
-          [
-            "price",
-          ],
+          ["price"],
         ),
     );
 
@@ -1000,9 +735,7 @@ function normalizeProduct(
       ) ??
         firstValue(
           variant,
-          [
-            "compare_at_price",
-          ],
+          ["compare_at_price"],
         ),
     );
 
@@ -1020,16 +753,12 @@ function normalizeProduct(
       baseUrl,
     );
 
-  if (
-    !productUrl
-  ) {
+  if (!productUrl) {
     const handle =
       String(
         firstValue(
           source,
-          [
-            "handle",
-          ],
+          ["handle"],
         ) ?? "",
       ).trim();
 
@@ -1045,10 +774,6 @@ function normalizeProduct(
     }
   }
 
-  /*
-   * Geen product zonder echte ID,
-   * naam, prijs en productlink.
-   */
   if (
     !externalId ||
     !name ||
@@ -1212,10 +937,9 @@ function normalizeProduct(
 
     name,
 
-    slug:
-      slugify(
-        `${resolvedMerchant}-${name}-${externalId}`,
-      ),
+    slug: slugify(
+      `${resolvedMerchant}-${name}-${externalId}`,
+    ),
 
     description,
 
@@ -1294,10 +1018,6 @@ function normalizeProduct(
   };
 }
 
-/* =========================================================
-   DATABASE
-========================================================= */
-
 function chunks<T>(
   items: T[],
   size: number,
@@ -1355,9 +1075,6 @@ async function upsertProducts(
   let updated = 0;
   let skipped = 0;
 
-  /*
-   * D1 batches van 50 producten.
-   */
   for (
     const batch of chunks(
       list,
@@ -1372,26 +1089,19 @@ async function upsertProducts(
 
     const placeholders =
       keys
-        .map(
-          () => "?",
-        )
+        .map(() => "?")
         .join(",");
 
     const existingResult =
       await env.DB.prepare(
         `
-        SELECT
-          id,
-          network,
-          external_id
+        SELECT id, network, external_id
         FROM products
         WHERE network || ':' || external_id
           IN (${placeholders})
         `,
       )
-        .bind(
-          ...keys,
-        )
+        .bind(...keys)
         .all<{
           id: string;
           network: string;
@@ -1407,7 +1117,8 @@ async function upsertProducts(
       >();
 
     for (
-      const row of existingResult.results
+      const row of
+        existingResult.results
     ) {
       if (
         row.external_id
@@ -1426,14 +1137,10 @@ async function upsertProducts(
         `${product.network}:${product.external_id}`;
 
       const existingId =
-        existing.get(
-          key,
-        );
+        existing.get(key);
 
       try {
-        if (
-          existingId
-        ) {
+        if (existingId) {
           await env.DB.prepare(
             `
             UPDATE products
@@ -1576,10 +1283,6 @@ async function upsertProducts(
   };
 }
 
-/* =========================================================
-   DIRECT CATALOG CONFIG
-========================================================= */
-
 function parseDirectCatalogConfig(
   value: string,
 ): {
@@ -1588,59 +1291,52 @@ function parseDirectCatalogConfig(
 }[] {
   return value
     .split(/\r?\n/)
-    .map(
-      (line) =>
-        line.trim(),
+    .map((line) =>
+      line.trim(),
     )
     .filter(Boolean)
-    .map(
-      (line) => {
-        const separator =
-          line.indexOf("|");
+    .map((line) => {
+      const separator =
+        line.indexOf("|");
 
-        if (
-          separator <= 0
-        ) {
-          throw new Error(
-            `Ongeldige DIRECT_CATALOG_URLS-regel: ${line}`,
-          );
-        }
+      if (
+        separator <= 0
+      ) {
+        throw new Error(
+          `Ongeldige DIRECT_CATALOG_URLS-regel: ${line}`,
+        );
+      }
 
-        const merchant =
-          line
-            .slice(
-              0,
-              separator,
-            )
-            .trim();
+      const merchant =
+        line
+          .slice(
+            0,
+            separator,
+          )
+          .trim();
 
-        const url =
-          line
-            .slice(
-              separator + 1,
-            )
-            .trim();
+      const url =
+        line
+          .slice(
+            separator + 1,
+          )
+          .trim();
 
-        if (
-          !merchant ||
-          !url
-        ) {
-          throw new Error(
-            `Ongeldige DIRECT_CATALOG_URLS-regel: ${line}`,
-          );
-        }
+      if (
+        !merchant ||
+        !url
+      ) {
+        throw new Error(
+          `Ongeldige DIRECT_CATALOG_URLS-regel: ${line}`,
+        );
+      }
 
-        return {
-          merchant,
-          url,
-        };
-      },
-    );
+      return {
+        merchant,
+        url,
+      };
+    });
 }
-
-/* =========================================================
-   DIRECT CATALOG SYNC
-========================================================= */
 
 async function syncDirectCatalogs(
   env: Env,
@@ -1669,16 +1365,15 @@ async function syncDirectCatalogs(
       config,
     );
 
-  const stores:
-    Array<{
-      merchant: string;
-      source: string;
-      received: number;
-      normalized: number;
-      imported: number;
-      updated: number;
-      skipped: number;
-    }> = [];
+  const stores: Array<{
+    merchant: string;
+    source: string;
+    received: number;
+    normalized: number;
+    imported: number;
+    updated: number;
+    skipped: number;
+  }> = [];
 
   for (
     const catalog of catalogs
@@ -1689,9 +1384,7 @@ async function syncDirectCatalogs(
       );
 
     const rawItems =
-      getFeedItems(
-        feed,
-      );
+      getFeedItems(feed);
 
     const baseUrl =
       new URL(
@@ -1700,14 +1393,13 @@ async function syncDirectCatalogs(
 
     const products =
       rawItems
-        .map(
-          (raw) =>
-            normalizeProduct(
-              asRecord(raw),
-              catalog.merchant,
-              "DIRECT",
-              baseUrl,
-            ),
+        .map((raw) =>
+          normalizeProduct(
+            asRecord(raw),
+            catalog.merchant,
+            "DIRECT",
+            baseUrl,
+          ),
         )
         .filter(
           (
@@ -1715,6 +1407,15 @@ async function syncDirectCatalogs(
           ): product is ProductInput =>
             product !== null,
         );
+
+    if (
+      rawItems.length > 0 &&
+      products.length === 0
+    ) {
+      throw new Error(
+        `${catalog.merchant}: ${rawItems.length} items ontvangen, maar 0 producten konden worden verwerkt.`,
+      );
+    }
 
     const result =
       await upsertProducts(
@@ -1744,11 +1445,6 @@ async function syncDirectCatalogs(
   };
 }
 
-/* =========================================================
-   AWIN SYNC
-   Optioneel.
-========================================================= */
-
 async function syncAwin(
   env: Env,
 ): Promise<{
@@ -1772,10 +1468,7 @@ async function syncAwin(
   const log =
     await env.DB.prepare(
       `
-      INSERT INTO sync_logs (
-        network,
-        started_at
-      )
+      INSERT INTO sync_logs (network, started_at)
       VALUES (?, ?)
       `,
     )
@@ -1787,8 +1480,7 @@ async function syncAwin(
 
   const logId =
     Number(
-      log.meta
-        ?.last_row_id ??
+      log.meta?.last_row_id ??
         0,
     );
 
@@ -1799,19 +1491,16 @@ async function syncAwin(
       );
 
     const rawItems =
-      getFeedItems(
-        feed,
-      );
+      getFeedItems(feed);
 
     const products =
       rawItems
-        .map(
-          (raw) =>
-            normalizeProduct(
-              asRecord(raw),
-              "AWIN",
-              "AWIN",
-            ),
+        .map((raw) =>
+          normalizeProduct(
+            asRecord(raw),
+            "AWIN",
+            "AWIN",
+          ),
         )
         .filter(
           (
@@ -1862,9 +1551,7 @@ async function syncAwin(
       normalized:
         products.length,
     };
-  } catch (
-    error
-  ) {
+  } catch (error) {
     await env.DB.prepare(
       `
       UPDATE sync_logs
@@ -1888,10 +1575,6 @@ async function syncAwin(
     throw error;
   }
 }
-
-/* =========================================================
-   ADMIN AUTH
-========================================================= */
 
 function isAuthorized(
   request: Request,
@@ -1920,9 +1603,7 @@ function isAuthorized(
   const supplied =
     bearer ||
     request.headers
-      .get(
-        "x-admin-secret",
-      )
+      .get("x-admin-secret")
       ?.trim() ||
     "";
 
@@ -1933,18 +1614,12 @@ function isAuthorized(
   );
 }
 
-/* =========================================================
-   PRODUCTS API
-========================================================= */
-
 async function handleProducts(
   request: Request,
   env: Env,
 ): Promise<Response> {
   const url =
-    new URL(
-      request.url,
-    );
+    new URL(request.url);
 
   const requestedLimit =
     Number(
@@ -1970,37 +1645,27 @@ async function handleProducts(
 
   const search =
     url.searchParams
-      .get(
-        "search",
-      )
+      .get("search")
       ?.trim() ?? "";
 
   const goal =
     url.searchParams
-      .get(
-        "goal",
-      )
+      .get("goal")
       ?.trim()
       .toLowerCase() ?? "";
 
   const category =
     url.searchParams
-      .get(
-        "category",
-      )
+      .get("category")
       ?.trim() ?? "";
 
-  const conditions:
-    string[] = [
-      "active = 1",
-    ];
+  const conditions: string[] = [
+    "active = 1",
+  ];
 
-  const binds:
-    unknown[] = [];
+  const binds: unknown[] = [];
 
-  if (
-    search
-  ) {
+  if (search) {
     conditions.push(
       `
       (
@@ -2021,21 +1686,17 @@ async function handleProducts(
     );
   }
 
-  if (
-    goal
-  ) {
+  if (goal) {
     conditions.push(
       "goals LIKE ?",
     );
 
     binds.push(
-      `%\"${goal}\"%`,
+      `%"${goal}"%`,
     );
   }
 
-  if (
-    category
-  ) {
+  if (category) {
     conditions.push(
       "category LIKE ?",
     );
@@ -2045,9 +1706,7 @@ async function handleProducts(
     );
   }
 
-  binds.push(
-    limit,
-  );
+  binds.push(limit);
 
   const result =
     await env.DB.prepare(
@@ -2064,9 +1723,7 @@ async function handleProducts(
       LIMIT ?
       `,
     )
-      .bind(
-        ...binds,
-      )
+      .bind(...binds)
       .all();
 
   return json({
@@ -2077,10 +1734,6 @@ async function handleProducts(
       result.results.length,
   });
 }
-
-/* =========================================================
-   PRODUCT DETAIL
-========================================================= */
 
 async function handleProduct(
   env: Env,
@@ -2103,9 +1756,7 @@ async function handleProduct(
       LIMIT 1
       `,
     )
-      .bind(
-        id,
-      )
+      .bind(id)
       .first();
 
   if (!row) {
@@ -2116,14 +1767,9 @@ async function handleProduct(
   }
 
   return json({
-    product:
-      row,
+    product: row,
   });
 }
-
-/* =========================================================
-   PRODUCT REDIRECT
-========================================================= */
 
 async function handleRedirect(
   env: Env,
@@ -2149,9 +1795,7 @@ async function handleRedirect(
       LIMIT 1
       `,
     )
-      .bind(
-        id,
-      )
+      .bind(id)
       .first<{
         id: string;
         product_url: string;
@@ -2179,9 +1823,7 @@ async function handleRedirect(
       row.product_url,
     );
 
-  if (
-    !destination
-  ) {
+  if (!destination) {
     return errorResponse(
       "Ongeldige productlink.",
       500,
@@ -2190,15 +1832,11 @@ async function handleRedirect(
 
   await env.DB.prepare(
     `
-    INSERT INTO affiliate_clicks (
-      product_id
-    )
+    INSERT INTO affiliate_clicks (product_id)
     VALUES (?)
     `,
   )
-    .bind(
-      id,
-    )
+    .bind(id)
     .run();
 
   return Response.redirect(
@@ -2207,18 +1845,13 @@ async function handleRedirect(
   );
 }
 
-/* =========================================================
-   HEALTH
-========================================================= */
-
 async function handleHealth(
   env: Env,
 ): Promise<Response> {
   const row =
     await env.DB.prepare(
       `
-      SELECT
-        COUNT(*) AS count
+      SELECT COUNT(*) AS count
       FROM products
       WHERE active=1
       `,
@@ -2232,21 +1865,13 @@ async function handleHealth(
 
     products:
       Number(
-        row?.count ??
-          0,
+        row?.count ?? 0,
       ),
 
     timestamp:
       new Date().toISOString(),
   });
 }
-
-/* =========================================================
-   ADMIN SYNC
-   Directe catalogi eerst.
-   Awin optioneel.
-   Response is compatible met admin.html.
-========================================================= */
 
 async function handleSync(
   request: Request,
@@ -2279,7 +1904,8 @@ async function handleSync(
     let failed = 0;
 
     for (
-      const store of direct.stores
+      const store of
+        direct.stores
     ) {
       imported +=
         Number(
@@ -2309,8 +1935,7 @@ async function handleSync(
           normalized?: number;
           error?: string;
         }
-      | null =
-      null;
+      | null = null;
 
     if (
       env.AWIN_FEED_URL?.trim()
@@ -2321,8 +1946,7 @@ async function handleSync(
             env,
           );
 
-        awin =
-          result;
+        awin = result;
 
         imported +=
           result.imported;
@@ -2332,9 +1956,7 @@ async function handleSync(
 
         failed +=
           result.failed;
-      } catch (
-        error
-      ) {
+      } catch (error) {
         awin = {
           error:
             error instanceof Error
@@ -2353,15 +1975,11 @@ async function handleSync(
         imported,
         updated,
         failed,
-
         direct,
-
         awin,
       },
     });
-  } catch (
-    error
-  ) {
+  } catch (error) {
     return errorResponse(
       error instanceof Error
         ? error.message
@@ -2370,10 +1988,6 @@ async function handleSync(
     );
   }
 }
-
-/* =========================================================
-   DIRECT SYNC ENDPOINT
-========================================================= */
 
 async function handleDirectSync(
   request: Request,
@@ -2402,7 +2016,8 @@ async function handleDirectSync(
     let failed = 0;
 
     for (
-      const store of result.stores
+      const store of
+        result.stores
     ) {
       imported +=
         store.imported;
@@ -2421,17 +2036,11 @@ async function handleDirectSync(
         imported,
         updated,
         failed,
-
-        direct:
-          result,
-
-        awin:
-          null,
+        direct: result,
+        awin: null,
       },
     });
-  } catch (
-    error
-  ) {
+  } catch (error) {
     return errorResponse(
       error instanceof Error
         ? error.message
@@ -2440,10 +2049,6 @@ async function handleDirectSync(
     );
   }
 }
-
-/* =========================================================
-   ADMIN LOGS
-========================================================= */
 
 async function handleLogs(
   request: Request,
@@ -2469,18 +2074,13 @@ async function handleLogs(
       ORDER BY started_at DESC
       LIMIT 50
       `,
-    )
-      .all();
+    ).all();
 
   return json({
     logs:
       result.results,
   });
 }
-
-/* =========================================================
-   AI SUPPLEMENT COACH
-========================================================= */
 
 async function handleAi(
   request: Request,
@@ -2496,8 +2096,7 @@ async function handleAi(
     );
   }
 
-  let body:
-    unknown;
+  let body: unknown;
 
   try {
     body =
@@ -2511,9 +2110,8 @@ async function handleAi(
 
   const message =
     String(
-      asRecord(
-        body,
-      ).message ?? "",
+      asRecord(body)
+        .message ?? "",
     ).trim();
 
   if (!message) {
@@ -2524,8 +2122,7 @@ async function handleAi(
   }
 
   if (
-    message.length >
-    4000
+    message.length > 4000
   ) {
     return errorResponse(
       "Vraag is te lang.",
@@ -2544,27 +2141,22 @@ async function handleAi(
         {
           messages: [
             {
-              role:
-                "system",
-
-              content:
-                [
-                  "Je bent de FitDealFinder Supplement Coach.",
-                  "Geef nuchtere, algemene informatie over supplementen, eiwitten, creatine, pre-workout, cut, bulk, lean bulk, herstel en voeding rondom training.",
-                  "Doe geen medische diagnose en geef geen medische behandeling.",
-                  "Beloof geen resultaten.",
-                  "Verzin nooit prijzen, kortingen, voorraad, producteigenschappen, winkels of links.",
-                  "Als informatie ontbreekt, zeg dat eerlijk.",
-                  "Bij medische vragen: adviseer contact met een arts of apotheker.",
-                ].join(
-                  "\n",
-                ),
+              role: "system",
+              content: [
+                "Je bent de FitDealFinder Supplement Coach.",
+                "Geef nuchtere, algemene informatie over supplementen, eiwitten, creatine, pre-workout, cut, bulk, lean bulk, herstel en voeding rondom training.",
+                "Doe geen medische diagnose en geef geen medische behandeling.",
+                "Beloof geen resultaten.",
+                "Verzin nooit prijzen, kortingen, voorraad, producteigenschappen, winkels of links.",
+                "Als informatie ontbreekt, zeg dat eerlijk.",
+                "Bij medische vragen: adviseer contact op te nemen met een arts of apotheker.",
+              ].join(
+                "\n",
+              ),
             },
 
             {
-              role:
-                "user",
-
+              role: "user",
               content:
                 message,
             },
@@ -2573,9 +2165,7 @@ async function handleAi(
       );
 
     const record =
-      asRecord(
-        result,
-      );
+      asRecord(result);
 
     const answer =
       typeof result ===
@@ -2586,12 +2176,9 @@ async function handleAi(
 
     return json({
       ok: true,
-
       answer,
     });
-  } catch (
-    error
-  ) {
+  } catch (error) {
     return errorResponse(
       error instanceof Error
         ? error.message
@@ -2600,10 +2187,6 @@ async function handleAi(
     );
   }
 }
-
-/* =========================================================
-   STATIC ASSETS
-========================================================= */
 
 async function serveAsset(
   request: Request,
@@ -2632,10 +2215,6 @@ async function serveAsset(
   );
 }
 
-/* =========================================================
-   MAIN WORKER
-========================================================= */
-
 export default {
   async fetch(
     request: Request,
@@ -2647,9 +2226,6 @@ export default {
       );
 
     try {
-      /*
-       * Health
-       */
       if (
         url.pathname ===
           "/api/health" &&
@@ -2661,9 +2237,6 @@ export default {
         );
       }
 
-      /*
-       * Productlijst
-       */
       if (
         url.pathname ===
           "/api/products" &&
@@ -2676,9 +2249,6 @@ export default {
         );
       }
 
-      /*
-       * Productdetail
-       */
       if (
         url.pathname.startsWith(
           "/api/products/",
@@ -2692,9 +2262,7 @@ export default {
               "/api/products/"
                 .length,
             )
-            .split(
-              "/",
-            )[0];
+            .split("/")[0];
 
         return handleProduct(
           env,
@@ -2702,9 +2270,6 @@ export default {
         );
       }
 
-      /*
-       * AI Coach
-       */
       if (
         url.pathname ===
         "/api/ai/chat"
@@ -2715,12 +2280,6 @@ export default {
         );
       }
 
-      /*
-       * Algemene synchronisatie.
-       *
-       * Directe catalogi worden uitgevoerd.
-       * Awin alleen indien ingesteld.
-       */
       if (
         url.pathname ===
           "/api/admin/sync" &&
@@ -2733,9 +2292,6 @@ export default {
         );
       }
 
-      /*
-       * Alleen directe catalogi.
-       */
       if (
         url.pathname ===
           "/api/admin/sync-direct" &&
@@ -2748,9 +2304,6 @@ export default {
         );
       }
 
-      /*
-       * Synchronisatielogs.
-       */
       if (
         url.pathname ===
           "/api/admin/logs" &&
@@ -2763,9 +2316,6 @@ export default {
         );
       }
 
-      /*
-       * Productlink.
-       */
       if (
         url.pathname.startsWith(
           "/go/",
@@ -2775,22 +2325,15 @@ export default {
       ) {
         return handleRedirect(
           env,
-          url.pathname.slice(
-            4,
-          ),
+          url.pathname.slice(4),
         );
       }
 
-      /*
-       * Website-assets.
-       */
       return serveAsset(
         request,
         env,
       );
-    } catch (
-      error
-    ) {
+    } catch (error) {
       return errorResponse(
         error instanceof Error
           ? error.message
@@ -2800,9 +2343,6 @@ export default {
     }
   },
 
-  /*
-   * Automatische synchronisatie.
-   */
   async scheduled(
     _controller: ScheduledController,
     env: Env,
