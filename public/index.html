@@ -2,13 +2,13 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <title>FitDealFinder.nl — Vind de beste fitnessdeals</title>
+  <title>FitDealFinder.nl — Fitnessdeals vergelijken</title>
 
   <meta
     name="description"
-    content="Vergelijk fitnessproducten, prijzen en deals voor Cut, Bulk en Lean Bulk. Vind whey, creatine, pre-workout, snacks en meer."
+    content="Vergelijk actuele fitnessproducten, prijzen en deals voor Cut, Bulk en Lean Bulk."
   >
 
   <meta name="theme-color" content="#07111f">
@@ -17,38 +17,31 @@
     :root {
       --navy-950: #050b14;
       --navy-900: #07111f;
-      --navy-850: #0a1626;
-      --navy-800: #0d1b2d;
-      --navy-750: #11243a;
-      --navy-700: #172e48;
+      --navy-850: #0a1726;
+      --navy-800: #0d1c2e;
+      --navy-700: #142942;
 
       --green: #67e5a2;
       --green-strong: #39c87d;
-      --green-dark: #0e4d31;
+      --green-dark: #0c4a30;
 
-      --white: #ffffff;
+      --white: #fff;
       --text: #f5f8fb;
       --muted: #9eacbd;
-      --muted-light: #c3ceda;
+      --muted-light: #c5cfdb;
 
-      --page: #f3f6f9;
-      --card: #ffffff;
-      --dark-text: #101a28;
-      --dark-muted: #68778a;
+      --page: #f4f6f8;
+      --card: #fff;
+      --dark: #101925;
+      --dark-muted: #6c7888;
 
-      --red: #e85e68;
-      --yellow: #f2c94c;
-
-      --border: rgba(255,255,255,.10);
-      --border-dark: #e2e7ed;
-
-      --shadow: 0 24px 70px rgba(2,10,20,.16);
-      --shadow-soft: 0 12px 36px rgba(2,10,20,.09);
+      --red: #e35c68;
+      --border: rgba(255,255,255,.1);
+      --border-light: #e2e7ed;
 
       --radius-xl: 30px;
       --radius-lg: 22px;
       --radius-md: 16px;
-      --radius-sm: 12px;
 
       --container: 1180px;
     }
@@ -64,7 +57,7 @@
     body {
       margin: 0;
       background: var(--page);
-      color: var(--dark-text);
+      color: var(--dark);
       font-family:
         Inter,
         ui-sans-serif,
@@ -76,21 +69,16 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    body,
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
     button,
     input,
     select,
     textarea {
-      font-family: inherit;
-    }
-
-    img {
-      max-width: 100%;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
+      font: inherit;
     }
 
     button {
@@ -103,15 +91,13 @@
       margin: 0 auto;
     }
 
-    /* =========================================================
-       HEADER
-    ========================================================= */
+    /* HEADER */
 
     .site-header {
       position: sticky;
       top: 0;
-      z-index: 1000;
-      background: rgba(5, 11, 20, .94);
+      z-index: 100;
+      background: rgba(5,11,20,.94);
       border-bottom: 1px solid rgba(255,255,255,.08);
       backdrop-filter: blur(18px);
     }
@@ -121,30 +107,29 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 28px;
+      gap: 25px;
     }
 
     .brand {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 11px;
       color: var(--white);
       font-weight: 900;
-      letter-spacing: -.035em;
-      flex-shrink: 0;
+      letter-spacing: -.04em;
     }
 
     .brand-mark {
-      width: 39px;
-      height: 39px;
+      width: 40px;
+      height: 40px;
       display: grid;
       place-items: center;
       border-radius: 12px;
       background: var(--green);
-      color: #06150d;
-      font-size: 18px;
-      font-weight: 950;
-      box-shadow: 0 8px 30px rgba(103,229,162,.18);
+      color: #07140d;
+      font-family: Georgia, serif;
+      font-size: 22px;
+      font-weight: 900;
     }
 
     .brand-name {
@@ -158,86 +143,55 @@
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 28px;
+      gap: 27px;
       color: #aebccd;
       font-size: 14px;
       font-weight: 750;
     }
 
-    .nav-links a {
-      transition: color .2s ease;
-    }
-
     .nav-links a:hover {
-      color: var(--white);
+      color: #fff;
     }
 
     .nav-cta {
-      padding: 11px 17px;
+      padding: 11px 18px;
       border-radius: 11px;
       background: var(--green);
       color: #07140d !important;
       font-weight: 900;
     }
 
-    /* =========================================================
-       HERO
-    ========================================================= */
+    /* HERO */
 
     .hero {
       position: relative;
       overflow: hidden;
-      min-height: 650px;
+      color: #fff;
       background:
         radial-gradient(
-          circle at 76% 20%,
+          circle at 76% 22%,
           rgba(103,229,162,.16),
           transparent 25%
         ),
         radial-gradient(
-          circle at 8% 100%,
-          rgba(41,103,170,.20),
+          circle at 10% 90%,
+          rgba(35,95,155,.22),
           transparent 34%
         ),
-        linear-gradient(
-          135deg,
-          #050c16 0%,
-          #081525 48%,
-          #10253d 100%
-        );
-      color: var(--white);
-    }
-
-    .hero::before {
-      content: "";
-      position: absolute;
-      width: 520px;
-      height: 520px;
-      right: -170px;
-      top: -190px;
-      border-radius: 50%;
-      border: 1px solid rgba(103,229,162,.12);
-      box-shadow:
-        0 0 0 70px rgba(103,229,162,.025),
-        0 0 0 140px rgba(103,229,162,.018);
+        linear-gradient(135deg,#050c16,#081525 52%,#10253d);
     }
 
     .hero-grid {
-      min-height: 650px;
+      min-height: 610px;
       display: grid;
-      grid-template-columns: minmax(0, 1.02fr) minmax(360px, .78fr);
+      grid-template-columns: 1.05fr .8fr;
       align-items: center;
-      gap: 60px;
-      padding: 70px 0 90px;
-    }
-
-    .hero-content {
-      position: relative;
-      z-index: 2;
+      gap: 55px;
+      padding: 62px 0 70px;
     }
 
     .eyebrow {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 9px;
       color: var(--green);
@@ -255,268 +209,50 @@
       box-shadow: 0 0 18px rgba(103,229,162,.8);
     }
 
-    .hero h1 {
-      max-width: 720px;
+    h1 {
+      max-width: 760px;
       margin: 18px 0 22px;
-      font-size: clamp(46px, 6vw, 78px);
-      line-height: .98;
-      letter-spacing: -.065em;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(46px,6vw,78px);
+      line-height: .96;
+      letter-spacing: -.06em;
     }
 
-    .hero h1 span {
+    h1 span {
       color: var(--green);
     }
 
     .hero-text {
-      max-width: 670px;
+      max-width: 650px;
       margin: 0;
-      color: #c0ccda;
+      color: #c1ccda;
       font-size: 18px;
-      line-height: 1.65;
+      line-height: 1.6;
     }
 
-    /* =========================================================
-       HERO VISUAL
-    ========================================================= */
+    /* SEARCH */
 
-    .hero-visual {
-      position: relative;
-      min-height: 470px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .visual-glow {
-      position: absolute;
-      width: 330px;
-      height: 330px;
-      border-radius: 50%;
-      background: rgba(103,229,162,.10);
-      filter: blur(20px);
-    }
-
-    .athlete-card {
-      position: relative;
-      width: min(410px, 100%);
-      height: 450px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,.13);
-      border-radius: 32px;
-      background:
-        linear-gradient(
-          145deg,
-          rgba(255,255,255,.09),
-          rgba(255,255,255,.025)
-        );
-      box-shadow: 0 35px 100px rgba(0,0,0,.34);
-    }
-
-    .athlete-card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(
-          ellipse at 65% 30%,
-          rgba(103,229,162,.25),
-          transparent 28%
-        ),
-        linear-gradient(
-          180deg,
-          transparent 35%,
-          rgba(3,8,15,.72) 100%
-        );
-    }
-
-    .athlete-card::after {
-      content: "";
-      position: absolute;
-      width: 250px;
-      height: 250px;
-      right: -90px;
-      top: -70px;
-      border-radius: 50%;
-      border: 1px solid rgba(103,229,162,.16);
-      box-shadow:
-        0 0 0 40px rgba(103,229,162,.025),
-        0 0 0 80px rgba(103,229,162,.018);
-    }
-
-    .athlete-silhouette {
-      position: absolute;
-      left: 50%;
-      bottom: -20px;
-      width: 280px;
-      height: 390px;
-      transform: translateX(-50%);
-    }
-
-    .head {
-      position: absolute;
-      top: 7px;
-      left: 50%;
-      width: 70px;
-      height: 82px;
-      transform: translateX(-50%);
-      border-radius: 48% 48% 44% 44%;
-      background: linear-gradient(145deg,#bbc6d0,#687584);
-    }
-
-    .neck {
-      position: absolute;
-      top: 74px;
-      left: 50%;
-      width: 38px;
-      height: 48px;
-      transform: translateX(-50%);
-      background: #75818e;
-    }
-
-    .torso {
-      position: absolute;
-      top: 100px;
-      left: 50%;
-      width: 135px;
-      height: 190px;
-      transform: translateX(-50%);
-      border-radius: 42% 42% 22% 22%;
-      background:
-        linear-gradient(
-          100deg,
-          #536170 0%,
-          #9eabb7 42%,
-          #596674 100%
-        );
-      clip-path: polygon(
-        28% 0,
-        72% 0,
-        100% 24%,
-        86% 70%,
-        75% 100%,
-        25% 100%,
-        14% 70%,
-        0 24%
-      );
-    }
-
-    .torso-line {
-      position: absolute;
-      top: 112px;
-      left: 50%;
-      width: 2px;
-      height: 155px;
-      transform: translateX(-50%);
-      background: rgba(20,30,40,.32);
-    }
-
-    .arm-left,
-    .arm-right {
-      position: absolute;
-      top: 108px;
-      width: 48px;
-      height: 190px;
-      border-radius: 50px;
-      background: linear-gradient(145deg,#a8b4bf,#586573);
-    }
-
-    .arm-left {
-      left: 34px;
-      transform: rotate(12deg);
-    }
-
-    .arm-right {
-      right: 34px;
-      transform: rotate(-12deg);
-    }
-
-    .leg-left,
-    .leg-right {
-      position: absolute;
-      top: 268px;
-      width: 58px;
-      height: 170px;
-      border-radius: 32px;
-      background: linear-gradient(145deg,#657280,#343f4c);
-    }
-
-    .leg-left {
-      left: 78px;
-      transform: rotate(4deg);
-    }
-
-    .leg-right {
-      right: 78px;
-      transform: rotate(-4deg);
-    }
-
-    .visual-label {
-      position: absolute;
-      z-index: 3;
-      left: 25px;
-      bottom: 25px;
-      right: 25px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      gap: 20px;
-    }
-
-    .visual-label strong {
-      display: block;
-      font-size: 19px;
-      letter-spacing: -.02em;
-    }
-
-    .visual-label small {
-      display: block;
-      margin-top: 5px;
-      color: #aab7c5;
-      font-size: 12px;
-    }
-
-    .visual-score {
-      display: grid;
-      place-items: center;
-      min-width: 65px;
-      height: 65px;
-      border: 1px solid rgba(103,229,162,.32);
-      border-radius: 18px;
-      background: rgba(6,18,29,.72);
-      color: var(--green);
-      font-size: 19px;
-      font-weight: 950;
-    }
-
-    /* =========================================================
-       SEARCH
-    ========================================================= */
-
-    .hero-search {
+    .search-wrap {
+      margin-top: 30px;
       max-width: 700px;
-      margin-top: 34px;
     }
 
     .search-box {
-      position: relative;
       display: flex;
       align-items: center;
       min-height: 68px;
       padding: 7px;
-      border: 1px solid rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.15);
       border-radius: 18px;
       background: rgba(255,255,255,.07);
-      box-shadow: 0 20px 55px rgba(0,0,0,.20);
-      backdrop-filter: blur(10px);
+      box-shadow: 0 22px 60px rgba(0,0,0,.2);
     }
 
     .search-icon {
       width: 48px;
-      display: grid;
-      place-items: center;
-      color: #91a0b2;
-      font-size: 21px;
-      flex-shrink: 0;
+      text-align: center;
+      color: #93a2b4;
+      font-size: 22px;
     }
 
     .search-box input {
@@ -525,7 +261,7 @@
       border: 0;
       outline: 0;
       background: transparent;
-      color: var(--white);
+      color: #fff;
       font-size: 16px;
       font-weight: 650;
     }
@@ -536,891 +272,750 @@
 
     .search-button {
       min-height: 52px;
-      padding: 0 23px;
+      padding: 0 22px;
       border-radius: 13px;
       background: var(--green);
       color: #07140d;
       font-weight: 950;
-      transition: transform .2s ease, background .2s ease;
     }
 
     .search-button:hover {
       background: #7aebb0;
-      transform: translateY(-1px);
     }
 
-    /* =========================================================
-       GOALS
-    ========================================================= */
+    /* GOALS */
 
-    .goal-buttons {
+    .goals {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-top: 18px;
+      margin-top: 17px;
     }
 
-    .goal-button {
-      padding: 11px 17px;
+    .goal {
+      padding: 11px 18px;
       border: 1px solid rgba(255,255,255,.13);
       border-radius: 999px;
       background: rgba(255,255,255,.045);
-      color: #d6dee8;
-      font-size: 14px;
+      color: #c7d0dc;
       font-weight: 850;
       transition: .2s ease;
     }
 
-    .goal-button:hover {
-      border-color: rgba(103,229,162,.5);
-      transform: translateY(-1px);
-    }
-
-    .goal-button.active {
+    .goal:hover,
+    .goal.active {
       background: var(--green);
       border-color: var(--green);
-      color: #06150d;
+      color: #07140d;
     }
 
-    /* =========================================================
-       TRUST STRIP
-    ========================================================= */
+    /* HERO VISUAL */
 
-    .trust-strip {
+    .hero-visual {
       position: relative;
-      z-index: 5;
-      margin-top: -38px;
-    }
-
-    .trust-card {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1px;
-      overflow: hidden;
-      border: 1px solid var(--border-dark);
-      border-radius: 20px;
-      background: var(--border-dark);
-      box-shadow: var(--shadow-soft);
-    }
-
-    .trust-item {
-      min-height: 82px;
-      display: flex;
-      align-items: center;
-      gap: 13px;
-      padding: 18px 24px;
-      background: var(--card);
-    }
-
-    .trust-icon {
-      width: 38px;
-      height: 38px;
+      min-height: 440px;
       display: grid;
       place-items: center;
-      flex-shrink: 0;
-      border-radius: 11px;
-      background: #e8f8ef;
-      color: #149258;
-      font-weight: 950;
     }
 
-    .trust-item strong {
-      display: block;
-      font-size: 14px;
+    .visual-card {
+      position: relative;
+      width: min(390px,100%);
+      height: 440px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 32px;
+      background:
+        radial-gradient(
+          circle at 65% 25%,
+          rgba(103,229,162,.2),
+          transparent 28%
+        ),
+        linear-gradient(
+          145deg,
+          rgba(255,255,255,.1),
+          rgba(255,255,255,.025)
+        );
+      box-shadow: 0 35px 100px rgba(0,0,0,.35);
     }
 
-    .trust-item span {
-      display: block;
-      margin-top: 2px;
-      color: var(--dark-muted);
-      font-size: 12px;
+    .visual-ring {
+      position: absolute;
+      width: 330px;
+      height: 330px;
+      right: -90px;
+      top: -80px;
+      border: 1px solid rgba(103,229,162,.16);
+      border-radius: 50%;
+      box-shadow:
+        0 0 0 55px rgba(103,229,162,.025),
+        0 0 0 110px rgba(103,229,162,.015);
     }
 
-    /* =========================================================
-       SECTIONS
-    ========================================================= */
-
-    .section {
-      padding: 92px 0;
+    .person {
+      position: absolute;
+      left: 50%;
+      bottom: -25px;
+      width: 270px;
+      height: 390px;
+      transform: translateX(-50%);
     }
 
-    .section-header {
+    .person-head {
+      position: absolute;
+      left: 50%;
+      top: 3px;
+      width: 68px;
+      height: 80px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: linear-gradient(145deg,#c5ced6,#687684);
+    }
+
+    .person-neck {
+      position: absolute;
+      left: 50%;
+      top: 72px;
+      width: 38px;
+      height: 45px;
+      transform: translateX(-50%);
+      background: #75828f;
+    }
+
+    .person-body {
+      position: absolute;
+      left: 50%;
+      top: 100px;
+      width: 135px;
+      height: 190px;
+      transform: translateX(-50%);
+      background: linear-gradient(100deg,#526170,#a5b0ba 44%,#586674);
+      clip-path: polygon(
+        27% 0,
+        73% 0,
+        100% 23%,
+        87% 70%,
+        76% 100%,
+        24% 100%,
+        13% 70%,
+        0 23%
+      );
+    }
+
+    .person-arm {
+      position: absolute;
+      top: 106px;
+      width: 47px;
+      height: 190px;
+      border-radius: 50px;
+      background: linear-gradient(145deg,#a8b3bd,#586573);
+    }
+
+    .person-arm.left {
+      left: 33px;
+      transform: rotate(12deg);
+    }
+
+    .person-arm.right {
+      right: 33px;
+      transform: rotate(-12deg);
+    }
+
+    .person-leg {
+      position: absolute;
+      top: 270px;
+      width: 58px;
+      height: 175px;
+      border-radius: 32px;
+      background: linear-gradient(145deg,#687583,#35414e);
+    }
+
+    .person-leg.left {
+      left: 77px;
+      transform: rotate(4deg);
+    }
+
+    .person-leg.right {
+      right: 77px;
+      transform: rotate(-4deg);
+    }
+
+    .visual-bottom {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      bottom: 22px;
+      z-index: 2;
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
+    }
+
+    .visual-bottom strong {
+      font-size: 19px;
+    }
+
+    .visual-bottom small {
+      display: block;
+      margin-top: 5px;
+      color: #aab7c5;
+    }
+
+    .score {
+      width: 62px;
+      height: 62px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(103,229,162,.3);
+      border-radius: 17px;
+      background: rgba(4,13,23,.7);
+      color: var(--green);
+      font-weight: 950;
+    }
+
+    /* TRUST */
+
+    .trust {
+      background: #fff;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
       gap: 25px;
+      padding: 22px 0;
+    }
+
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #465365;
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .trust-icon {
+      width: 35px;
+      height: 35px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      background: #e8f8ef;
+      color: #149254;
+      font-weight: 950;
+    }
+
+    /* MAIN */
+
+    main {
+      background: var(--page);
+    }
+
+    section {
+      scroll-margin-top: 85px;
+    }
+
+    .section {
+      padding: 76px 0;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 30px;
       margin-bottom: 28px;
     }
 
     .section-kicker {
-      margin-bottom: 8px;
-      color: #149258;
+      color: #15935a;
       font-size: 12px;
       font-weight: 950;
       letter-spacing: .13em;
       text-transform: uppercase;
     }
 
-    .section-title {
-      margin: 0;
-      color: var(--dark-text);
-      font-size: clamp(30px, 4vw, 46px);
+    h2 {
+      margin: 7px 0 0;
+      color: var(--dark);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(34px,4vw,52px);
       line-height: 1;
       letter-spacing: -.045em;
     }
 
     .section-description {
-      max-width: 560px;
-      margin: 10px 0 0;
+      max-width: 550px;
+      margin: 12px 0 0;
       color: var(--dark-muted);
-      font-size: 15px;
-      line-height: 1.65;
+      line-height: 1.6;
     }
 
-    .section-link {
-      color: #117a4b;
+    .count {
+      color: #697789;
       font-size: 14px;
-      font-weight: 900;
+      font-weight: 750;
       white-space: nowrap;
     }
 
-    /* =========================================================
-       CATEGORIES
-    ========================================================= */
+    /* CATEGORY */
 
     .categories {
-      padding-top: 82px;
-      padding-bottom: 35px;
-    }
-
-    .category-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
+      grid-template-columns: repeat(4,1fr);
+      gap: 15px;
+      margin-bottom: 70px;
     }
 
-    .category-card {
+    .category {
       position: relative;
       min-height: 150px;
+      padding: 23px;
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      padding: 22px;
-      border: 1px solid var(--border-dark);
-      border-radius: var(--radius-lg);
-      background:
-        radial-gradient(
-          circle at 85% 15%,
-          rgba(103,229,162,.18),
-          transparent 35%
-        ),
-        linear-gradient(
-          145deg,
-          #ffffff,
-          #eef5f1
-        );
-      box-shadow: 0 8px 24px rgba(10,30,50,.05);
-      transition: transform .2s ease, box-shadow .2s ease;
+      border: 1px solid #dfe5eb;
+      border-radius: 22px;
+      background: #fff;
+      text-align: left;
+      box-shadow: 0 8px 30px rgba(7,17,31,.05);
+      transition: .2s ease;
     }
 
-    .category-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-soft);
-    }
-
-    .category-number {
-      position: absolute;
-      top: 17px;
-      right: 19px;
-      color: #b8c7c0;
-      font-size: 12px;
-      font-weight: 900;
+    .category:hover {
+      transform: translateY(-3px);
+      border-color: #b8e8cf;
+      box-shadow: 0 18px 40px rgba(7,17,31,.09);
     }
 
     .category-icon {
-      width: 44px;
-      height: 44px;
+      width: 45px;
+      height: 45px;
       display: grid;
       place-items: center;
-      margin-bottom: auto;
-      border-radius: 13px;
-      background: #e0f6e9;
-      color: #118b52;
-      font-size: 19px;
+      margin-bottom: 25px;
+      border-radius: 14px;
+      background: #e9f9f0;
+      color: #139054;
       font-weight: 950;
     }
 
-    .category-card strong {
+    .category strong {
       display: block;
       font-size: 17px;
-      letter-spacing: -.02em;
     }
 
-    .category-card span {
+    .category span {
       display: block;
-      margin-top: 3px;
-      color: var(--dark-muted);
-      font-size: 12px;
-    }
-
-    /* =========================================================
-       DEALS
-    ========================================================= */
-
-    .deals-section {
-      background: #eef2f6;
-    }
-
-    .deals-panel {
-      padding: 0;
-    }
-
-    .product-count {
+      margin-top: 5px;
       color: var(--dark-muted);
       font-size: 13px;
-      font-weight: 700;
     }
+
+    /* PRODUCTS */
 
     .products-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 17px;
+      grid-template-columns: repeat(3,1fr);
+      gap: 20px;
     }
 
     .product-card {
-      min-width: 0;
       overflow: hidden;
-      border: 1px solid var(--border-dark);
-      border-radius: 19px;
-      background: var(--card);
-      box-shadow: 0 8px 24px rgba(9,25,40,.055);
-      transition:
-        transform .2s ease,
-        box-shadow .2s ease;
+      border: 1px solid #e0e5ea;
+      border-radius: 22px;
+      background: #fff;
+      box-shadow: 0 10px 32px rgba(7,17,31,.06);
+      transition: .2s ease;
     }
 
     .product-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-soft);
+      transform: translateY(-3px);
+      box-shadow: 0 18px 45px rgba(7,17,31,.1);
     }
 
-    .product-image {
+    .product-media {
       position: relative;
-      height: 210px;
+      height: 235px;
       display: grid;
       place-items: center;
       overflow: hidden;
       background:
-        radial-gradient(
-          circle at 50% 35%,
-          #ffffff,
-          #edf2f5
-        );
+        radial-gradient(circle at 50% 35%,#eefaf4,#e5edf1);
     }
 
-    .product-image > .product-image,
-    img.product-image {
+    .product-photo {
       width: 100%;
       height: 100%;
       object-fit: contain;
-      padding: 24px;
+      padding: 22px;
     }
 
     .image-placeholder {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background:
-        radial-gradient(
-          circle at 50% 30%,
-          rgba(103,229,162,.15),
-          transparent 35%
-        ),
-        linear-gradient(145deg,#eef7f1,#e4ebf0);
-      color: #4e8d6d;
-    }
-
-    .image-placeholder span {
-      width: 74px;
-      height: 74px;
+      width: 110px;
+      height: 110px;
       display: grid;
       place-items: center;
-      border-radius: 22px;
-      background: #ffffff;
-      box-shadow: 0 12px 28px rgba(20,50,40,.10);
-      font-size: 18px;
+      border-radius: 30px;
+      background: #dce8e2;
+      color: #15935a;
       font-weight: 950;
-      letter-spacing: -.04em;
+      letter-spacing: .08em;
     }
 
-    .deal-badge {
+    .image-fallback {
+      display: none;
+    }
+
+    .sale-badge {
       position: absolute;
-      z-index: 2;
-      top: 13px;
-      left: 13px;
-      padding: 6px 9px;
-      border-radius: 8px;
-      background: var(--green);
-      color: #07150d;
-      font-size: 11px;
+      top: 14px;
+      left: 14px;
+      z-index: 3;
+      padding: 7px 10px;
+      border-radius: 9px;
+      background: var(--red);
+      color: #fff;
+      font-size: 12px;
       font-weight: 950;
     }
 
     .product-body {
-      padding: 17px;
+      padding: 20px;
     }
 
-    .product-top {
+    .product-meta {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 8px;
-    }
-
-    .product-brand {
-      min-width: 0;
-      overflow: hidden;
-      color: #637286;
-      font-size: 11px;
-      font-weight: 900;
-      letter-spacing: .06em;
-      text-overflow: ellipsis;
-      text-transform: uppercase;
-      white-space: nowrap;
+      justify-content: space-between;
+      gap: 10px;
+      color: #748194;
+      font-size: 12px;
+      font-weight: 800;
     }
 
     .stock {
-      flex-shrink: 0;
-      font-size: 10px;
-      font-weight: 850;
+      padding: 5px 8px;
+      border-radius: 999px;
+      font-size: 11px;
     }
 
     .stock.in {
-      color: #15935a;
+      background: #e8f8ef;
+      color: #158653;
     }
 
     .stock.out {
-      color: var(--red);
+      background: #f2f4f6;
+      color: #697687;
     }
 
-    .product-name {
-      min-height: 45px;
-      margin: 9px 0 4px;
-      color: #121d2b;
-      font-size: 15px;
-      line-height: 1.45;
-      letter-spacing: -.015em;
+    .product-card h3 {
+      margin: 11px 0 5px;
+      font-size: 18px;
+      line-height: 1.25;
+      letter-spacing: -.02em;
     }
 
     .merchant {
-      overflow: hidden;
-      color: #7c8999;
-      font-size: 11px;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      margin: 0;
+      color: #768294;
+      font-size: 13px;
     }
 
-    .price-row {
-      min-height: 38px;
+    .price-line {
       display: flex;
-      align-items: center;
+      align-items: baseline;
       flex-wrap: wrap;
-      gap: 7px;
-      margin-top: 14px;
+      gap: 8px;
+      margin-top: 15px;
     }
 
-    .price {
-      color: #0e1825;
-      font-size: 21px;
-      font-weight: 950;
-      letter-spacing: -.04em;
+    .price-line strong {
+      color: var(--dark);
+      font-size: 22px;
     }
 
-    .old-price {
-      color: #9aa5b2;
+    .price-line del {
+      color: #98a3b0;
+      font-size: 13px;
+    }
+
+    .discount-text {
+      color: #15935a;
       font-size: 12px;
-      text-decoration: line-through;
-    }
-
-    .discount {
-      padding: 4px 6px;
-      border-radius: 6px;
-      background: #e5f7ec;
-      color: #14884f;
-      font-size: 10px;
-      font-weight: 950;
+      font-weight: 900;
     }
 
     .price-note {
-      min-height: 30px;
-      margin-top: 5px;
-      color: #8a96a5;
-      font-size: 10px;
-      line-height: 1.45;
+      margin-top: 6px;
+      color: #8994a2;
+      font-size: 11px;
+      line-height: 1.4;
     }
 
     .chips {
-      min-height: 27px;
       display: flex;
       flex-wrap: wrap;
-      gap: 5px;
-      margin-top: 7px;
+      gap: 6px;
+      margin-top: 13px;
     }
 
-    .chip {
-      padding: 4px 7px;
-      border-radius: 999px;
-      background: #f0f3f5;
-      color: #697687;
-      font-size: 9px;
+    .chips span {
+      padding: 5px 8px;
+      border-radius: 7px;
+      background: #edf3f0;
+      color: #36745a;
+      font-size: 10px;
       font-weight: 850;
     }
 
-    .product-action {
-      margin-top: 14px;
-    }
-
-    .shop-button {
+    .product-button {
+      display: block;
       width: 100%;
-      min-height: 43px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 11px;
-      background: #0b1726;
-      color: #ffffff;
-      font-size: 12px;
+      margin-top: 17px;
+      padding: 13px;
+      border-radius: 12px;
+      background: var(--navy-900);
+      color: #fff;
+      text-align: center;
+      font-size: 14px;
       font-weight: 900;
-      transition: background .2s ease, transform .2s ease;
     }
 
-    .shop-button:hover {
-      background: #132b43;
-      transform: translateY(-1px);
+    .product-button:hover {
+      background: #10223a;
     }
 
     .empty-state {
       grid-column: 1 / -1;
-      padding: 45px 25px;
-      border: 1px dashed #cbd3dc;
-      border-radius: 18px;
-      background: #ffffff;
+      padding: 55px 25px;
+      border: 1px dashed #ccd5de;
+      border-radius: 22px;
+      background: #fff;
       text-align: center;
     }
 
     .empty-state strong {
       display: block;
-      color: #172333;
       font-size: 18px;
     }
 
     .empty-state p {
-      max-width: 500px;
-      margin: 8px auto 0;
-      color: #718094;
-      font-size: 13px;
-      line-height: 1.6;
+      margin: 8px 0 0;
+      color: #778394;
     }
 
-    /* =========================================================
-       AI COACH
-    ========================================================= */
+    /* DARK TOOLS */
 
-    .coach-section {
-      background: var(--navy-900);
-      color: var(--white);
-    }
-
-    .coach-grid {
-      display: grid;
-      grid-template-columns: .85fr 1.15fr;
-      align-items: center;
-      gap: 70px;
-    }
-
-    .coach-copy .section-kicker {
-      color: var(--green);
-    }
-
-    .coach-copy .section-title {
-      color: var(--white);
-    }
-
-    .coach-copy .section-description {
-      color: #9eacbd;
-    }
-
-    .coach-points {
-      display: grid;
-      gap: 11px;
-      margin-top: 27px;
-    }
-
-    .coach-point {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      color: #cbd5df;
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .check {
-      width: 25px;
-      height: 25px;
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-      border-radius: 8px;
-      background: rgba(103,229,162,.12);
-      color: var(--green);
-      font-size: 12px;
-      font-weight: 950;
-    }
-
-    .coach-card {
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 25px;
+    .tools {
       background:
-        linear-gradient(
-          145deg,
-          #0d1d30,
-          #0a1625
-        );
-      box-shadow: 0 30px 80px rgba(0,0,0,.25);
+        radial-gradient(circle at 85% 20%,rgba(103,229,162,.1),transparent 24%),
+        var(--navy-900);
+      color: #fff;
     }
 
-    .coach-head {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 19px 20px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
+    .tools h2 {
+      color: #fff;
     }
 
-    .coach-avatar {
-      width: 42px;
-      height: 42px;
+    .tools .section-description {
+      color: #aebaca;
+    }
+
+    .tools-grid {
       display: grid;
-      place-items: center;
-      border-radius: 13px;
-      background: var(--green);
-      color: #07150d;
-      font-weight: 950;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
     }
 
-    .coach-head strong {
-      display: block;
-      font-size: 14px;
+    .tool-card {
+      padding: 28px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 25px;
+      background: rgba(255,255,255,.045);
     }
 
-    .coach-head span {
-      display: block;
-      margin-top: 2px;
-      color: #8292a6;
+    .tool-label {
+      color: var(--green);
       font-size: 11px;
+      font-weight: 950;
+      letter-spacing: .12em;
+      text-transform: uppercase;
     }
 
-    .coach-body {
-      padding: 21px;
+    .tool-card h3 {
+      margin: 8px 0;
+      font-size: 25px;
     }
 
-    .coach-message {
-      max-width: 86%;
-      padding: 15px 16px;
-      border-radius: 16px 16px 16px 4px;
-      background: #14263b;
-      color: #d7e0e9;
-      font-size: 13px;
-      line-height: 1.6;
+    .tool-card p {
+      margin: 0 0 20px;
+      color: #aebaca;
+      line-height: 1.55;
     }
 
-    .coach-form {
-      display: flex;
-      gap: 9px;
-      margin-top: 16px;
+    .tool-form {
+      display: grid;
+      gap: 10px;
     }
 
-    .coach-form textarea {
-      min-height: 55px;
-      flex: 1;
-      resize: vertical;
-      border: 1px solid rgba(255,255,255,.09);
-      border-radius: 13px;
-      outline: 0;
-      padding: 15px;
-      background: #081321;
-      color: #ffffff;
-      font-size: 13px;
+    .tool-form input,
+    .tool-form select {
+      width: 100%;
+      min-height: 50px;
+      padding: 0 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 11px;
+      outline: none;
+      background: rgba(255,255,255,.07);
+      color: #fff;
     }
 
-    .coach-form textarea::placeholder {
-      color: #65758a;
+    .tool-form select option {
+      color: #111;
     }
 
-    .coach-submit {
-      min-width: 110px;
-      align-self: stretch;
-      border-radius: 13px;
+    .tool-form button {
+      min-height: 50px;
+      border-radius: 11px;
       background: var(--green);
-      color: #07150d;
+      color: #07140d;
       font-weight: 950;
     }
 
-    .ai-output {
-      min-height: 24px;
+    .tool-result {
+      min-height: 72px;
       margin-top: 14px;
-      color: #aebccb;
-      font-size: 12px;
-      line-height: 1.6;
+      padding: 15px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.055);
+      color: #c8d1dc;
+      font-size: 14px;
+      line-height: 1.5;
       white-space: pre-wrap;
     }
 
-    /* =========================================================
-       PLANNER
-    ========================================================= */
-
-    .planner-section {
-      background: #f5f7f9;
-    }
-
-    .planner-card {
-      overflow: hidden;
-      display: grid;
-      grid-template-columns: .75fr 1.25fr;
-      border: 1px solid var(--border-dark);
-      border-radius: 28px;
-      background: #ffffff;
-      box-shadow: var(--shadow-soft);
-    }
-
-    .planner-copy {
-      padding: 42px;
-      background:
-        radial-gradient(
-          circle at 85% 15%,
-          rgba(103,229,162,.15),
-          transparent 35%
-        ),
-        linear-gradient(145deg,#0a1828,#10263d);
-      color: #ffffff;
-    }
-
-    .planner-copy .section-kicker {
-      color: var(--green);
-    }
-
-    .planner-copy h2 {
-      margin: 8px 0 14px;
-      font-size: 34px;
-      line-height: 1.03;
-      letter-spacing: -.045em;
-    }
-
-    .planner-copy p {
-      margin: 0;
-      color: #aebdcd;
-      font-size: 14px;
-      line-height: 1.7;
-    }
-
-    .planner-form {
-      display: grid;
-      gap: 17px;
-      padding: 42px;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 15px;
-    }
-
-    .form-field label {
+    .tool-result strong {
       display: block;
-      margin-bottom: 7px;
-      color: #3d4b5b;
-      font-size: 12px;
-      font-weight: 850;
+      color: #fff;
+      margin-bottom: 5px;
     }
 
-    .form-field select,
-    .form-field input {
-      width: 100%;
-      min-height: 49px;
-      border: 1px solid #d9e0e7;
-      border-radius: 11px;
-      outline: 0;
-      padding: 0 13px;
-      background: #ffffff;
-      color: #182535;
+    /* INFO */
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 22px;
     }
 
-    .planner-submit {
-      min-height: 50px;
-      border-radius: 11px;
-      background: var(--green-strong);
-      color: #06150d;
-      font-weight: 950;
+    .info-card {
+      padding: 30px;
+      border: 1px solid #e0e5ea;
+      border-radius: 24px;
+      background: #fff;
     }
 
-    .planner-result {
-      color: #4f6072;
-      font-size: 13px;
-      font-weight: 750;
+    .info-card h3 {
+      margin: 0 0 12px;
+      font-family: Georgia,serif;
+      font-size: 29px;
     }
 
-    /* =========================================================
-       TRANSPARENCY
-    ========================================================= */
-
-    .transparency {
-      padding: 45px 0;
-      background: #ffffff;
-      border-top: 1px solid var(--border-dark);
-      border-bottom: 1px solid var(--border-dark);
+    .info-card p {
+      margin: 0;
+      color: #687689;
+      line-height: 1.65;
     }
 
-    .transparency-inner {
+    .info-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .info-list div {
+      padding: 13px 15px;
+      border-radius: 12px;
+      background: #f5f7f8;
+      color: #566476;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    /* FOOTER */
+
+    footer {
+      padding: 35px 0;
+      background: #040a12;
+      color: #8998aa;
+    }
+
+    .footer-inner {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 30px;
+      gap: 20px;
     }
 
-    .transparency strong {
-      display: block;
-      color: #192535;
-      font-size: 14px;
-    }
-
-    .transparency p {
-      max-width: 720px;
-      margin: 5px 0 0;
-      color: #738195;
-      font-size: 12px;
-      line-height: 1.6;
-    }
-
-    .transparency-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      flex-shrink: 0;
-    }
-
-    .transparency-links a {
-      color: #168b53;
-      font-size: 12px;
-      font-weight: 850;
-    }
-
-    /* =========================================================
-       FOOTER
-    ========================================================= */
-
-    footer {
-      padding: 55px 0 28px;
-      background: var(--navy-950);
-      color: #ffffff;
-    }
-
-    .footer-grid {
-      display: grid;
-      grid-template-columns: 1.5fr repeat(3, 1fr);
-      gap: 45px;
-      padding-bottom: 45px;
-    }
-
-    .footer-brand p {
-      max-width: 360px;
-      margin: 15px 0 0;
-      color: #7f8fa3;
-      font-size: 12px;
-      line-height: 1.7;
-    }
-
-    .footer-title {
-      margin-bottom: 13px;
-      color: #d9e1ea;
-      font-size: 12px;
+    .footer-brand {
+      color: #fff;
       font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: .08em;
+    }
+
+    .footer-brand span {
+      color: var(--green);
     }
 
     .footer-links {
-      display: grid;
-      gap: 9px;
-    }
-
-    .footer-links a {
-      color: #7f8fa3;
-      font-size: 12px;
+      display: flex;
+      gap: 20px;
+      font-size: 13px;
     }
 
     .footer-links a:hover {
-      color: #ffffff;
+      color: #fff;
     }
 
-    .footer-bottom {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-      padding-top: 22px;
-      border-top: 1px solid rgba(255,255,255,.08);
-      color: #647489;
+    .footer-note {
+      margin-top: 18px;
+      color: #667487;
       font-size: 11px;
+      line-height: 1.5;
     }
 
-    /* =========================================================
-       RESPONSIVE
-    ========================================================= */
+    /* RESPONSIVE */
 
-    @media (max-width: 1050px) {
-      .hero-grid {
-        grid-template-columns: 1fr;
-        gap: 35px;
+    @media (max-width: 950px) {
+      .nav-links {
+        display: none;
       }
 
-      .hero-content {
-        max-width: 850px;
+      .hero-grid {
+        grid-template-columns: 1fr;
+        padding-top: 48px;
       }
 
       .hero-visual {
-        min-height: 410px;
+        display: none;
       }
 
-      .athlete-card {
-        height: 390px;
+      .categories {
+        grid-template-columns: repeat(2,1fr);
       }
 
       .products-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2,1fr);
       }
 
-      .coach-grid {
+      .tools-grid,
+      .info-grid {
         grid-template-columns: 1fr;
-      }
-
-      .coach-copy {
-        max-width: 700px;
-      }
-
-      .planner-card {
-        grid-template-columns: 1fr;
-      }
-
-      .footer-grid {
-        grid-template-columns: 1.5fr 1fr 1fr;
       }
     }
 
-    @media (max-width: 780px) {
+    @media (max-width: 650px) {
       .container {
         width: min(100% - 28px, var(--container));
       }
@@ -1430,311 +1025,115 @@
       }
 
       .nav {
-        min-height: 64px;
-      }
-
-      .nav-links a:not(.nav-cta) {
-        display: none;
-      }
-
-      .nav-links {
-        gap: 8px;
-      }
-
-      .nav-cta {
-        padding: 9px 12px;
-        font-size: 12px;
+        min-height: 68px;
       }
 
       .brand-name {
-        font-size: 17px;
+        font-size: 18px;
       }
 
-      .brand-mark {
-        width: 35px;
-        height: 35px;
-      }
-
-      .hero {
-        min-height: auto;
+      .nav-cta {
+        padding: 10px 13px;
+        font-size: 13px;
       }
 
       .hero-grid {
         min-height: auto;
-        padding: 52px 0 68px;
-        gap: 30px;
+        padding: 43px 0 45px;
       }
 
-      .hero h1 {
+      h1 {
         margin-top: 15px;
-        font-size: clamp(42px, 12vw, 62px);
-        line-height: .97;
+        font-size: clamp(42px,12vw,58px);
+        line-height: .94;
       }
 
       .hero-text {
         font-size: 16px;
-        line-height: 1.6;
+        line-height: 1.55;
       }
 
-      .hero-search {
-        margin-top: 25px;
+      .search-wrap {
+        margin-top: 23px;
       }
 
       .search-box {
-        min-height: 61px;
-      }
-
-      .search-button {
-        min-height: 47px;
-        padding: 0 15px;
+        min-height: 62px;
+        padding: 5px;
       }
 
       .search-icon {
         width: 38px;
       }
 
-      .goal-buttons {
-        margin-top: 13px;
-      }
-
-      .goal-button {
-        padding: 10px 15px;
-      }
-
-      .hero-visual {
-        min-height: 330px;
-      }
-
-      .athlete-card {
-        width: min(330px, 100%);
-        height: 330px;
-        border-radius: 25px;
-      }
-
-      .athlete-silhouette {
-        transform: translateX(-50%) scale(.72);
-        transform-origin: bottom center;
-      }
-
-      .visual-label {
-        left: 18px;
-        right: 18px;
-        bottom: 18px;
-      }
-
-      .trust-strip {
-        margin-top: -25px;
-      }
-
-      .trust-card {
-        grid-template-columns: 1fr;
-      }
-
-      .trust-item {
-        min-height: 65px;
-        padding: 14px 17px;
-      }
-
-      .categories {
-        padding-top: 65px;
-      }
-
-      .section {
-        padding: 70px 0;
-      }
-
-      .section-header {
-        display: block;
-      }
-
-      .section-link {
-        display: inline-block;
-        margin-top: 14px;
-      }
-
-      .category-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .products-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-      }
-
-      .product-image {
-        height: 175px;
-      }
-
-      .product-body {
-        padding: 13px;
-      }
-
-      .product-name {
-        min-height: auto;
-        font-size: 13px;
-      }
-
-      .price {
-        font-size: 18px;
-      }
-
-      .coach-form {
-        flex-direction: column;
-      }
-
-      .coach-submit {
-        min-height: 46px;
-      }
-
-      .planner-copy,
-      .planner-form {
-        padding: 28px;
-      }
-
-      .form-row {
-        grid-template-columns: 1fr;
-      }
-
-      .transparency-inner {
-        display: block;
-      }
-
-      .transparency-links {
-        margin-top: 17px;
-      }
-
-      .footer-grid {
-        grid-template-columns: 1fr 1fr;
-        gap: 30px;
-      }
-
-      .footer-brand {
-        grid-column: 1 / -1;
-      }
-    }
-
-    @media (max-width: 470px) {
-      .container {
-        width: calc(100% - 24px);
-      }
-
-      .brand-name {
-        font-size: 16px;
-      }
-
-      .nav-links {
-        gap: 4px;
-      }
-
-      .nav-cta {
-        padding: 8px 10px;
-      }
-
-      .hero-grid {
-        padding-top: 42px;
-      }
-
-      .hero h1 {
-        font-size: 43px;
-      }
-
-      .hero-text {
-        font-size: 15px;
-      }
-
-      .search-box {
-        padding: 5px;
+      .search-button {
+        min-height: 50px;
+        padding: 0 15px;
       }
 
       .search-box input {
         font-size: 14px;
       }
 
-      .search-button {
-        padding: 0 12px;
-        font-size: 12px;
+      .goals {
+        gap: 8px;
       }
 
-      .category-grid {
-        gap: 9px;
+      .goal {
+        padding: 10px 15px;
       }
 
-      .category-card {
-        min-height: 135px;
-        padding: 16px;
-        border-radius: 17px;
+      .trust-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 17px 0;
       }
 
-      .category-icon {
-        width: 38px;
-        height: 38px;
+      .section {
+        padding: 55px 0;
       }
 
+      .section-head {
+        display: block;
+      }
+
+      .count {
+        display: block;
+        margin-top: 10px;
+      }
+
+      .categories,
       .products-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .product-image {
-        height: 150px;
-      }
-
-      .product-image > .product-image,
-      img.product-image {
-        padding: 13px;
-      }
-
-      .product-brand {
-        max-width: 65%;
-      }
-
-      .stock {
-        font-size: 9px;
-      }
-
-      .price-row {
-        gap: 5px;
-      }
-
-      .price {
-        font-size: 17px;
-      }
-
-      .old-price {
-        font-size: 10px;
-      }
-
-      .discount {
-        font-size: 9px;
-      }
-
-      .price-note {
-        font-size: 9px;
-      }
-
-      .chip {
-        font-size: 8px;
-      }
-
-      .shop-button {
-        min-height: 40px;
-        font-size: 11px;
-      }
-
-      .planner-copy h2 {
-        font-size: 29px;
-      }
-
-      .footer-grid {
         grid-template-columns: 1fr;
       }
 
-      .footer-bottom {
+      .categories {
+        margin-bottom: 50px;
+      }
+
+      .category {
+        min-height: 125px;
+      }
+
+      .product-media {
+        height: 260px;
+      }
+
+      .tools {
+        padding-bottom: 55px;
+      }
+
+      .tool-card {
+        padding: 22px;
+      }
+
+      .footer-inner {
         display: block;
       }
 
-      .footer-bottom span + span {
-        display: block;
-        margin-top: 7px;
+      .footer-links {
+        margin-top: 16px;
+        flex-wrap: wrap;
       }
     }
   </style>
@@ -1742,754 +1141,461 @@
 
 <body>
 
-  <!-- =======================================================
-       HEADER
-  ======================================================== -->
+<header class="site-header">
+  <div class="container nav">
+    <a class="brand" href="#top" aria-label="FitDealFinder home">
+      <span class="brand-mark">F</span>
+      <span class="brand-name">Fit<span>Deal</span>Finder</span>
+    </a>
 
-  <header class="site-header">
-    <div class="container nav">
+    <nav class="nav-links" aria-label="Hoofdnavigatie">
+      <a href="#deals">Deals</a>
+      <a href="#categorieen">Categorieën</a>
+      <a href="#coach">AI Coach</a>
+      <a href="#planner">Planner</a>
+      <a class="nav-cta" href="#deals">Bekijk deals</a>
+    </nav>
 
-      <a class="brand" href="/" aria-label="FitDealFinder home">
-        <span class="brand-mark">F</span>
-        <span class="brand-name">
-          Fit<span>Deal</span>Finder
-        </span>
-      </a>
+    <a class="nav-cta" href="#deals">Bekijk deals</a>
+  </div>
+</header>
 
-      <nav class="nav-links" aria-label="Hoofdnavigatie">
-        <a href="#deals">Deals</a>
-        <a href="#categorieen">Categorieën</a>
-        <a href="#coach">AI Coach</a>
-        <a href="#planner">Planner</a>
-        <a class="nav-cta" href="#deals">Bekijk deals</a>
-      </nav>
+<main id="top">
+
+  <section class="hero">
+    <div class="container hero-grid">
+
+      <div>
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          Slimmer shoppen voor je fitnessdoel
+        </div>
+
+        <h1>
+          Vind de juiste
+          <span>fitnessdeal</span>
+          voor jouw doel.
+        </h1>
+
+        <p class="hero-text">
+          Vergelijk fitnessproducten op prijs, winkel en doel.
+          Vind whey, creatine, pre-workout, snacks en meer.
+          Zonder eindeloos zoeken.
+        </p>
+
+        <div class="search-wrap">
+          <form id="search-form" class="search-box">
+            <span class="search-icon">⌕</span>
+            <input
+              id="search"
+              type="search"
+              autocomplete="off"
+              placeholder="Zoek whey, creatine, pre-workout..."
+              aria-label="Zoek fitnessproducten"
+            >
+            <button class="search-button" type="submit">
+              Zoek deals
+            </button>
+          </form>
+
+          <div class="goals" aria-label="Fitnessdoel">
+            <button class="goal active" data-goal="all">Alles</button>
+            <button class="goal" data-goal="cut">Cut</button>
+            <button class="goal" data-goal="bulk">Bulk</button>
+            <button class="goal" data-goal="lean-bulk">Lean Bulk</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="visual-card">
+          <div class="visual-ring"></div>
+
+          <div class="person">
+            <div class="person-head"></div>
+            <div class="person-neck"></div>
+            <div class="person-body"></div>
+            <div class="person-arm left"></div>
+            <div class="person-arm right"></div>
+            <div class="person-leg left"></div>
+            <div class="person-leg right"></div>
+          </div>
+
+          <div class="visual-bottom">
+            <div>
+              <strong>Jouw doel.</strong>
+              <small>De juiste deal.</small>
+            </div>
+            <div class="score">FIT</div>
+          </div>
+        </div>
+      </div>
 
     </div>
-  </header>
+  </section>
 
-
-  <!-- =======================================================
-       HERO
-  ======================================================== -->
+  <section class="trust">
+    <div class="container trust-grid">
+      <div class="trust-item">
+        <span class="trust-icon">✓</span>
+        Actuele productgegevens waar beschikbaar
+      </div>
+      <div class="trust-item">
+        <span class="trust-icon">€</span>
+        Prijzen en deals overzichtelijk vergelijken
+      </div>
+      <div class="trust-item">
+        <span class="trust-icon">↗</span>
+        Rechtstreeks naar de winkel
+      </div>
+    </div>
+  </section>
 
   <main>
 
-    <section class="hero">
-      <div class="container hero-grid">
-
-        <div class="hero-content">
-
-          <div class="eyebrow">
-            <span class="eyebrow-dot"></span>
-            Slimmer shoppen voor je fitnessdoel
-          </div>
-
-          <h1>
-            Vind de juiste
-            <span>fitnessdeal</span>
-            voor jouw doel.
-          </h1>
-
-          <p class="hero-text">
-            Vergelijk fitnessproducten op prijs, winkel en doel.
-            Vind whey, creatine, pre-workout, snacks en meer.
-            Zonder eindeloos zoeken.
-          </p>
-
-          <div class="hero-search">
-
-            <form class="search-box" id="search-form">
-
-              <span class="search-icon" aria-hidden="true">⌕</span>
-
-              <input
-                id="search"
-                name="search"
-                type="search"
-                autocomplete="off"
-                placeholder="Zoek whey, creatine, pre-workout..."
-                aria-label="Zoek fitnessproducten"
-              >
-
-              <button class="search-button" type="submit">
-                Zoek deals
-              </button>
-
-            </form>
-
-            <div class="goal-buttons" aria-label="Fitnessdoel">
-
-              <button
-                class="goal-button active"
-                type="button"
-                data-goal=""
-              >
-                Alles
-              </button>
-
-              <button
-                class="goal-button"
-                type="button"
-                data-goal="cut"
-              >
-                Cut
-              </button>
-
-              <button
-                class="goal-button"
-                type="button"
-                data-goal="bulk"
-              >
-                Bulk
-              </button>
-
-              <button
-                class="goal-button"
-                type="button"
-                data-goal="lean-bulk"
-              >
-                Lean Bulk
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <!-- Fitness visual -->
-
-        <div class="hero-visual" aria-hidden="true">
-
-          <div class="visual-glow"></div>
-
-          <div class="athlete-card">
-
-            <div class="athlete-silhouette">
-
-              <div class="head"></div>
-              <div class="neck"></div>
-
-              <div class="arm-left"></div>
-              <div class="arm-right"></div>
-
-              <div class="torso"></div>
-              <div class="torso-line"></div>
-
-              <div class="leg-left"></div>
-              <div class="leg-right"></div>
-
-            </div>
-
-            <div class="visual-label">
-
-              <div>
-                <strong>Train. Eet. Bespaar.</strong>
-                <small>Jouw doel. Onze deals.</small>
-              </div>
-
-              <div class="visual-score">
-                ✓
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-    </section>
-
-
-    <!-- =====================================================
-         TRUST
-    ====================================================== -->
-
-    <section class="trust-strip">
+    <section id="categorieen" class="section">
       <div class="container">
 
-        <div class="trust-card">
-
-          <div class="trust-item">
-            <div class="trust-icon">€</div>
-            <div>
-              <strong>Prijzen vergelijken</strong>
-              <span>Zie deals en prijsverschillen</span>
-            </div>
-          </div>
-
-          <div class="trust-item">
-            <div class="trust-icon">✓</div>
-            <div>
-              <strong>Echte producten</strong>
-              <span>Productdata van aangesloten winkels</span>
-            </div>
-          </div>
-
-          <div class="trust-item">
-            <div class="trust-icon">AI</div>
-            <div>
-              <strong>Persoonlijk advies</strong>
-              <span>Gebruik onze AI Supplement Coach</span>
-            </div>
-          </div>
-
-        </div>
-
-      </div>
-    </section>
-
-
-    <!-- =====================================================
-         CATEGORIES
-    ====================================================== -->
-
-    <section class="section categories" id="categorieen">
-
-      <div class="container">
-
-        <div class="section-header">
-
+        <div class="section-head">
           <div>
             <div class="section-kicker">Shop per categorie</div>
-
-            <h2 class="section-title">
-              Vind wat je nodig hebt.
-            </h2>
-
-            <p class="section-description">
-              Van dagelijkse basics tot producten rondom je training.
-              Vergelijk wat beschikbaar is en bekijk de actuele winkelprijs.
-            </p>
+            <h2>Waar ben je naar op zoek?</h2>
           </div>
-
-          <a class="section-link" href="#deals">
-            Alle deals →
-          </a>
-
         </div>
 
-
-        <div class="category-grid">
-
-          <button
-            class="category-card"
-            type="button"
-            data-category="whey"
-          >
-            <span class="category-number">01</span>
+        <div class="categories">
+          <button class="category" data-search="whey">
             <span class="category-icon">W</span>
             <strong>Whey & Protein</strong>
-            <span>Protein shakes en blends</span>
+            <span>Proteïne voor dagelijks gebruik</span>
           </button>
 
-          <button
-            class="category-card"
-            type="button"
-            data-category="creatine"
-          >
-            <span class="category-number">02</span>
+          <button class="category" data-search="creatine">
             <span class="category-icon">C</span>
             <strong>Creatine</strong>
-            <span>Dagelijkse performance basics</span>
+            <span>Voor kracht en prestaties</span>
           </button>
 
-          <button
-            class="category-card"
-            type="button"
-            data-category="pre-workout"
-          >
-            <span class="category-number">03</span>
+          <button class="category" data-search="pre-workout">
             <span class="category-icon">P</span>
             <strong>Pre-workout</strong>
-            <span>Voor je trainingsmoment</span>
+            <span>Voor je training</span>
           </button>
 
-          <button
-            class="category-card"
-            type="button"
-            data-category="snacks"
-          >
-            <span class="category-number">04</span>
+          <button class="category" data-search="snacks">
             <span class="category-icon">S</span>
             <strong>Fitness snacks</strong>
-            <span>Snacks en handige basics</span>
+            <span>Handig voor onderweg</span>
           </button>
-
         </div>
 
       </div>
-
     </section>
 
-
-    <!-- =====================================================
-         DEALS
-    ====================================================== -->
-
-    <section class="section deals-section" id="deals">
-
+    <section id="deals" class="section" style="padding-top:0;">
       <div class="container">
 
-        <div class="section-header">
-
+        <div class="section-head">
           <div>
-
-            <div class="section-kicker">
-              Aanbevolen deals
-            </div>
-
-            <h2 class="section-title">
-              Deals die het bekijken waard zijn.
-            </h2>
-
+            <div class="section-kicker">Aanbevolen deals</div>
+            <h2>Beste fitnessdeals</h2>
             <p class="section-description">
-              Producten worden vanuit de beschikbare productfeed geladen.
-              Controleer altijd de actuele prijs en beschikbaarheid bij de winkel.
+              Producten worden rechtstreeks uit de FitDealFinder-database geladen.
+              We tonen geen verzonnen producten, prijzen of kortingen.
             </p>
-
           </div>
 
-          <div
-            class="product-count"
-            id="product-count"
-            aria-live="polite"
-          >
-            Deals laden...
-          </div>
-
+          <div id="product-count" class="count">Deals laden...</div>
         </div>
 
-
-        <div
-          class="products-grid"
-          id="products-grid"
-          aria-live="polite"
-        >
-
+        <div id="products-grid" class="products-grid">
           <div class="empty-state">
             <strong>Deals laden...</strong>
-            <p>
-              We halen de beschikbare producten op.
-            </p>
+            <p>We halen de actuele productgegevens op.</p>
           </div>
-
         </div>
 
       </div>
-
     </section>
 
+    <section id="coach" class="section tools">
+      <div class="container">
 
-    <!-- =====================================================
-         AI COACH
-    ====================================================== -->
-
-    <section class="section coach-section" id="coach">
-
-      <div class="container coach-grid">
-
-        <div class="coach-copy">
-
-          <div class="section-kicker">
-            AI Supplement Coach
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Persoonlijke hulp</div>
+            <h2>AI Supplement Coach</h2>
+            <p class="section-description">
+              Stel een vraag over supplementen, doelen of productkeuzes.
+              De coach verzint geen actuele prijzen of aanbiedingen.
+            </p>
           </div>
-
-          <h2 class="section-title">
-            Weet je niet wat bij je doel past?
-          </h2>
-
-          <p class="section-description">
-            Stel een vraag over supplementen, je fitnessdoel of waar je
-            op moet letten bij het vergelijken van producten.
-          </p>
-
-          <div class="coach-points">
-
-            <div class="coach-point">
-              <span class="check">✓</span>
-              <span>Advies afgestemd op je doel</span>
-            </div>
-
-            <div class="coach-point">
-              <span class="check">✓</span>
-              <span>Geen verzonnen actuele prijzen of aanbiedingen</span>
-            </div>
-
-            <div class="coach-point">
-              <span class="check">✓</span>
-              <span>Controleer productinformatie altijd bij de winkel</span>
-            </div>
-
-          </div>
-
         </div>
 
+        <div class="tools-grid">
 
-        <div class="coach-card">
+          <div class="tool-card">
+            <div class="tool-label">AI Coach</div>
+            <h3>Vraag het aan je coach</h3>
+            <p>
+              Bijvoorbeeld: “Welke supplementen zijn praktisch als ik
+              vooral op spiermassa train?”
+            </p>
 
-          <div class="coach-head">
+            <form id="ai-form" class="tool-form">
+              <input
+                id="ai-input"
+                type="text"
+                maxlength="2000"
+                placeholder="Stel je vraag..."
+                autocomplete="off"
+              >
+              <button type="submit">Vraag de AI Coach</button>
+            </form>
 
-            <div class="coach-avatar">
-              AI
+            <div id="ai-output" class="tool-result">
+              Je antwoord verschijnt hier.
             </div>
-
-            <div>
-              <strong>FitDealFinder Coach</strong>
-              <span>Supplement & fitness assistent</span>
-            </div>
-
           </div>
 
-          <div class="coach-body">
+          <div id="planner" class="tool-card">
+            <div class="tool-label">Shopping Planner</div>
+            <h3>Maak een eenvoudige shortlist</h3>
+            <p>
+              Kies je doel en budget. De planner gebruikt alleen
+              producten die daadwerkelijk beschikbaar zijn in de database.
+            </p>
 
-            <div class="coach-message">
-              Hoi! Waar kan ik je mee helpen?
-              Bijvoorbeeld: “Ik wil meer eiwit binnenkrijgen met een beperkt budget.”
-            </div>
+            <form id="planner-form" class="tool-form">
 
-            <form
-              class="coach-form"
-              id="ai-form"
-            >
+              <select id="planner-goal" name="goal">
+                <option value="">Alle doelen</option>
+                <option value="cut">Cut</option>
+                <option value="bulk">Bulk</option>
+                <option value="lean-bulk">Lean Bulk</option>
+              </select>
 
-              <textarea
-                id="ai-input"
-                name="message"
-                rows="2"
-                placeholder="Stel je vraag..."
-                aria-label="Vraag aan AI Supplement Coach"
-                required
-              ></textarea>
-
-              <button
-                class="coach-submit"
-                type="submit"
+              <input
+                id="planner-budget"
+                name="budget"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Maximaal budget in €"
               >
-                Vraag AI
+
+              <button type="submit">
+                Maak shortlist
               </button>
 
             </form>
 
-            <div
-              class="ai-output"
-              id="ai-output"
-              aria-live="polite"
-            ></div>
-
+            <div id="planner-result" class="tool-result">
+              Kies je doel en eventueel een budget.
+            </div>
           </div>
 
         </div>
 
       </div>
-
     </section>
 
+    <section class="section">
+      <div class="container info-grid">
 
-    <!-- =====================================================
-         PLANNER
-    ====================================================== -->
-
-    <section class="section planner-section" id="planner">
-
-      <div class="container">
-
-        <div class="planner-card">
-
-          <div class="planner-copy">
-
-            <div class="section-kicker">
-              Shopping Planner
-            </div>
-
-            <h2>
-              Bouw je boodschappenlijst slimmer.
-            </h2>
-
-            <p>
-              Kies je doel en budget. FitDealFinder gebruikt de beschikbare
-              producten om passende deals voor je te vinden.
-            </p>
-
-          </div>
-
-
-          <form
-            class="planner-form"
-            id="planner-form"
-          >
-
-            <div class="form-row">
-
-              <div class="form-field">
-
-                <label for="planner-goal">
-                  Fitnessdoel
-                </label>
-
-                <select
-                  id="planner-goal"
-                  name="goal"
-                >
-                  <option value="">Alle doelen</option>
-                  <option value="cut">Cut</option>
-                  <option value="bulk">Bulk</option>
-                  <option value="lean-bulk">Lean Bulk</option>
-                </select>
-
-              </div>
-
-
-              <div class="form-field">
-
-                <label for="planner-budget">
-                  Budget per product
-                </label>
-
-                <input
-                  id="planner-budget"
-                  name="budget"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="Bijv. 30"
-                  inputmode="decimal"
-                >
-
-              </div>
-
-            </div>
-
-
-            <button
-              class="planner-submit"
-              type="submit"
-            >
-              Vind passende deals
-            </button>
-
-
-            <div
-              id="planner-result"
-              class="planner-result"
-              aria-live="polite"
-            ></div>
-
-          </form>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- =====================================================
-         TRANSPARENCY
-    ====================================================== -->
-
-    <section class="transparency">
-
-      <div class="container transparency-inner">
-
-        <div>
-
-          <strong>
-            Transparant over prijzen en affiliate links
-          </strong>
-
+        <div class="info-card">
+          <h3>Transparant vergelijken.</h3>
           <p>
-            FitDealFinder vergelijkt beschikbare productinformatie.
-            Prijzen, voorraad en aanbiedingen kunnen veranderen.
-            Controleer daarom altijd de actuele informatie op de website
-            van de betreffende winkel. Wanneer affiliate links worden gebruikt,
-            kan FitDealFinder een commissie ontvangen zonder dat dit jouw prijs
-            hoeft te verhogen.
+            FitDealFinder helpt je fitnessproducten en aanbiedingen
+            overzichtelijk te vergelijken. Productinformatie, voorraad
+            en prijzen kunnen veranderen. Controleer daarom altijd de
+            actuele informatie bij de winkel voordat je bestelt.
           </p>
-
         </div>
 
+        <div class="info-card">
+          <h3>Affiliate transparantie.</h3>
 
-        <div class="transparency-links">
+          <div class="info-list">
+            <div>
+              Sommige links kunnen affiliate links zijn. Dit kan betekenen
+              dat FitDealFinder een commissie ontvangt wanneer je via een
+              link een aankoop doet.
+            </div>
 
-          <a href="/privacy.html">
-            Privacy
-          </a>
+            <div>
+              Een affiliate vergoeding verandert niet automatisch de
+              weergegeven productprijs.
+            </div>
 
-          <a href="/voorwaarden.html">
-            Voorwaarden
-          </a>
-
-          <a href="/affiliate.html">
-            Affiliate informatie
-          </a>
-
+            <div>
+              Productkeuzes zijn gebaseerd op beschikbare product- en
+              dealinformatie, niet op een gegarandeerd gezondheidsresultaat.
+            </div>
+          </div>
         </div>
 
       </div>
-
     </section>
 
   </main>
 
+</main>
 
-  <!-- =======================================================
-       FOOTER
-  ======================================================== -->
+<footer>
+  <div class="container">
 
-  <footer>
-
-    <div class="container">
-
-      <div class="footer-grid">
-
-        <div class="footer-brand">
-
-          <a class="brand" href="/">
-            <span class="brand-mark">F</span>
-            <span class="brand-name">
-              Fit<span>Deal</span>Finder
-            </span>
-          </a>
-
-          <p>
-            Een Nederlandse vergelijkingssite voor fitnessproducten,
-            deals en supplementen. Vind sneller wat bij jouw doel en budget past.
-          </p>
-
-        </div>
-
-
-        <div>
-
-          <div class="footer-title">
-            Ontdek
-          </div>
-
-          <div class="footer-links">
-            <a href="#deals">Deals</a>
-            <a href="#categorieen">Categorieën</a>
-            <a href="#planner">Shopping Planner</a>
-            <a href="#coach">AI Coach</a>
-          </div>
-
-        </div>
-
-
-        <div>
-
-          <div class="footer-title">
-            Doelen
-          </div>
-
-          <div class="footer-links">
-            <a href="#deals">Cut</a>
-            <a href="#deals">Bulk</a>
-            <a href="#deals">Lean Bulk</a>
-          </div>
-
-        </div>
-
-
-        <div>
-
-          <div class="footer-title">
-            Informatie
-          </div>
-
-          <div class="footer-links">
-            <a href="/privacy.html">Privacy</a>
-            <a href="/voorwaarden.html">Voorwaarden</a>
-            <a href="/affiliate.html">Affiliate</a>
-          </div>
-
-        </div>
-
+    <div class="footer-inner">
+      <div class="footer-brand">
+        Fit<span>Deal</span>Finder.nl
       </div>
 
-
-      <div class="footer-bottom">
-
-        <span>
-          © 2026 FitDealFinder.nl
-        </span>
-
-        <span>
-          Prijzen en beschikbaarheid kunnen wijzigen.
-        </span>
-
+      <div class="footer-links">
+        <a href="#top">Home</a>
+        <a href="#deals">Deals</a>
+        <a href="#coach">AI Coach</a>
+        <a href="#planner">Planner</a>
       </div>
-
     </div>
 
-  </footer>
+    <div class="footer-note">
+      FitDealFinder is een vergelijkings- en informatiewebsite.
+      Prijzen, voorraad, acties en productinformatie kunnen wijzigen.
+      Controleer de actuele informatie altijd bij de betreffende winkel.
+    </div>
 
+  </div>
+</footer>
 
-  <!-- =======================================================
-       CATEGORY INTERACTION
-       Keeps category cards useful without requiring another API.
-  ======================================================== -->
+<script>
+(() => {
+  "use strict";
 
-  <script>
-    (() => {
-      "use strict";
+  const state = {
+    products: [],
+    goal: "",
+    search: ""
+  };
 
-      const searchInput = document.getElementById("search");
-      const searchForm = document.getElementById("search-form");
-      const categoryButtons = Array.from(
-        document.querySelectorAll("[data-category]")
-      );
+  const $ = (selector) => document.querySelector(selector);
+  const $$ = (selector) => [...document.querySelectorAll(selector)];
 
-      if (searchForm && searchInput) {
-        searchForm.addEventListener("submit", (event) => {
-          event.preventDefault();
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
 
-          searchInput.dispatchEvent(
-            new Event("input", { bubbles: true })
-          );
+  function safeUrl(value) {
+    try {
+      const url = new URL(String(value || ""), window.location.origin);
+      return ["http:", "https:"].includes(url.protocol)
+        ? url.href
+        : "";
+    } catch {
+      return "";
+    }
+  }
 
-          const deals = document.getElementById("deals");
+  function formatPrice(value, currency = "EUR") {
+    const number = Number(value);
 
-          if (deals) {
-            deals.scrollIntoView({
-              behavior: "smooth",
-              block: "start"
-            });
-          }
-        });
+    if (!Number.isFinite(number)) {
+      return "Prijs bekijken";
+    }
+
+    try {
+      return new Intl.NumberFormat("nl-NL", {
+        style: "currency",
+        currency: currency || "EUR"
+      }).format(number);
+    } catch {
+      return `€ ${number.toFixed(2).replace(".", ",")}`;
+    }
+  }
+
+  function getGoals(product) {
+    if (Array.isArray(product.goals)) {
+      return product.goals;
+    }
+
+    if (typeof product.goals !== "string") {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(product.goals);
+
+      if (Array.isArray(parsed)) {
+        return parsed;
       }
+    } catch {}
 
-      categoryButtons.forEach((button) => {
-        button.addEventListener("click", () => {
-          const category = button.dataset.category || "";
+    return product.goals
+      .split(/[|,;]/)
+      .map((value) => value.trim())
+      .filter(Boolean);
+  }
 
-          if (!searchInput || !category) {
-            return;
-          }
+  function goalMatches(product, goal) {
+    if (!goal) {
+      return true;
+    }
 
-          searchInput.value = category.replace(/-/g, " ");
+    const wanted = goal.toLowerCase();
 
-          searchInput.dispatchEvent(
-            new Event("input", { bubbles: true })
-          );
+    return getGoals(product)
+      .map((value) => String(value).toLowerCase())
+      .some((value) => value.includes(wanted));
+  }
 
-          const deals = document.getElementById("deals");
+  function calculateDiscount(product) {
+    const explicit = Number(product.discount_percent);
 
-          if (deals) {
-            deals.scrollIntoView({
-              behavior: "smooth",
-              block: "start"
-            });
-          }
-        });
-      });
-    })();
-  </script>
+    if (Number.isFinite(explicit) && explicit > 0) {
+      return Math.round(explicit);
+    }
 
+    const current = Number(product.price);
+    const old = Number(product.old_price);
 
-  <script src="/app.js" defer></script>
+    if (
+      Number.isFinite(current) &&
+      Number.isFinite(old) &&
+      old > current &&
+      old > 0
+    ) {
+      return Math.round(((old - current) / old) * 100);
+    }
 
-</body>
-</html>
+    return 0;
+  }
+
+  function goalLabel(value) {
+    const text = String(value || "").toLowerCase();
+
+    if (text.includes("cut")) {
+      return "Cut";
+    }
+
+    if (text.includes("lean")) {
+      return "Lean Bulk";
+    }
+
+    if (text.includes("bulk")) {
+      return "Bulk";
+    }
+
+    return "";
+  }
+
+  function renderImage(product) {
+    const imageUrl = safeUrl(product.image_url);
+
+    if (!imageUrl) {
+      return `
+        <div class="image-placeholder">
+          <
