@@ -512,12 +512,12 @@
             method: "POST",
 
             headers: {
-              "Authorization":
-                "Bearer " + secret,
+  "X-Admin-Secret":
+    secret,
 
-              "Accept":
-                "application/json"
-            },
+  "Accept":
+    "application/json"
+},
 
             cache: "no-store"
           }
