@@ -48,31 +48,67 @@
   function normalizeCategory(value) {
     const v = normalize(value);
 
-    if (["preworkout", "pre-workout", "pre workout"].includes(v)) {
+    if (
+      [
+        "preworkout",
+        "pre-workout",
+        "pre workout"
+      ].includes(v)
+    ) {
       return "preworkout";
     }
 
-    if (["vitamine", "vitamins", "vitamines"].includes(v)) {
+    if (
+      [
+        "vitamine",
+        "vitamins",
+        "vitamines"
+      ].includes(v)
+    ) {
       return "vitamins";
     }
 
-    if (["eiwit", "protein", "whey", "proteine"].includes(v)) {
+    if (
+      [
+        "eiwit",
+        "protein",
+        "whey",
+        "proteine"
+      ].includes(v)
+    ) {
       return "whey";
     }
 
-    if (["creatine"].includes(v)) {
+    if (v === "creatine") {
       return "creatine";
     }
 
-    if (["gainer", "weight gainer"].includes(v)) {
+    if (
+      [
+        "gainer",
+        "weight gainer"
+      ].includes(v)
+    ) {
       return "gainer";
     }
 
-    if (["snacks", "protein bars", "protein bar"].includes(v)) {
+    if (
+      [
+        "snacks",
+        "protein bars",
+        "protein bar"
+      ].includes(v)
+    ) {
       return "snacks";
     }
 
-    if (["maaltijden", "meal replacement", "meals"].includes(v)) {
+    if (
+      [
+        "maaltijden",
+        "meal replacement",
+        "meals"
+      ].includes(v)
+    ) {
       return "meals";
     }
 
@@ -90,11 +126,12 @@
 
     try {
       const parsed = JSON.parse(value);
+
       if (Array.isArray(parsed)) {
         return parsed.map(normalize);
       }
     } catch {
-      // Continue with separator parsing.
+      // Gebruik hieronder de normale separator-parser.
     }
 
     return String(value)
@@ -110,10 +147,35 @@
       return "Prijs bekijken";
     }
 
-    return new Intl.NumberFormat("nl-NL", {
-      style: "currency",
-      currency: product.currency || "EUR"
-    }).format(price);
+    const currency = String(product.currency || "EUR").toUpperCase();
+
+    try {
+      return new Intl.NumberFormat("nl-NL", {
+        style: "currency",
+        currency
+      }).format(price);
+    } catch {
+      return `€ ${price.toFixed(2)}`;
+    }
+  }
+
+  function formatOldPrice(product) {
+    const oldPrice = Number(product.old_price);
+
+    if (!Number.isFinite(oldPrice) || oldPrice <= 0) {
+      return "";
+    }
+
+    const currency = String(product.currency || "EUR").toUpperCase();
+
+    try {
+      return new Intl.NumberFormat("nl-NL", {
+        style: "currency",
+        currency
+      }).format(oldPrice);
+    } catch {
+      return `€ ${oldPrice.toFixed(2)}`;
+    }
   }
 
   function getDiscount(product) {
@@ -129,7 +191,9 @@
       return null;
     }
 
-    return Math.round(((oldPrice - price) / oldPrice) * 100);
+    return Math.round(
+      ((oldPrice - price) / oldPrice) * 100
+    );
   }
 
   function productMatches(product) {
@@ -169,6 +233,14 @@
     return true;
   }
 
+  function getProductRedirectUrl(product) {
+    if (!product || product.id === undefined || product.id === null) {
+      return null;
+    }
+
+    return `/go/${encodeURIComponent(String(product.id))}`;
+  }
+
   function renderProducts() {
     if (!productGrid || !productsStatus) {
       return;
@@ -200,6 +272,12 @@
     productGrid.innerHTML = products
       .map((product) => {
         const discount = getDiscount(product);
+        const redirectUrl = getProductRedirectUrl(product);
+
+        if (!redirectUrl) {
+          return "";
+        }
+
         const image = product.image_url
           ? `
             <img
@@ -219,6 +297,7 @@
           <article class="product-card">
             <div class="product-image">
               ${image}
+
               ${
                 discount
                   ? `<span class="deal-badge">-${discount}%</span>`
@@ -228,26 +307,44 @@
 
             <div class="product-content">
               <div class="product-meta">
-                <span>${escapeHtml(product.brand || "Supplement")}</span>
-                <span>${escapeHtml(product.merchant_name || "")}</span>
+                <span>
+                  ${escapeHtml(product.brand || "Supplement")}
+                </span>
+
+                <span>
+                  ${escapeHtml(product.merchant_name || "")}
+                </span>
               </div>
 
-              <h3>${escapeHtml(product.name)}</h3>
+              <h3>
+                ${escapeHtml(product.name)}
+              </h3>
 
               ${
                 product.description
-                  ? `<p>${escapeHtml(product.description).slice(0, 120)}</p>`
+                  ? `
+                    <p>
+                      ${escapeHtml(
+                        String(product.description)
+                          .slice(0, 120)
+                      )}
+                    </p>
+                  `
                   : ""
               }
 
               <div class="product-price">
                 ${formatPrice(product)}
+
                 ${
                   discount
-                    ? `<del>${new Intl.NumberFormat("nl-NL", {
-                        style: "currency",
-                        currency: product.currency || "EUR"
-                      }).format(Number(product.old_price))}</del>`
+                    ? `
+                      <del>
+                        ${escapeHtml(
+                          formatOldPrice(product)
+                        )}
+                      </del>
+                    `
                     : ""
                 }
               </div>
@@ -255,9 +352,10 @@
               <div class="product-actions">
                 <a
                   class="product-button"
-                  href="${escapeHtml(product.product_url)}"
+                  href="${escapeHtml(redirectUrl)}"
                   target="_blank"
                   rel="noopener noreferrer nofollow"
+                  aria-label="Bekijk ${escapeHtml(product.name)} bij ${escapeHtml(product.merchant_name || "de winkel")}"
                 >
                   Bekijk winkel
                 </a>
@@ -277,13 +375,15 @@
     state.loading = true;
 
     if (productsStatus) {
-      productsStatus.textContent = "Producten laden…";
+      productsStatus.textContent =
+        "Producten laden…";
     }
 
     try {
       const response = await fetch(
         "/api/products?limit=100",
         {
+          method: "GET",
           headers: {
             Accept: "application/json"
           },
@@ -292,7 +392,9 @@
       );
 
       if (!response.ok) {
-        throw new Error("Product API unavailable");
+        throw new Error(
+          `Product API returned ${response.status}`
+        );
       }
 
       const payload = await response.json();
@@ -306,17 +408,30 @@
             : [];
 
       state.products = products
-        .filter((product) => product && product.active !== 0)
-        .filter((product) => {
-          return (
+        .filter(
+          (product) =>
+            product &&
+            product.active !== 0
+        )
+        .filter(
+          (product) =>
+            product.id !== undefined &&
+            product.id !== null
+        )
+        .filter(
+          (product) =>
             typeof product.product_url === "string" &&
-            /^https?:\/\//i.test(product.product_url)
-          );
-        });
+            /^https?:\/\//i.test(
+              product.product_url
+            )
+        );
 
       renderProducts();
     } catch (error) {
-      console.error("FitDealFinder product load failed:", error);
+      console.error(
+        "FitDealFinder product load failed:",
+        error
+      );
 
       state.products = [];
 
@@ -328,7 +443,10 @@
       if (productGrid) {
         productGrid.innerHTML = `
           <div class="empty-state">
-            <strong>Producten tijdelijk niet beschikbaar</strong>
+            <strong>
+              Producten tijdelijk niet beschikbaar
+            </strong>
+
             <p>
               Probeer het later opnieuw.
             </p>
@@ -341,131 +459,204 @@
   }
 
   function applyFilters() {
-    state.query = searchInput?.value || "";
-    state.category = categorySelect?.value || "";
-    state.goal = goalSelect?.value || "";
+    state.query =
+      searchInput?.value || "";
+
+    state.category =
+      categorySelect?.value || "";
+
+    state.goal =
+      goalSelect?.value || "";
 
     renderProducts();
   }
 
   function setupFilters() {
-    searchInput?.addEventListener("input", applyFilters);
-    categorySelect?.addEventListener("change", applyFilters);
-    goalSelect?.addEventListener("change", applyFilters);
+    searchInput?.addEventListener(
+      "input",
+      applyFilters
+    );
 
-    document.querySelectorAll("[data-goal-button]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const goal = button.dataset.goalButton || "";
+    categorySelect?.addEventListener(
+      "change",
+      applyFilters
+    );
 
-        state.goal = goal;
+    goalSelect?.addEventListener(
+      "change",
+      applyFilters
+    );
 
-        if (goalSelect) {
-          goalSelect.value = goal;
-        }
+    document
+      .querySelectorAll(
+        "[data-goal-button]"
+      )
+      .forEach((button) => {
+        button.addEventListener(
+          "click",
+          () => {
+            const goal =
+              button.dataset.goalButton || "";
 
-        document
-          .querySelectorAll("[data-goal-button]")
-          .forEach((item) => item.classList.remove("active"));
+            state.goal = goal;
 
-        button.classList.add("active");
+            if (goalSelect) {
+              goalSelect.value = goal;
+            }
 
-        renderProducts();
-      });
-    });
+            document
+              .querySelectorAll(
+                "[data-goal-button]"
+              )
+              .forEach((item) => {
+                item.classList.remove(
+                  "active"
+                );
+              });
 
-    document.querySelectorAll("[data-category]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const category = normalizeCategory(
-          button.dataset.category || ""
+            button.classList.add("active");
+
+            renderProducts();
+          }
         );
-
-        state.category = category;
-
-        if (categorySelect) {
-          categorySelect.value = category;
-        }
-
-        if (searchInput) {
-          searchInput.value = "";
-        }
-
-        renderProducts();
-
-        document
-          .querySelector("#producten")
-          ?.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-          });
       });
-    });
+
+    document
+      .querySelectorAll("[data-category]")
+      .forEach((button) => {
+        button.addEventListener(
+          "click",
+          () => {
+            const category =
+              normalizeCategory(
+                button.dataset.category || ""
+              );
+
+            state.category = category;
+
+            if (categorySelect) {
+              categorySelect.value =
+                category;
+            }
+
+            if (searchInput) {
+              searchInput.value = "";
+            }
+
+            renderProducts();
+
+            document
+              .querySelector("#producten")
+              ?.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+              });
+          }
+        );
+      });
   }
 
   function setupPlanner() {
-    makePlanButton?.addEventListener("click", () => {
-      const budget = Number(budgetInput?.value || 0);
-      const period = periodSelect?.value || "week";
-      const protein = Number(proteinInput?.value || 0);
+    makePlanButton?.addEventListener(
+      "click",
+      () => {
+        const budget =
+          Number(
+            budgetInput?.value || 0
+          );
 
-      if (!plannerResult) {
-        return;
-      }
+        const period =
+          periodSelect?.value || "week";
 
-      if (!Number.isFinite(budget) || budget <= 0) {
-        plannerResult.innerHTML =
-          "<p>Vul eerst een geldig budget in.</p>";
-        return;
-      }
+        const protein =
+          Number(
+            proteinInput?.value || 0
+          );
 
-      const periodText =
-        period === "month" ? "maand" : "week";
+        if (!plannerResult) {
+          return;
+        }
 
-      const suitable = state.products
-        .filter((product) => productMatches(product))
-        .filter((product) => Number(product.price) <= budget)
-        .sort((a, b) => {
-          return Number(a.price) - Number(b.price);
-        })
-        .slice(0, 5);
+        if (
+          !Number.isFinite(budget) ||
+          budget <= 0
+        ) {
+          plannerResult.innerHTML =
+            "<p>Vul eerst een geldig budget in.</p>";
 
-      if (!suitable.length) {
-        plannerResult.innerHTML = `
-          <p>
-            Er is momenteel geen passend product binnen dit budget.
-          </p>
-        `;
-        return;
-      }
+          return;
+        }
 
-      const proteinText =
-        protein > 0
-          ? ` voor ongeveer ${protein} g eiwit per dag`
-          : "";
+        const periodText =
+          period === "month"
+            ? "maand"
+            : "week";
 
-      plannerResult.innerHTML = `
-        <strong>Voorstel voor je ${periodText}${proteinText}</strong>
-        <ul>
-          ${suitable
-            .map(
-              (product) => `
-                <li>
-                  ${escapeHtml(product.name)}
-                  — ${formatPrice(product)}
-                </li>
-              `
+        const suitable =
+          state.products
+            .filter(productMatches)
+            .filter(
+              (product) =>
+                Number(product.price) <=
+                budget
             )
-            .join("")}
-        </ul>
-        <small>
-          Dit is een eenvoudige productselectie en geen medisch of
-          voedingskundig advies.
-        </small>
-      `;
-    });
+            .sort(
+              (a, b) =>
+                Number(a.price) -
+                Number(b.price)
+            )
+            .slice(0, 5);
+
+        if (!suitable.length) {
+          plannerResult.innerHTML = `
+            <p>
+              Er is momenteel geen passend product
+              binnen dit budget.
+            </p>
+          `;
+
+          return;
+        }
+
+        const proteinText =
+          protein > 0
+            ? ` voor ongeveer ${protein} g eiwit per dag`
+            : "";
+
+        plannerResult.innerHTML = `
+          <strong>
+            Voorstel voor je ${periodText}${proteinText}
+          </strong>
+
+          <ul>
+            ${suitable
+              .map(
+                (product) => `
+                  <li>
+                    ${escapeHtml(product.name)}
+                    — ${escapeHtml(
+                      formatPrice(product)
+                    )}
+                  </li>
+                `
+              )
+              .join("")}
+          </ul>
+
+          <small>
+            Dit is een eenvoudige productselectie
+            en geen medisch of voedingskundig advies.
+          </small>
+        `;
+      }
+    );
   }
 
   async function askAI(question) {
-    if (!question.trim()) {
+    const cleanQuestion =
+      String(question || "").trim();
+
+    if (!cleanQuestion) {
       return;
     }
 
@@ -479,22 +670,31 @@
     }
 
     try {
-      const response = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          Accept: "application/json"
-        },
-        body: JSON.stringify({
-          message: question.trim()
-        })
-      });
+      const response =
+        await fetch(
+          "/api/ai/chat",
+          {
+            method: "POST",
+            headers: {
+              "content-type":
+                "application/json",
+              Accept:
+                "application/json"
+            },
+            body: JSON.stringify({
+              message: cleanQuestion
+            })
+          }
+        );
 
       if (!response.ok) {
-        throw new Error("AI request failed");
+        throw new Error(
+          `AI request returned ${response.status}`
+        );
       }
 
-      const payload = await response.json();
+      const payload =
+        await response.json();
 
       const answer =
         payload.answer ||
@@ -504,19 +704,31 @@
 
       if (aiResponse) {
         aiResponse.innerHTML = `
-          <p>${escapeHtml(answer).replaceAll("\n", "<br>")}</p>
+          <p>
+            ${escapeHtml(answer)
+              .replaceAll(
+                "\n",
+                "<br>"
+              )}
+          </p>
+
           <small>
-            De AI geeft algemene informatie en geen medisch advies.
+            De AI geeft algemene informatie
+            en geen medisch advies.
           </small>
         `;
       }
     } catch (error) {
-      console.error("AI request failed:", error);
+      console.error(
+        "AI request failed:",
+        error
+      );
 
       if (aiResponse) {
         aiResponse.innerHTML = `
           <p>
-            De AI Coach is momenteel tijdelijk niet beschikbaar.
+            De AI Coach is momenteel tijdelijk
+            niet beschikbaar.
           </p>
         `;
       }
@@ -528,18 +740,25 @@
   }
 
   function setupAI() {
-    aiForm?.addEventListener("submit", (event) => {
-      event.preventDefault();
+    aiForm?.addEventListener(
+      "submit",
+      (event) => {
+        event.preventDefault();
 
-      askAI(aiInput?.value || "");
-    });
+        askAI(
+          aiInput?.value || ""
+        );
+      }
+    );
   }
 
   function setYear() {
-    const year = $("#current-year");
+    const year =
+      $("#current-year");
 
     if (year) {
-      year.textContent = new Date().getFullYear();
+      year.textContent =
+        new Date().getFullYear();
     }
   }
 
@@ -551,8 +770,14 @@
     loadProducts();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+  if (
+    document.readyState ===
+    "loading"
+  ) {
+    document.addEventListener(
+      "DOMContentLoaded",
+      init
+    );
   } else {
     init();
   }
