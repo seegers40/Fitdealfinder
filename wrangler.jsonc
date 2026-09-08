@@ -1,3 +1,4 @@
+
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "fitdealfinder",
@@ -27,9 +28,5 @@
     "crons": [
       "17 * * * *"
     ]
-  },
-
-  "secrets": {
-    "required": ["ADMIN_SECRET"]
   }
 }
