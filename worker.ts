@@ -402,7 +402,7 @@ function normalizeGoals(
         );
       }
     } catch {
-      // Geen JSON.
+      // Geen JSON; als tekst verwerken.
     }
 
     const goals =
@@ -893,7 +893,7 @@ async function fetchCatalog(
 
 /* =========================================================
    PRODUCT NORMALIZATION
-   Ondersteunt gewone feeds én Shopify products.json
+   Ondersteunt gewone feeds en Shopify products.json
 ========================================================= */
 
 function normalizeProduct(
@@ -902,12 +902,6 @@ function normalizeProduct(
   network: string,
   baseUrl?: string,
 ): ProductInput | null {
-  /*
-   * Shopify:
-   * products[]
-   *   variants[]
-   *   images[]
-   */
   const variants =
     Array.isArray(
       source.variants,
@@ -1017,10 +1011,6 @@ function normalizeProduct(
       firstValue(
         source,
         [
-          "affiliate_url",
-          "affiliateUrl",
-          "deep_link",
-          "deeplink",
           "product_url",
           "productUrl",
           "link",
@@ -1030,12 +1020,6 @@ function normalizeProduct(
       baseUrl,
     );
 
-  /*
-   * Shopify public catalog heeft geen volledige product URL.
-   * Daarvoor gebruiken we de handle:
-   *
-   * /products/{handle}
-   */
   if (
     !productUrl
   ) {
@@ -1062,8 +1046,8 @@ function normalizeProduct(
   }
 
   /*
-   * Alleen echte bruikbare producten importeren.
-   * Geen verzonnen prijs of link.
+   * Geen product zonder echte ID,
+   * naam, prijs en productlink.
    */
   if (
     !externalId ||
@@ -1263,11 +1247,6 @@ function normalizeProduct(
     product_url:
       productUrl,
 
-    /*
-     * Bij directe winkels blijft dit null.
-     * Zodra affiliate feeds worden toegevoegd,
-     * kan deze waarde gevuld worden.
-     */
     affiliate_url:
       affiliateUrl,
 
@@ -1316,7 +1295,7 @@ function normalizeProduct(
 }
 
 /* =========================================================
-   DATABASE HELPERS
+   DATABASE
 ========================================================= */
 
 function chunks<T>(
@@ -1349,12 +1328,6 @@ async function upsertProducts(
   updated: number;
   skipped: number;
 }> {
-  /*
-   * Eerst dedupliceren.
-   *
-   * Zelfde netwerk + external_id
-   * = hetzelfde product.
-   */
   const unique =
     new Map<
       string,
@@ -1375,16 +1348,15 @@ async function upsertProducts(
       unique.values(),
     );
 
+  const now =
+    new Date().toISOString();
+
   let imported = 0;
   let updated = 0;
   let skipped = 0;
 
-  const now =
-    new Date().toISOString();
-
   /*
-   * D1 bindt geen duizenden parameters tegelijk.
-   * Daarom batches van 50.
+   * D1 batches van 50 producten.
    */
   for (
     const batch of chunks(
@@ -1555,32 +1527,7 @@ async function upsertProducts(
               updated_at
             )
             VALUES (
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?,
-              ?
+              ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
             )
             `,
           )
@@ -1617,10 +1564,6 @@ async function upsertProducts(
           imported++;
         }
       } catch {
-        /*
-         * Eén slecht product mag niet de hele import
-         * laten stoppen.
-         */
         skipped++;
       }
     }
@@ -1663,21 +1606,33 @@ function parseDirectCatalogConfig(
           );
         }
 
-        return {
-          merchant:
-            line
-              .slice(
-                0,
-                separator,
-              )
-              .trim(),
+        const merchant =
+          line
+            .slice(
+              0,
+              separator,
+            )
+            .trim();
 
-          url:
-            line
-              .slice(
-                separator + 1,
-              )
-              .trim(),
+        const url =
+          line
+            .slice(
+              separator + 1,
+            )
+            .trim();
+
+        if (
+          !merchant ||
+          !url
+        ) {
+          throw new Error(
+            `Ongeldige DIRECT_CATALOG_URLS-regel: ${line}`,
+          );
+        }
+
+        return {
+          merchant,
+          url,
         };
       },
     );
@@ -1690,7 +1645,15 @@ function parseDirectCatalogConfig(
 async function syncDirectCatalogs(
   env: Env,
 ): Promise<{
-  stores: unknown[];
+  stores: Array<{
+    merchant: string;
+    source: string;
+    received: number;
+    normalized: number;
+    imported: number;
+    updated: number;
+    skipped: number;
+  }>;
 }> {
   const config =
     env.DIRECT_CATALOG_URLS?.trim();
@@ -1701,13 +1664,21 @@ async function syncDirectCatalogs(
     );
   }
 
-  const stores:
-    unknown[] = [];
-
   const catalogs =
     parseDirectCatalogConfig(
       config,
     );
+
+  const stores:
+    Array<{
+      merchant: string;
+      source: string;
+      received: number;
+      normalized: number;
+      imported: number;
+      updated: number;
+      skipped: number;
+    }> = [];
 
   for (
     const catalog of catalogs
@@ -1722,10 +1693,6 @@ async function syncDirectCatalogs(
         feed,
       );
 
-    /*
-     * Voor Shopify en andere relatieve links
-     * gebruiken we de oorsprong van de catalogus-URL.
-     */
     const baseUrl =
       new URL(
         catalog.url,
@@ -1779,12 +1746,18 @@ async function syncDirectCatalogs(
 
 /* =========================================================
    AWIN SYNC
-   Optioneel. Werkt pas wanneer AWIN_FEED_URL is ingesteld.
+   Optioneel.
 ========================================================= */
 
 async function syncAwin(
   env: Env,
-): Promise<unknown> {
+): Promise<{
+  imported: number;
+  updated: number;
+  failed: number;
+  received: number;
+  normalized: number;
+}> {
   if (
     !env.AWIN_FEED_URL?.trim()
   ) {
@@ -1874,9 +1847,18 @@ async function syncAwin(
       .run();
 
     return {
-      ...result,
+      imported:
+        result.imported,
+
+      updated:
+        result.updated,
+
+      failed:
+        result.skipped,
+
       received:
         rawItems.length,
+
       normalized:
         products.length,
     };
@@ -1979,7 +1961,9 @@ async function handleProducts(
         Number.isFinite(
           requestedLimit,
         )
-          ? requestedLimit
+          ? Math.floor(
+              requestedLimit,
+            )
           : 50,
       ),
     );
@@ -2061,52 +2045,24 @@ async function handleProducts(
     );
   }
 
-  const query = `
-    SELECT
-      id,
-      external_id,
-      name,
-      slug,
-      description,
-      brand,
-      category,
-      goals,
-      price,
-      old_price,
-      currency,
-      image_url,
-      product_url,
-      affiliate_url,
-      merchant_name,
-      merchant_id,
-      network,
-      commission,
-      commission_type,
-      in_stock,
-      active,
-      deal_score,
-      discount_percent,
-      last_synced_at,
-      created_at,
-      updated_at
-    FROM products
-    WHERE ${conditions.join(
-      " AND ",
-    )}
-    ORDER BY
-      in_stock DESC,
-      deal_score DESC,
-      updated_at DESC
-    LIMIT ?
-  `;
-
   binds.push(
     limit,
   );
 
   const result =
     await env.DB.prepare(
-      query,
+      `
+      SELECT *
+      FROM products
+      WHERE ${conditions.join(
+        " AND ",
+      )}
+      ORDER BY
+        in_stock DESC,
+        deal_score DESC,
+        updated_at DESC
+      LIMIT ?
+      `,
     )
       .bind(
         ...binds,
@@ -2215,26 +2171,6 @@ async function handleRedirect(
     );
   }
 
-  await env.DB.prepare(
-    `
-    INSERT INTO affiliate_clicks (
-      product_id
-    )
-    VALUES (?)
-    `,
-  )
-    .bind(
-      id,
-    )
-    .run();
-
-  /*
-   * Affiliate URL heeft voorrang zodra die later
-   * daadwerkelijk wordt toegevoegd.
-   *
-   * Zonder affiliate URL gaat de bezoeker rechtstreeks
-   * naar de winkel.
-   */
   const destination =
     safeUrl(
       row.affiliate_url,
@@ -2251,6 +2187,19 @@ async function handleRedirect(
       500,
     );
   }
+
+  await env.DB.prepare(
+    `
+    INSERT INTO affiliate_clicks (
+      product_id
+    )
+    VALUES (?)
+    `,
+  )
+    .bind(
+      id,
+    )
+    .run();
 
   return Response.redirect(
     destination,
@@ -2294,8 +2243,9 @@ async function handleHealth(
 
 /* =========================================================
    ADMIN SYNC
-   Direct catalogi zijn leidend.
-   Awin is optioneel.
+   Directe catalogi eerst.
+   Awin optioneel.
+   Response is compatible met admin.html.
 ========================================================= */
 
 async function handleSync(
@@ -2315,9 +2265,6 @@ async function handleSync(
   }
 
   try {
-    /*
-     * DIRECT eerst.
-     */
     const direct =
       env.DIRECT_CATALOG_URLS?.trim()
         ? await syncDirectCatalogs(
@@ -2327,21 +2274,64 @@ async function handleSync(
             stores: [],
           };
 
-    /*
-     * AWIN alleen als er werkelijk
-     * een feed is ingesteld.
-     */
+    let imported = 0;
+    let updated = 0;
+    let failed = 0;
+
+    for (
+      const store of direct.stores
+    ) {
+      imported +=
+        Number(
+          store.imported ??
+            0,
+        );
+
+      updated +=
+        Number(
+          store.updated ??
+            0,
+        );
+
+      failed +=
+        Number(
+          store.skipped ??
+            0,
+        );
+    }
+
     let awin:
-      unknown = null;
+      | {
+          imported?: number;
+          updated?: number;
+          failed?: number;
+          received?: number;
+          normalized?: number;
+          error?: string;
+        }
+      | null =
+      null;
 
     if (
       env.AWIN_FEED_URL?.trim()
     ) {
       try {
-        awin =
+        const result =
           await syncAwin(
             env,
           );
+
+        awin =
+          result;
+
+        imported +=
+          result.imported;
+
+        updated +=
+          result.updated;
+
+        failed +=
+          result.failed;
       } catch (
         error
       ) {
@@ -2351,13 +2341,23 @@ async function handleSync(
               ? error.message
               : String(error),
         };
+
+        failed++;
       }
     }
 
     return json({
       ok: true,
-      direct,
-      awin,
+
+      sync: {
+        imported,
+        updated,
+        failed,
+
+        direct,
+
+        awin,
+      },
     });
   } catch (
     error
@@ -2397,9 +2397,37 @@ async function handleDirectSync(
         env,
       );
 
+    let imported = 0;
+    let updated = 0;
+    let failed = 0;
+
+    for (
+      const store of result.stores
+    ) {
+      imported +=
+        store.imported;
+
+      updated +=
+        store.updated;
+
+      failed +=
+        store.skipped;
+    }
+
     return json({
       ok: true,
-      ...result,
+
+      sync: {
+        imported,
+        updated,
+        failed,
+
+        direct:
+          result,
+
+        awin:
+          null,
+      },
     });
   } catch (
     error
@@ -2520,35 +2548,17 @@ async function handleAi(
                 "system",
 
               content:
-                `
-Je bent de FitDealFinder Supplement Coach.
-
-Geef nuchtere, algemene informatie over:
-- supplementen
-- eiwitten
-- creatine
-- pre-workout
-- cut
-- bulk
-- lean bulk
-- herstel
-- voeding rondom training
-
-Doe geen medische diagnose.
-Beloof geen resultaten.
-Geef geen medische behandeling.
-Verwijs bij medische vragen naar een arts of apotheker.
-
-Verzin nooit:
-- prijzen
-- kortingen
-- voorraad
-- producteigenschappen
-- winkels
-- links
-
-Als informatie ontbreekt, zeg dat eerlijk.
-              `.trim(),
+                [
+                  "Je bent de FitDealFinder Supplement Coach.",
+                  "Geef nuchtere, algemene informatie over supplementen, eiwitten, creatine, pre-workout, cut, bulk, lean bulk, herstel en voeding rondom training.",
+                  "Doe geen medische diagnose en geef geen medische behandeling.",
+                  "Beloof geen resultaten.",
+                  "Verzin nooit prijzen, kortingen, voorraad, producteigenschappen, winkels of links.",
+                  "Als informatie ontbreekt, zeg dat eerlijk.",
+                  "Bij medische vragen: adviseer contact met een arts of apotheker.",
+                ].join(
+                  "\n",
+                ),
             },
 
             {
@@ -2562,17 +2572,21 @@ Als informatie ontbreekt, zeg dat eerlijk.
         },
       );
 
+    const record =
+      asRecord(
+        result,
+      );
+
     const answer =
       typeof result ===
       "string"
         ? result
-        : asRecord(
-            result,
-          ).response ??
+        : record.response ??
           result;
 
     return json({
       ok: true,
+
       answer,
     });
   } catch (
@@ -2607,9 +2621,6 @@ async function serveAsset(
     return response;
   }
 
-  /*
-   * SPA fallback.
-   */
   return env.ASSETS.fetch(
     new Request(
       new URL(
@@ -2651,7 +2662,7 @@ export default {
       }
 
       /*
-       * Product list
+       * Productlijst
        */
       if (
         url.pathname ===
@@ -2666,7 +2677,7 @@ export default {
       }
 
       /*
-       * Product detail
+       * Productdetail
        */
       if (
         url.pathname.startsWith(
@@ -2692,7 +2703,7 @@ export default {
       }
 
       /*
-       * AI
+       * AI Coach
        */
       if (
         url.pathname ===
@@ -2705,10 +2716,10 @@ export default {
       }
 
       /*
-       * Algemene admin sync.
+       * Algemene synchronisatie.
        *
-       * DIRECT wordt uitgevoerd.
-       * AWIN is optioneel.
+       * Directe catalogi worden uitgevoerd.
+       * Awin alleen indien ingesteld.
        */
       if (
         url.pathname ===
@@ -2738,7 +2749,7 @@ export default {
       }
 
       /*
-       * Sync logs.
+       * Synchronisatielogs.
        */
       if (
         url.pathname ===
@@ -2753,7 +2764,7 @@ export default {
       }
 
       /*
-       * Product redirect.
+       * Productlink.
        */
       if (
         url.pathname.startsWith(
@@ -2771,7 +2782,7 @@ export default {
       }
 
       /*
-       * Website.
+       * Website-assets.
        */
       return serveAsset(
         request,
@@ -2791,9 +2802,6 @@ export default {
 
   /*
    * Automatische synchronisatie.
-   *
-   * Directe catalogi worden automatisch bijgewerkt.
-   * Awin alleen wanneer ingesteld.
    */
   async scheduled(
     _controller: ScheduledController,
@@ -2825,3 +2833,4 @@ export default {
     }
   },
 };
+      
