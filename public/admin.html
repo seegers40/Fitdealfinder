@@ -1,10 +1,19 @@
+
 <!doctype html>
 <html lang="nl">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>FitDealFinder — Beheer</title>
+<head>
+
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+
+  <title>
+    FitDealFinder — Beheer
+  </title>
 
   <meta
     name="robots"
@@ -12,6 +21,7 @@
   >
 
   <style>
+
     :root {
       --navy: #07111f;
       --navy-2: #0d1c2e;
@@ -32,6 +42,7 @@
     body {
       margin: 0;
       min-height: 100vh;
+
       background:
         radial-gradient(
           circle at top right,
@@ -39,7 +50,9 @@
           transparent 35%
         ),
         var(--page);
+
       color: var(--white);
+
       font-family:
         Inter,
         ui-sans-serif,
@@ -61,27 +74,44 @@
     }
 
     .wrap {
-      width: min(100% - 32px, 900px);
+      width:
+        min(
+          100% - 32px,
+          900px
+        );
+
       margin: 0 auto;
     }
 
     header {
-      border-bottom: 1px solid var(--border);
-      background: rgba(5,11,20,.9);
-      backdrop-filter: blur(12px);
+      border-bottom:
+        1px solid var(--border);
+
+      background:
+        rgba(5,11,20,.9);
+
+      backdrop-filter:
+        blur(12px);
     }
 
     .header-inner {
       min-height: 72px;
+
       display: flex;
+
       align-items: center;
-      justify-content: space-between;
+
+      justify-content:
+        space-between;
+
       gap: 20px;
     }
 
     .logo {
       font-size: 21px;
+
       font-weight: 900;
+
       letter-spacing: -.5px;
     }
 
@@ -91,6 +121,7 @@
 
     .back {
       color: var(--muted);
+
       font-size: 14px;
     }
 
@@ -99,7 +130,8 @@
     }
 
     main {
-      padding: 55px 0 80px;
+      padding:
+        55px 0 80px;
     }
 
     .hero {
@@ -108,40 +140,72 @@
 
     .eyebrow {
       display: inline-flex;
-      padding: 7px 11px;
+
+      padding:
+        7px 11px;
+
       border-radius: 999px;
-      background: rgba(103,229,162,.1);
+
+      background:
+        rgba(103,229,162,.1);
+
       color: var(--green);
+
       font-size: 12px;
+
       font-weight: 800;
-      text-transform: uppercase;
+
+      text-transform:
+        uppercase;
+
       letter-spacing: .08em;
     }
 
     h1 {
-      margin: 16px 0 10px;
-      font-size: clamp(32px, 6vw, 52px);
+      margin:
+        16px 0 10px;
+
+      font-size:
+        clamp(
+          32px,
+          6vw,
+          52px
+        );
+
       line-height: 1;
-      letter-spacing: -1.8px;
+
+      letter-spacing:
+        -1.8px;
     }
 
     .hero p {
       margin: 0;
+
       max-width: 650px;
+
       color: var(--muted);
+
       line-height: 1.7;
     }
 
     .card {
-      background: linear-gradient(
-        145deg,
-        rgba(20,41,66,.96),
-        rgba(13,28,46,.96)
-      );
-      border: 1px solid var(--border);
+      background:
+        linear-gradient(
+          145deg,
+          rgba(20,41,66,.96),
+          rgba(13,28,46,.96)
+        );
+
+      border:
+        1px solid var(--border);
+
       border-radius: 24px;
+
       padding: 28px;
-      box-shadow: 0 25px 70px rgba(0,0,0,.22);
+
+      box-shadow:
+        0 25px 70px
+        rgba(0,0,0,.22);
     }
 
     .card + .card {
@@ -150,49 +214,83 @@
 
     label {
       display: block;
+
       margin-bottom: 9px;
+
       font-size: 14px;
+
       font-weight: 800;
     }
 
     .hint {
-      margin: 0 0 16px;
+      margin:
+        0 0 16px;
+
       color: var(--muted);
+
       font-size: 13px;
+
       line-height: 1.6;
     }
 
     .input-row {
       display: flex;
+
       gap: 12px;
     }
 
     input {
       width: 100%;
+
       min-height: 50px;
-      padding: 0 15px;
-      border: 1px solid rgba(255,255,255,.14);
+
+      padding:
+        0 15px;
+
+      border:
+        1px solid
+        rgba(255,255,255,.14);
+
       border-radius: 13px;
+
       outline: none;
-      background: rgba(0,0,0,.2);
+
+      background:
+        rgba(0,0,0,.2);
+
       color: var(--white);
     }
 
     input:focus {
-      border-color: var(--green);
-      box-shadow: 0 0 0 3px rgba(103,229,162,.1);
+      border-color:
+        var(--green);
+
+      box-shadow:
+        0 0 0 3px
+        rgba(103,229,162,.1);
     }
 
     button {
       min-height: 50px;
+
       border: 0;
+
       border-radius: 13px;
-      padding: 0 22px;
+
+      padding:
+        0 22px;
+
       cursor: pointer;
-      background: var(--green);
+
+      background:
+        var(--green);
+
       color: #06130d;
+
       font-weight: 900;
+
       white-space: nowrap;
+
       transition:
         transform .15s ease,
         background .15s ease,
@@ -200,24 +298,38 @@
     }
 
     button:hover {
-      background: var(--green-strong);
-      transform: translateY(-1px);
+      background:
+        var(--green-strong);
+
+      transform:
+        translateY(-1px);
     }
 
     button:disabled {
       cursor: wait;
+
       opacity: .55;
+
       transform: none;
     }
 
     .status {
       display: none;
+
       margin-top: 20px;
+
       padding: 16px;
+
+      border:
+        1px solid var(--border);
+
       border-radius: 14px;
-      border: 1px solid var(--border);
-      background: rgba(0,0,0,.18);
+
+      background:
+        rgba(0,0,0,.18);
+
       line-height: 1.6;
+
       font-size: 14px;
     }
 
@@ -226,47 +338,66 @@
     }
 
     .status.success {
-      border-color: rgba(103,229,162,.35);
+      border-color:
+        rgba(103,229,162,.35);
+
       color: var(--green);
     }
 
     .status.error {
-      border-color: rgba(227,92,104,.4);
+      border-color:
+        rgba(227,92,104,.4);
+
       color: #ff9ca5;
     }
 
     .status.info {
-      color: var(--muted-light, #c5cfdb);
+      color:
+        var(--muted-light, #c5cfdb);
     }
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+
+      grid-template-columns:
+        repeat(3, 1fr);
+
       gap: 12px;
+
       margin-top: 20px;
     }
 
     .stat {
       padding: 18px;
+
       border-radius: 16px;
-      background: rgba(0,0,0,.18);
-      border: 1px solid var(--border);
+
+      background:
+        rgba(0,0,0,.18);
+
+      border:
+        1px solid var(--border);
     }
 
     .stat-value {
       font-size: 28px;
+
       font-weight: 900;
     }
 
     .stat-label {
       margin-top: 3px;
+
       color: var(--muted);
+
       font-size: 12px;
     }
 
     .warning {
       color: var(--muted);
+
       font-size: 13px;
+
       line-height: 1.7;
     }
 
@@ -275,6 +406,7 @@
     }
 
     @media (max-width: 650px) {
+
       .input-row {
         flex-direction: column;
       }
@@ -290,14 +422,19 @@
       .card {
         padding: 21px;
       }
+
     }
+
   </style>
+
 </head>
 
 <body>
 
 <header>
+
   <div class="wrap header-inner">
+
     <a
       class="logo"
       href="/"
@@ -311,23 +448,36 @@
     >
       ← Terug naar website
     </a>
+
   </div>
+
 </header>
 
+
 <main>
+
   <div class="wrap">
 
     <section class="hero">
-      <span class="eyebrow">Beheer</span>
 
-      <h1>Producten synchroniseren</h1>
+      <span class="eyebrow">
+        Beheer
+      </span>
+
+      <h1>
+        Producten synchroniseren
+      </h1>
 
       <p>
-        Hiermee haalt FitDealFinder de actuele productgegevens
-        van de ingestelde winkels op en slaat deze op in de
+        Hiermee haalt FitDealFinder
+        de actuele productgegevens
+        van de ingestelde winkels op
+        en slaat deze op in de
         productdatabase.
       </p>
+
     </section>
+
 
     <section class="card">
 
@@ -336,11 +486,19 @@
       </label>
 
       <p class="hint">
-        Vul hier dezelfde <strong>ADMIN_SECRET</strong> in die
-        je in Cloudflare als Secret hebt ingesteld.
-        Deze waarde wordt alleen voor deze synchronisatie gebruikt
-        en niet opgeslagen in de browser.
+
+        Vul hier dezelfde
+        <strong>ADMIN_SECRET</strong>
+        in die je in Cloudflare als
+        Secret hebt ingesteld.
+
+        Deze waarde wordt alleen
+        voor deze synchronisatie
+        gebruikt en niet opgeslagen
+        in de browser.
+
       </p>
+
 
       <div class="input-row">
 
@@ -360,6 +518,7 @@
 
       </div>
 
+
       <div
         id="status"
         class="status"
@@ -367,12 +526,15 @@
         aria-live="polite"
       ></div>
 
+
       <div
         id="stats"
         class="stats"
         hidden
       >
+
         <div class="stat">
+
           <div
             id="imported"
             class="stat-value"
@@ -383,9 +545,12 @@
           <div class="stat-label">
             Nieuwe producten
           </div>
+
         </div>
 
+
         <div class="stat">
+
           <div
             id="updated"
             class="stat-value"
@@ -396,9 +561,12 @@
           <div class="stat-label">
             Bijgewerkte producten
           </div>
+
         </div>
 
+
         <div class="stat">
+
           <div
             id="failed"
             class="stat-value"
@@ -409,237 +577,311 @@
           <div class="stat-label">
             Mislukte producten
           </div>
+
         </div>
+
       </div>
 
     </section>
 
+
     <section class="card">
+
       <p class="warning">
+
         <strong>Belangrijk:</strong>
-        deze pagina start alleen de synchronisatie.
-        De prijzen worden door de Worker opgehaald en niet
-        handmatig door deze pagina ingevuld.
+
+        deze pagina start alleen de
+        synchronisatie.
+
+        De prijzen worden door de
+        Worker opgehaald en niet
+        handmatig door deze pagina
+        ingevuld.
+
       </p>
+
     </section>
 
   </div>
+
 </main>
 
+
 <script>
-  "use strict";
 
-  const secretInput =
-    document.getElementById("secret");
-
-  const syncButton =
-    document.getElementById("syncButton");
-
-  const statusBox =
-    document.getElementById("status");
-
-  const statsBox =
-    document.getElementById("stats");
-
-  const importedBox =
-    document.getElementById("imported");
-
-  const updatedBox =
-    document.getElementById("updated");
-
-  const failedBox =
-    document.getElementById("failed");
+"use strict";
 
 
-  function showStatus(
-    message,
-    type
-  ) {
-    statusBox.textContent = message;
-
-    statusBox.className =
-      "status show " + type;
-  }
+const secretInput =
+  document.getElementById(
+    "secret"
+  );
 
 
-  function showStats(
-    sync
-  ) {
-    importedBox.textContent =
-      Number(sync.imported || 0);
-
-    updatedBox.textContent =
-      Number(sync.updated || 0);
-
-    failedBox.textContent =
-      Number(sync.failed || 0);
-
-    statsBox.hidden = false;
-  }
+const syncButton =
+  document.getElementById(
+    "syncButton"
+  );
 
 
-  async function synchronizeProducts() {
+const statusBox =
+  document.getElementById(
+    "status"
+  );
 
-    const secret =
-      secretInput.value.trim();
 
-    if (!secret) {
-      showStatus(
-        "Vul eerst je ADMIN_SECRET in.",
-        "error"
-      );
+const statsBox =
+  document.getElementById(
+    "stats"
+  );
 
-      secretInput.focus();
 
-      return;
-    }
+const importedBox =
+  document.getElementById(
+    "imported"
+  );
 
-    syncButton.disabled = true;
 
-    statsBox.hidden = true;
+const updatedBox =
+  document.getElementById(
+    "updated"
+  );
+
+
+const failedBox =
+  document.getElementById(
+    "failed"
+  );
+
+
+function showStatus(
+  message,
+  type
+) {
+
+  statusBox.textContent =
+    message;
+
+  statusBox.className =
+    "status show " + type;
+}
+
+
+function showStats(
+  sync
+) {
+
+  importedBox.textContent =
+    Number(
+      sync.imported || 0
+    );
+
+  updatedBox.textContent =
+    Number(
+      sync.updated || 0
+    );
+
+  failedBox.textContent =
+    Number(
+      sync.failed || 0
+    );
+
+  statsBox.hidden = false;
+}
+
+
+async function synchronizeProducts() {
+
+  const secret =
+    secretInput.value.trim();
+
+
+  if (!secret) {
 
     showStatus(
-      "Synchronisatie gestart. Even geduld...",
-      "info"
+      "Vul eerst je ADMIN_SECRET in.",
+      "error"
     );
+
+    secretInput.focus();
+
+    return;
+  }
+
+
+  syncButton.disabled = true;
+
+  statsBox.hidden = true;
+
+
+  showStatus(
+    "Synchronisatie gestart. Even geduld...",
+    "info"
+  );
+
+
+  try {
+
+    const response =
+      await fetch(
+        "/api/admin/sync",
+        {
+          method: "POST",
+
+          headers: {
+            "X-Admin-Secret":
+              secret,
+
+            "Authorization":
+              "Bearer " + secret,
+
+            "Accept":
+              "application/json"
+          },
+
+          cache: "no-store"
+        }
+      );
+
+
+    let data = null;
+
 
     try {
 
-      const response =
-        await fetch(
-          "/api/admin/sync",
-          {
-            method: "POST",
+      data =
+        await response.json();
 
-            headers: {
-  "X-Admin-Secret":
-    secret,
+    } catch {
 
-  "Accept":
-    "application/json"
-},
+      data = null;
 
-            cache: "no-store"
-          }
-        );
+    }
 
 
-      let data = null;
+    if (!response.ok) {
 
-      try {
-        data =
-          await response.json();
-      } catch {
-        data = null;
-      }
+      const message =
+        data &&
+        typeof data.error ===
+          "string"
+          ? data.error
+          : "De synchronisatie is mislukt.";
 
-
-      if (!response.ok) {
-
-        const message =
-          data &&
-          typeof data.error === "string"
-            ? data.error
-            : "De synchronisatie is mislukt.";
-
-        throw new Error(message);
-      }
+      throw new Error(
+        message
+      );
+    }
 
 
-      if (
-        !data ||
-        !data.sync
-      ) {
-        throw new Error(
-          "De Worker gaf geen geldig synchronisatieresultaat terug."
-        );
-      }
+    if (
+      !data ||
+      !data.sync
+    ) {
+
+      throw new Error(
+        "De Worker gaf geen geldig synchronisatieresultaat terug."
+      );
+
+    }
 
 
-      showStats(
-        data.sync
+    showStats(
+      data.sync
+    );
+
+
+    const imported =
+      Number(
+        data.sync.imported || 0
       );
 
 
-      const imported =
-        Number(
-          data.sync.imported || 0
-        );
-
-      const updated =
-        Number(
-          data.sync.updated || 0
-        );
-
-      const failed =
-        Number(
-          data.sync.failed || 0
-        );
+    const updated =
+      Number(
+        data.sync.updated || 0
+      );
 
 
-      if (failed > 0) {
+    const failed =
+      Number(
+        data.sync.failed || 0
+      );
 
-        showStatus(
-          "Synchronisatie voltooid met " +
-          failed +
-          " fout" +
-          (failed === 1 ? "" : "en") +
-          ". Nieuwe producten: " +
-          imported +
-          ". Bijgewerkt: " +
-          updated +
-          ".",
-          "error"
-        );
 
-      } else {
-
-        showStatus(
-          "Synchronisatie voltooid. " +
-          imported +
-          " nieuwe producten en " +
-          updated +
-          " producten bijgewerkt.",
-          "success"
-        );
-      }
-
-    } catch (error) {
+    if (failed > 0) {
 
       showStatus(
-        error instanceof Error
-          ? error.message
-          : "Er is een onbekende fout opgetreden.",
+        "Synchronisatie voltooid met " +
+        failed +
+        " fout" +
+        (
+          failed === 1
+            ? ""
+            : "en"
+        ) +
+        ". Nieuwe producten: " +
+        imported +
+        ". Bijgewerkt: " +
+        updated +
+        ".",
         "error"
       );
 
-    } finally {
+    } else {
 
-      syncButton.disabled = false;
+      showStatus(
+        "Synchronisatie voltooid. " +
+        imported +
+        " nieuwe producten en " +
+        updated +
+        " producten bijgewerkt.",
+        "success"
+      );
+
     }
+
+  } catch (error) {
+
+    showStatus(
+      error instanceof Error
+        ? error.message
+        : "Er is een onbekende fout opgetreden.",
+      "error"
+    );
+
+  } finally {
+
+    syncButton.disabled =
+      false;
+
   }
 
-
-  syncButton.addEventListener(
-    "click",
-    synchronizeProducts
-  );
+}
 
 
-  secretInput.addEventListener(
-    "keydown",
-    function(event) {
+syncButton.addEventListener(
+  "click",
+  synchronizeProducts
+);
 
-      if (
-        event.key === "Enter"
-      ) {
-        synchronizeProducts();
-      }
 
+secretInput.addEventListener(
+  "keydown",
+  function(event) {
+
+    if (
+      event.key === "Enter"
+    ) {
+      synchronizeProducts();
     }
-  );
+
+  }
+);
 
 </script>
 
 </body>
+
 </html>
