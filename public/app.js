@@ -18,7 +18,7 @@ const state = {
 };
 
 /* =========================================================
-   ALGEMENE HELPERS
+   HELPERS
 ========================================================= */
 
 function clean(value) {
@@ -43,7 +43,7 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function isValidUrl(value) {
+function validUrl(value) {
   try {
     const url = new URL(value, window.location.origin);
     return url.protocol === "http:" || url.protocol === "https:";
@@ -52,32 +52,19 @@ function isValidUrl(value) {
   }
 }
 
-function price(product) {
+function productPrice(product) {
   const value = Number(product?.price);
-
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-
-  return value;
+  return Number.isFinite(value) ? value : 0;
 }
 
-function formatMoney(value, currency = "EUR") {
+function money(value, currency = "EUR") {
   return new Intl.NumberFormat("nl-NL", {
     style: "currency",
     currency
   }).format(Number(value) || 0);
 }
 
-function discount(product) {
-  const value = Number(product?.discount_percent);
-
-  return Number.isFinite(value) && value > 0
-    ? Math.round(value)
-    : 0;
-}
-
-function searchableText(product) {
+function productText(product) {
   return normalize([
     product?.name,
     product?.brand,
@@ -87,11 +74,18 @@ function searchableText(product) {
   ].join(" "));
 }
 
+function discount(product) {
+  const value = Number(product?.discount_percent);
+  return Number.isFinite(value) && value > 0
+    ? Math.round(value)
+    : 0;
+}
+
 /* =========================================================
-   PRODUCT UITSLUITEN
+   NIET-GESCHIKTE PRODUCTEN
 ========================================================= */
 
-const EXCLUDED_WORDS = [
+const EXCLUDED_TERMS = [
   "voedingsschema",
   "voedingsschema's",
   "voedingsplan",
@@ -108,16 +102,17 @@ const EXCLUDED_WORDS = [
 
   "drinkbeker",
   "drinkbekers",
-  "shaker",
-  "shaker bottle",
   "waterfles",
   "water bottle",
   "drinkfles",
   "bidon",
 
-  "shirt",
+  "shaker",
+  "shaker bottle",
+
   "t shirt",
   "t-shirt",
+  "shirt",
   "hoodie",
   "trui",
   "broek",
@@ -129,8 +124,6 @@ const EXCLUDED_WORDS = [
 
   "sporttas",
   "gym bag",
-  "tas",
-
   "handdoek",
   "handdoeken",
 
@@ -146,135 +139,39 @@ const EXCLUDED_WORDS = [
 
   "coaching",
   "coachingspakket",
-  "schema op maat",
-  "advies op maat"
-];
-
-const SUPPLEMENT_WORDS = [
-  "whey",
-  "protein",
-  "proteine",
-  "eiwit",
-  "isolate",
-  "isolaat",
-  "clear whey",
-  "casein",
-  "caseine",
-  "caseïne",
-  "vegan protein",
-  "plant protein",
-  "egg protein",
-  "beef protein",
-
-  "creatine",
-  "creatine monohydraat",
-  "creatine monohydrate",
-
-  "pre workout",
-  "pre-workout",
-  "preworkout",
-  "pump",
-  "citrulline",
-  "beta alanine",
-  "beta-alanine",
-  "nox",
-
-  "bcaa",
-  "eaa",
-  "amino",
-  "amino acids",
-
-  "gainer",
-  "mass gainer",
-  "weight gainer",
-  "mass builder",
-
-  "carbo",
-  "carbs",
-  "koolhydraten",
-  "dextrose",
-  "maltodextrine",
-  "glucose",
-
-  "electrolyte",
-  "electrolytes",
-  "electrolyt",
-
-  "vitamin",
-  "vitamine",
-  "multivitamin",
-  "multivitamine",
-  "magnesium",
-  "zinc",
-  "zink",
-  "omega",
-  "fish oil",
-  "visolie",
-
-  "fat burner",
-  "fatburner",
-  "thermogenic",
-
-  "collagen",
-  "collageen",
-
-  "glutamine",
-  "supplement",
-  "supplementen"
+  "schema op maat"
 ];
 
 function isExcluded(product) {
   const name = normalize(product?.name);
   const category = normalize(product?.category);
-  const description = normalize(product?.description);
 
-  return EXCLUDED_WORDS.some(word => {
-    const term = normalize(word);
+  return EXCLUDED_TERMS.some(term => {
+    const t = normalize(term);
 
     return (
-      name.includes(term) ||
-      category.includes(term) ||
-      (
-        term.length >= 7 &&
-        description.includes(term)
-      )
+      name.includes(t) ||
+      category.includes(t)
     );
   });
 }
 
-function isSupplement(product) {
-  if (!product || isExcluded(product)) {
-    return false;
-  }
-
-  const text = searchableText(product);
-
-  return SUPPLEMENT_WORDS.some(word =>
-    text.includes(normalize(word))
-  );
-}
-
 function productIsUsable(product) {
   if (!product) return false;
-
   if (!clean(product.id)) return false;
   if (!clean(product.name)) return false;
-  if (!isValidUrl(product.product_url)) return false;
+  if (!validUrl(product.product_url)) return false;
 
-  if (product.in_stock === 0 || product.in_stock === false) {
-    return false;
-  }
-
-  return isSupplement(product);
+  return !isExcluded(product);
 }
 
 /* =========================================================
-   DOELCLASSIFICATIE
+   DOELEN
 ========================================================= */
 
-const GOALS = {
+const GOAL_RULES = {
   cut: {
-    include: [
+    positive: [
       "whey",
       "protein",
       "proteine",
@@ -284,7 +181,6 @@ const GOALS = {
       "clear whey",
       "casein",
       "caseine",
-      "caseïne",
       "creatine",
       "pre workout",
       "pre-workout",
@@ -303,7 +199,7 @@ const GOALS = {
       "fatburner",
       "thermogenic"
     ],
-    exclude: [
+    negative: [
       "mass gainer",
       "weight gainer",
       "gainer",
@@ -314,7 +210,7 @@ const GOALS = {
   },
 
   bulk: {
-    include: [
+    positive: [
       "mass gainer",
       "weight gainer",
       "gainer",
@@ -334,7 +230,7 @@ const GOALS = {
       "eaa",
       "bcaa"
     ],
-    exclude: [
+    negative: [
       "fat burner",
       "fatburner",
       "thermogenic"
@@ -342,7 +238,7 @@ const GOALS = {
   },
 
   "lean-bulk": {
-    include: [
+    positive: [
       "whey",
       "protein",
       "proteine",
@@ -352,7 +248,6 @@ const GOALS = {
       "clear whey",
       "casein",
       "caseine",
-      "caseïne",
       "creatine",
       "pre workout",
       "pre-workout",
@@ -363,13 +258,15 @@ const GOALS = {
       "collagen",
       "collageen"
     ],
-    exclude: [
-      "fat burner",
-      "fatburner",
-      "thermogenic",
+    negative: [
       "mass gainer",
       "weight gainer",
-      "mega calorie"
+      "gainer",
+      "mass builder",
+      "mega calorie",
+      "fat burner",
+      "fatburner",
+      "thermogenic"
     ]
   }
 };
@@ -381,36 +278,36 @@ function matchesGoal(product, goal) {
     return true;
   }
 
-  if (!productIsUsable(product)) {
-    return false;
-  }
-
-  const rules = GOALS[selected];
+  const rules = GOAL_RULES[selected];
 
   if (!rules) {
     return false;
   }
 
-  const text = searchableText(product);
+  if (!productIsUsable(product)) {
+    return false;
+  }
+
+  const text = productText(product);
 
   if (
-    rules.exclude.some(term =>
+    rules.negative.some(term =>
       text.includes(normalize(term))
     )
   ) {
     return false;
   }
 
-  return rules.include.some(term =>
+  return rules.positive.some(term =>
     text.includes(normalize(term))
   );
 }
 
 /* =========================================================
-   CATEGORIEËN
+   RUBRIEKEN
 ========================================================= */
 
-const CATEGORIES = {
+const CATEGORY_RULES = {
   proteine: [
     "whey",
     "protein",
@@ -468,18 +365,17 @@ const CATEGORIES = {
 
 function matchesCategory(product, category) {
   const selected = normalize(category);
+  const terms = CATEGORY_RULES[selected];
 
   if (!selected) {
     return true;
   }
 
-  const terms = CATEGORIES[selected];
-
   if (!terms || !productIsUsable(product)) {
     return false;
   }
 
-  const text = searchableText(product);
+  const text = productText(product);
 
   return terms.some(term =>
     text.includes(normalize(term))
@@ -487,7 +383,7 @@ function matchesCategory(product, category) {
 }
 
 /* =========================================================
-   SORTERING
+   SORTEREN
 ========================================================= */
 
 function sortProducts(products) {
@@ -506,15 +402,15 @@ function sortProducts(products) {
       return scoreB - scoreA;
     }
 
-    return price(a) - price(b);
+    return productPrice(a) - productPrice(b);
   });
 }
 
 /* =========================================================
-   PRODUCT API
+   PRODUCTEN LADEN
 ========================================================= */
 
-async function fetchProductPage(offset) {
+async function fetchProducts(offset) {
   const params = new URLSearchParams();
 
   params.set("limit", String(PAGE_SIZE));
@@ -531,7 +427,7 @@ async function fetchProductPage(offset) {
 
   if (!response.ok) {
     throw new Error(
-      `Product API fout: ${response.status}`
+      `API fout ${response.status}`
     );
   }
 
@@ -543,23 +439,21 @@ async function loadProducts() {
   updateCount();
 
   try {
-    const products = [];
+    const allProducts = [];
     let offset = 0;
 
-    while (products.length < MAX_PRODUCTS) {
-      const data =
-        await fetchProductPage(offset);
+    while (allProducts.length < MAX_PRODUCTS) {
+      const data = await fetchProducts(offset);
 
-      const page =
-        Array.isArray(data?.products)
-          ? data.products
-          : [];
+      const page = Array.isArray(data?.products)
+        ? data.products
+        : [];
 
       if (page.length === 0) {
         break;
       }
 
-      products.push(...page);
+      allProducts.push(...page);
 
       if (page.length < PAGE_SIZE) {
         break;
@@ -568,18 +462,17 @@ async function loadProducts() {
       offset += page.length;
     }
 
-    /*
-     * HIER wordt de harde kwaliteitsfilter toegepast.
-     * Alles wat geen echt supplement is verdwijnt.
-     */
     state.products = sortProducts(
-      products.filter(productIsUsable)
+      allProducts.filter(productIsUsable)
     );
 
     applyFilters();
 
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Producten laden mislukt:",
+      error
+    );
 
     const grid =
       document.querySelector("#products-grid");
@@ -588,12 +481,11 @@ async function loadProducts() {
       grid.innerHTML = `
         <div style="
           grid-column:1/-1;
-          padding:25px;
-          border-radius:16px;
-          color:#dbe5f0;
-          background:#111d2f;
+          padding:30px;
+          text-align:center;
+          color:#9eacbd;
         ">
-          Producten konden tijdelijk niet worden geladen.
+          Producten konden niet worden geladen.
           Vernieuw de pagina opnieuw.
         </div>
       `;
@@ -605,47 +497,39 @@ async function loadProducts() {
 }
 
 /* =========================================================
-   FILTERS
+   FILTEREN
 ========================================================= */
 
 function applyFilters() {
-  const search =
-    normalize(state.search);
+  const search = normalize(state.search);
+  const goal = normalize(state.goal);
+  const category = normalize(state.category);
 
-  const goal =
-    normalize(state.goal);
+  state.filtered = state.products.filter(product => {
 
-  const category =
-    normalize(state.category);
+    if (
+      search &&
+      !productText(product).includes(search)
+    ) {
+      return false;
+    }
 
-  state.filtered =
-    state.products.filter(product => {
+    if (
+      goal &&
+      !matchesGoal(product, goal)
+    ) {
+      return false;
+    }
 
-      if (search) {
-        if (
-          !searchableText(product)
-            .includes(search)
-        ) {
-          return false;
-        }
-      }
+    if (
+      category &&
+      !matchesCategory(product, category)
+    ) {
+      return false;
+    }
 
-      if (
-        goal &&
-        !matchesGoal(product, goal)
-      ) {
-        return false;
-      }
-
-      if (
-        category &&
-        !matchesCategory(product, category)
-      ) {
-        return false;
-      }
-
-      return true;
-    });
+    return true;
+  });
 
   state.visibleCount =
     PRODUCTS_PER_VIEW;
@@ -655,25 +539,23 @@ function applyFilters() {
 }
 
 function updateCount() {
-  const element =
+  const count =
     document.querySelector("#product-count");
 
-  if (!element) {
-    return;
-  }
+  if (!count) return;
 
   if (state.loading) {
-    element.textContent =
+    count.textContent =
       "Producten laden…";
     return;
   }
 
-  element.textContent =
+  count.textContent =
     `${state.filtered.length} producten`;
 }
 
 /* =========================================================
-   PRODUCT KAARTEN
+   PRODUCT KAART
 ========================================================= */
 
 function productCard(product) {
@@ -682,10 +564,10 @@ function productCard(product) {
 
   const hasOldPrice =
     Number.isFinite(oldPrice) &&
-    oldPrice > price(product);
+    oldPrice > productPrice(product);
 
   const image =
-    isValidUrl(product.image_url)
+    validUrl(product.image_url)
       ? `
         <img
           class="product-image"
@@ -695,7 +577,16 @@ function productCard(product) {
         >
       `
       : `
-        <div class="product-image product-image-placeholder">
+        <div
+          class="product-image"
+          style="
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:#172338;
+            font-size:30px;
+          "
+        >
           💪
         </div>
       `;
@@ -709,7 +600,11 @@ function productCard(product) {
 
       <div class="product-content">
 
-        <div class="merchant">
+        <div style="
+          color:#8fa0b7;
+          font-size:12px;
+          margin-bottom:5px;
+        ">
           ${escapeHtml(product.merchant_name)}
         </div>
 
@@ -717,11 +612,20 @@ function productCard(product) {
           ${escapeHtml(product.name)}
         </h3>
 
-        <div class="price-row">
+        <div style="
+          display:flex;
+          align-items:center;
+          gap:8px;
+          flex-wrap:wrap;
+          margin-top:8px;
+        ">
 
-          <strong>
-            ${formatMoney(
-              price(product),
+          <strong style="
+            color:#fff;
+            font-size:20px;
+          ">
+            ${money(
+              productPrice(product),
               product.currency || "EUR"
             )}
           </strong>
@@ -729,8 +633,12 @@ function productCard(product) {
           ${
             hasOldPrice
               ? `
-                <span class="old-price">
-                  ${formatMoney(
+                <span style="
+                  color:#8290a4;
+                  text-decoration:line-through;
+                  font-size:13px;
+                ">
+                  ${money(
                     oldPrice,
                     product.currency || "EUR"
                   )}
@@ -742,7 +650,11 @@ function productCard(product) {
           ${
             discount(product) > 0
               ? `
-                <span class="discount">
+                <span style="
+                  color:#8ee7b4;
+                  font-weight:700;
+                  font-size:12px;
+                ">
                   -${discount(product)}%
                 </span>
               `
@@ -751,13 +663,22 @@ function productCard(product) {
 
         </div>
 
-        <div class="stock">
+        <div style="
+          color:#8ee7b4;
+          font-size:12px;
+          margin-top:8px;
+        ">
           ${product.in_stock
             ? "Op voorraad"
             : "Niet op voorraad"}
         </div>
 
-        <div class="card-actions">
+        <div style="
+          display:flex;
+          gap:8px;
+          flex-wrap:wrap;
+          margin-top:13px;
+        ">
 
           <a
             class="button primary"
@@ -776,7 +697,11 @@ function productCard(product) {
 
         </div>
 
-        <div class="price-note">
+        <div style="
+          color:#7f8da1;
+          font-size:11px;
+          margin-top:10px;
+        ">
           Prijsindicatie · controleer de actuele prijs bij de winkel
         </div>
 
@@ -789,9 +714,7 @@ function renderProducts() {
   const grid =
     document.querySelector("#products-grid");
 
-  if (!grid) {
-    return;
-  }
+  if (!grid) return;
 
   const visible =
     state.filtered.slice(
@@ -807,11 +730,11 @@ function renderProducts() {
         text-align:center;
         color:#9eacbd;
       ">
-        Geen geschikte supplementen gevonden.
-        Probeer een ander doel, categorie of zoekterm.
+        Geen geschikte producten gevonden.
       </div>
     `;
 
+    removeLoadMore();
     return;
   }
 
@@ -822,35 +745,29 @@ function renderProducts() {
 
   bindCartButtons();
 
-  const oldMore =
-    document.querySelector(
-      "[data-load-more]"
-    );
-
-  if (oldMore) {
-    oldMore.remove();
-  }
+  removeLoadMore();
 
   if (
     state.visibleCount <
     state.filtered.length
   ) {
-    const more =
+    const button =
       document.createElement("button");
 
-    more.type = "button";
-    more.dataset.loadMore = "true";
-    more.className = "button secondary";
+    button.type = "button";
+    button.dataset.loadMore = "1";
+    button.className =
+      "button secondary";
 
-    more.style.cssText = `
+    button.style.cssText = `
       display:block;
       margin:22px auto;
     `;
 
-    more.textContent =
+    button.textContent =
       `Meer producten (${state.filtered.length - state.visibleCount})`;
 
-    more.addEventListener(
+    button.addEventListener(
       "click",
       () => {
         state.visibleCount +=
@@ -861,9 +778,19 @@ function renderProducts() {
     );
 
     grid.parentElement?.appendChild(
-      more
+      button
     );
   }
+}
+
+function removeLoadMore() {
+  document
+    .querySelectorAll(
+      "[data-load-more]"
+    )
+    .forEach(element =>
+      element.remove()
+    );
 }
 
 /* =========================================================
@@ -871,21 +798,19 @@ function renderProducts() {
 ========================================================= */
 
 function bindSearch() {
-  const form =
-    document.querySelector("#search-form");
-
   const input =
     document.querySelector("#search");
 
-  if (!input) {
-    return;
-  }
+  const form =
+    document.querySelector("#search-form");
+
+  if (!input) return;
 
   input.addEventListener(
     "input",
     () => {
       state.search =
-        input.value;
+        input.value || "";
 
       applyFilters();
     }
@@ -897,24 +822,25 @@ function bindSearch() {
       event.preventDefault();
 
       state.search =
-        input.value;
+        input.value || "";
 
       applyFilters();
 
       document
         .querySelector("#deals")
         ?.scrollIntoView({
-          behavior: "smooth"
+          behavior:"smooth"
         });
     }
   );
 }
 
 /* =========================================================
-   DOELEN EN CATEGORIEËN
+   DOELEN + CATEGORIEËN
 ========================================================= */
 
 function bindFilters() {
+
   document
     .querySelectorAll("[data-goal]")
     .forEach(button => {
@@ -948,8 +874,8 @@ function bindFilters() {
           document
             .querySelector("#deals")
             ?.scrollIntoView({
-              behavior: "smooth",
-              block: "start"
+              behavior:"smooth",
+              block:"start"
             });
         }
       );
@@ -988,8 +914,8 @@ function bindFilters() {
           document
             .querySelector("#deals")
             ?.scrollIntoView({
-              behavior: "smooth",
-              block: "start"
+              behavior:"smooth",
+              block:"start"
             });
         }
       );
@@ -1007,17 +933,14 @@ function plannerCard(product) {
       justify-content:space-between;
       align-items:center;
       gap:12px;
-      padding:13px;
+      padding:12px;
       margin-top:8px;
-      border-radius:13px;
+      border-radius:12px;
       background:#111d2f;
       border:1px solid rgba(255,255,255,.08);
     ">
 
-      <div style="
-        min-width:0;
-        flex:1;
-      ">
+      <div style="min-width:0;flex:1;">
 
         <div style="
           color:#fff;
@@ -1033,8 +956,8 @@ function plannerCard(product) {
           font-weight:700;
           margin-top:4px;
         ">
-          ${formatMoney(
-            price(product),
+          ${money(
+            productPrice(product),
             product.currency || "EUR"
           )}
         </div>
@@ -1061,113 +984,6 @@ function plannerCard(product) {
   `;
 }
 
-function renderPlannerCart() {
-  const result =
-    document.querySelector("#planner-result");
-
-  if (!result) {
-    return;
-  }
-
-  const previous =
-    result.querySelector(".planner-cart");
-
-  if (previous) {
-    previous.remove();
-  }
-
-  const products =
-    state.cart.filter(productIsUsable);
-
-  if (products.length === 0) {
-    return;
-  }
-
-  const cart =
-    document.createElement("div");
-
-  cart.className = "planner-cart";
-
-  cart.style.cssText = `
-    margin-top:18px;
-    padding:15px;
-    border-radius:15px;
-    background:#0d1727;
-    border:1px solid rgba(142,231,180,.25);
-  `;
-
-  cart.innerHTML = `
-    <div style="
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      align-items:center;
-      margin-bottom:10px;
-    ">
-
-      <strong style="color:#fff">
-        🛒 Jouw boodschappenmand
-      </strong>
-
-      <strong style="color:#8ee7b4">
-        ${formatMoney(cartTotal())}
-      </strong>
-
-    </div>
-
-    ${products.map(product => `
-      <div style="
-        display:flex;
-        justify-content:space-between;
-        gap:10px;
-        padding:8px 0;
-        border-bottom:1px solid rgba(255,255,255,.06);
-      ">
-
-        <span style="
-          color:#c8d2df;
-          font-size:12px;
-        ">
-          ${escapeHtml(product.name)}
-        </span>
-
-        <button
-          type="button"
-          data-planner-remove="${escapeHtml(product.id)}"
-          style="
-            border:0;
-            background:none;
-            color:#ff9898;
-            cursor:pointer;
-            font-size:18px;
-          "
-        >
-          ×
-        </button>
-
-      </div>
-    `).join("")}
-  `;
-
-  result.appendChild(cart);
-
-  cart
-    .querySelectorAll(
-      "[data-planner-remove]"
-    )
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-          removeFromCart(
-            button.dataset.plannerRemove
-          );
-        }
-      );
-    });
-}
-
 function bindPlannerButtons(container) {
   container
     .querySelectorAll(
@@ -1188,9 +1004,7 @@ function bindPlannerButtons(container) {
                 )
             );
 
-          if (!product) {
-            return;
-          }
+          if (!product) return;
 
           addToCart(product);
 
@@ -1203,15 +1017,121 @@ function bindPlannerButtons(container) {
     });
 }
 
+function renderPlannerCart() {
+  const result =
+    document.querySelector(
+      "#planner-result"
+    );
+
+  if (!result) return;
+
+  const old =
+    result.querySelector(
+      ".planner-cart"
+    );
+
+  if (old) {
+    old.remove();
+  }
+
+  if (state.cart.length === 0) {
+    return;
+  }
+
+  const cart =
+    document.createElement("div");
+
+  cart.className =
+    "planner-cart";
+
+  cart.style.cssText = `
+    margin-top:18px;
+    padding:15px;
+    border-radius:15px;
+    background:#0d1727;
+    border:1px solid rgba(142,231,180,.25);
+  `;
+
+  cart.innerHTML = `
+    <div style="
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-bottom:10px;
+    ">
+
+      <strong style="color:#fff">
+        🛒 Jouw boodschappenmand
+      </strong>
+
+      <strong style="color:#8ee7b4">
+        ${money(cartTotal())}
+      </strong>
+
+    </div>
+
+    ${state.cart.map(product => `
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:10px;
+        padding:8px 0;
+        border-bottom:1px solid rgba(255,255,255,.06);
+      ">
+
+        <span style="
+          color:#c8d2df;
+          font-size:12px;
+        ">
+          ${escapeHtml(product.name)}
+        </span>
+
+        <button
+          type="button"
+          data-remove-planner="${escapeHtml(product.id)}"
+          style="
+            border:0;
+            background:none;
+            color:#ff9898;
+            cursor:pointer;
+            font-size:18px;
+          "
+        >
+          ×
+        </button>
+
+      </div>
+    `).join("")}
+  `;
+
+  result.appendChild(cart);
+
+  cart
+    .querySelectorAll(
+      "[data-remove-planner]"
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+          removeFromCart(
+            button.dataset.removePlanner
+          );
+        }
+      );
+    });
+}
+
 function bindPlanner() {
   const form =
     document.querySelector(
       "#planner-form"
     );
 
-  if (!form) {
-    return;
-  }
+  if (!form) return;
 
   form.addEventListener(
     "submit",
@@ -1224,19 +1144,13 @@ function bindPlanner() {
           "[name='goal']"
         )?.value || "";
 
-      const budgetInput =
-        form.querySelector(
-          "[name='budget']"
-        )?.value || "";
-
       const budget =
-        Number(budgetInput);
+        Number(
+          form.querySelector(
+            "[name='budget']"
+          )?.value || 0
+        );
 
-      /*
-       * BELANGRIJK:
-       * Planner gebruikt dezelfde echte
-       * productclassificatie als de doelknoppen.
-       */
       let candidates =
         state.products.filter(
           productIsUsable
@@ -1260,24 +1174,20 @@ function bindPlanner() {
         candidates =
           candidates.filter(
             product =>
-              price(product) <= budget
+              productPrice(product) <=
+              budget
           );
       }
 
-      /*
-       * Goedkoopste geschikte deals eerst,
-       * daarna korting.
-       */
       candidates =
-        [...candidates].sort(
-          (a, b) => {
+        [...candidates]
+          .sort((a,b) => {
 
             const priceDifference =
-              price(a) - price(b);
+              productPrice(a) -
+              productPrice(b);
 
-            if (
-              priceDifference !== 0
-            ) {
+            if (priceDifference !== 0) {
               return priceDifference;
             }
 
@@ -1285,18 +1195,15 @@ function bindPlanner() {
               discount(b) -
               discount(a)
             );
-          }
-        )
-        .slice(0, 8);
+          })
+          .slice(0,8);
 
       const result =
         document.querySelector(
           "#planner-result"
         );
 
-      if (!result) {
-        return;
-      }
+      if (!result) return;
 
       if (candidates.length === 0) {
 
@@ -1316,7 +1223,6 @@ function bindPlanner() {
         `;
 
         renderPlannerCart();
-
         return;
       }
 
@@ -1336,15 +1242,12 @@ function bindPlanner() {
             color:#9eacbd;
             font-size:12px;
           ">
-            Deze producten passen bij je gekozen doel
-            en budget.
+            Producten die passen bij je doel en budget.
           </div>
 
         </div>
 
-        <div style="
-          margin-top:10px;
-        ">
+        <div style="margin-top:10px;">
           ${candidates
             .map(plannerCard)
             .join("")}
@@ -1352,11 +1255,6 @@ function bindPlanner() {
       `;
 
       bindPlannerButtons(result);
-
-      /*
-       * Alleen bestaand mandje toevoegen.
-       * Het planner-resultaat blijft staan.
-       */
       renderPlannerCart();
     }
   );
@@ -1371,9 +1269,7 @@ function loadCart() {
     const saved =
       localStorage.getItem(CART_KEY);
 
-    if (!saved) {
-      return [];
-    }
+    if (!saved) return [];
 
     const parsed =
       JSON.parse(saved);
@@ -1400,7 +1296,7 @@ function saveCart() {
 function cartTotal() {
   return state.cart.reduce(
     (total, product) =>
-      total + price(product),
+      total + productPrice(product),
     0
   );
 }
@@ -1461,9 +1357,7 @@ function bindCartButtons() {
                 )
             );
 
-          if (!product) {
-            return;
-          }
+          if (!product) return;
 
           addToCart(product);
 
@@ -1514,8 +1408,8 @@ function renderCart() {
     <div style="
       display:flex;
       justify-content:space-between;
-      gap:10px;
       align-items:center;
+      gap:10px;
       margin-bottom:12px;
     ">
 
@@ -1524,7 +1418,7 @@ function renderCart() {
       </strong>
 
       <strong style="color:#8ee7b4">
-        ${formatMoney(cartTotal())}
+        ${money(cartTotal())}
       </strong>
 
     </div>
@@ -1533,8 +1427,8 @@ function renderCart() {
       <div style="
         display:flex;
         justify-content:space-between;
-        gap:10px;
         align-items:center;
+        gap:10px;
         padding:9px 0;
         border-bottom:1px solid rgba(255,255,255,.06);
       ">
@@ -1542,7 +1436,6 @@ function renderCart() {
         <div style="
           color:#d4deea;
           font-size:12px;
-          line-height:1.4;
         ">
           ${escapeHtml(product.name)}
         </div>
@@ -1551,7 +1444,6 @@ function renderCart() {
           type="button"
           data-remove-cart="${escapeHtml(product.id)}"
           style="
-            flex:none;
             border:0;
             background:none;
             color:#ff9898;
@@ -1586,7 +1478,7 @@ function renderCart() {
 }
 
 /* =========================================================
-   AI COACH
+   AI
 ========================================================= */
 
 function bindAI() {
@@ -1616,9 +1508,7 @@ function bindAI() {
       const message =
         input.value.trim();
 
-      if (!message) {
-        return;
-      }
+      if (!message) return;
 
       output.innerHTML = `
         <div style="color:#9eacbd">
@@ -1672,17 +1562,11 @@ function bindAI() {
 
       } catch (error) {
 
-        console.error(
-          "AI fout:",
-          error
-        );
+        console.error(error);
 
         output.innerHTML = `
-          <div style="
-            color:#ffaaaa;
-          ">
+          <div style="color:#ffaaaa">
             De AI Coach kon momenteel geen antwoord geven.
-            Probeer het opnieuw.
           </div>
         `;
       }
@@ -1691,7 +1575,7 @@ function bindAI() {
 }
 
 /* =========================================================
-   AI NAAR BOVEN
+   COACH NAAR BOVEN
 ========================================================= */
 
 function moveCoachBeforeDeals() {
@@ -1714,7 +1598,7 @@ function moveCoachBeforeDeals() {
 }
 
 /* =========================================================
-   EXTRA CSS
+   EXTRA STYLING
 ========================================================= */
 
 function injectStyles() {
@@ -1757,62 +1641,11 @@ function injectStyles() {
       justify-content:center;
       background:#172338;
       color:#8fa0b7;
-      font-size:32px;
-    }
-
-    .product-card .merchant {
-      color:#8fa0b7;
-      font-size:12px;
-      margin-bottom:5px;
-    }
-
-    .product-card .price-row {
-      display:flex;
-      align-items:center;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:8px;
-    }
-
-    .product-card .price-row strong {
-      color:#fff;
-      font-size:20px;
-    }
-
-    .product-card .old-price {
-      color:#8290a4;
-      text-decoration:line-through;
-      font-size:13px;
-    }
-
-    .product-card .discount {
-      color:#8ee7b4;
-      font-size:12px;
-      font-weight:700;
-    }
-
-    .product-card .stock {
-      color:#8ee7b4;
-      font-size:12px;
-      margin-top:8px;
-    }
-
-    .product-card .card-actions {
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:13px;
-    }
-
-    .product-card .price-note {
-      color:#7f8da1;
-      font-size:11px;
-      margin-top:10px;
+      font-size:30px;
     }
 
     button:disabled {
       opacity:.65;
-      cursor:default;
     }
   `;
 
