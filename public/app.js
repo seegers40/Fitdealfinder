@@ -1,3 +1,4 @@
+
 "use strict";
 
 /*
@@ -18,7 +19,7 @@ const API_AI = "/api/ai/chat";
 
 const PAGE_SIZE = 200;
 const MAX_PRODUCTS = 2000;
-const PRODUCTS_PER_VIEW =8;
+const PRODUCTS_PER_VIEW = 8;
 const CART_KEY = "fitdealfinder_cart";
 
 const state = {
@@ -783,25 +784,20 @@ function productCard(product) {
           )
         : 0;
 
+  /*
+   * AANGEPAST:
+   * Geen vaste 65px-afmetingen hier.
+   * Dit is de normale productkaart.
+   */
   const image =
     product.image_url
       ? `
         <img
-  src="${escapeHtml(product.image_url)}"
-  alt="${escapeHtml(product.name)}"
-  loading="lazy"
-  style="
-    width: 65px !important;
-    height: 65px !important;
-    max-width: 65px !important;
-    max-height: 65px !important;
-    min-width: 65px !important;
-    min-height: 65px !important;
-    object-fit: contain !important;
-    display: block !important;
-  "
-  onerror="this.style.display='none'"
->
+          src="${escapeHtml(product.image_url)}"
+          alt="${escapeHtml(product.name)}"
+          loading="lazy"
+          onerror="this.style.display='none'"
+        >
       `
       : `
         <div class="product-image-placeholder">
@@ -1961,7 +1957,6 @@ function createPlanner() {
    AI SUPPLEMENT COACH
 ========================================================= */
 
-
 function setupAI() {
   const form = $("#ai-form");
   const input = $("#ai-input");
@@ -2431,143 +2426,149 @@ function setupAI() {
   }
 
   function renderExactPackage(packageData) {
-  const {
-    goal,
-    budget,
-    products,
-    total
-  } = packageData;
+    const {
+      goal,
+      budget,
+      products,
+      total
+    } = packageData;
 
-  const remaining =
-    budget - total;
+    const remaining =
+      budget - total;
 
-  const goalLabel =
-    goal === "bulk"
-      ? "Bulk"
-      : goal === "lean-bulk"
-        ? "Lean Bulk"
-        : "Cut";
+    const goalLabel =
+      goal === "bulk"
+        ? "Bulk"
+        : goal === "lean-bulk"
+          ? "Lean Bulk"
+          : "Cut";
 
-  const items =
-    products
-      .map(product => {
-        const productPrice =
-          price(product);
+    const items =
+      products
+        .map(product => {
+          const productPrice =
+            price(product);
 
-        const image = product.image_url
-          ? `
-            <img
-              src="${escapeHtml(product.image_url)}"
-              alt="${escapeHtml(product.name)}"
-              loading="lazy"
-              onerror="this.style.display='none'"
-            >
-          `
-          : `
-            <div class="product-image-placeholder">
-              FitDealFinder
-            </div>
-          `;
+          /*
+           * AANGEPAST:
+           * Alleen AI-pakketafbeeldingen krijgen
+           * hier de vaste afmetingen van 65x65px.
+           */
+          const image = product.image_url
+            ? `
+              <img
+                src="${escapeHtml(product.image_url)}"
+                alt="${escapeHtml(product.name)}"
+                loading="lazy"
+                style="width:65px !important;height:65px !important;max-width:65px !important;max-height:65px !important;min-width:65px !important;min-height:65px !important;object-fit:contain !important;display:block !important;"
+                onerror="this.style.display='none'"
+              >
+            `
+            : `
+              <div class="product-image-placeholder">
+                FitDealFinder
+              </div>
+            `;
 
-        return `
-          <div class="ai-package-item">
-
-            <a
-              href="/go/${encodeURIComponent(String(product.id))}"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="ai-package-product-image"
-            >
-              ${image}
-            </a>
-
-            <div class="ai-package-product-info">
+          return `
+            <div class="ai-package-item">
 
               <a
                 href="/go/${encodeURIComponent(String(product.id))}"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="ai-package-product-link"
+                class="ai-package-product-image"
               >
-                <strong>
-                  ${escapeHtml(product.name)}
-                </strong>
+                ${image}
               </a>
 
-              <small>
-                ${escapeHtml(
-                  product.merchant_name ||
-                  "Winkel onbekend"
-                )}
-              </small>
+              <div class="ai-package-product-info">
 
-              <strong class="ai-package-price">
-                ${escapeHtml(
-                  money(
-                    productPrice,
-                    product.currency
-                  )
-                )}
-              </strong>
+                <a
+                  href="/go/${encodeURIComponent(String(product.id))}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="ai-package-product-link"
+                >
+                  <strong>
+                    ${escapeHtml(product.name)}
+                  </strong>
+                </a>
 
-              <button
-                type="button"
-                class="cart-button"
-                data-add-cart="${escapeHtml(String(product.id))}"
-              >
-                🛒 Toevoegen
-              </button>
+                <small>
+                  ${escapeHtml(
+                    product.merchant_name ||
+                    "Winkel onbekend"
+                  )}
+                </small>
+
+                <strong class="ai-package-price">
+                  ${escapeHtml(
+                    money(
+                      productPrice,
+                      product.currency
+                    )
+                  )}
+                </strong>
+
+                <button
+                  type="button"
+                  class="cart-button"
+                  data-add-cart="${escapeHtml(String(product.id))}"
+                >
+                  🛒 Toevoegen
+                </button>
+
+              </div>
 
             </div>
+          `;
+        })
+        .join("");
 
-          </div>
-        `;
-      })
-      .join("");
+    responseBox.innerHTML = `
+      <div class="ai-package">
 
-  responseBox.innerHTML = `
-    <div class="ai-package">
+        <h3>
+          ${goalLabel} pakket
+        </h3>
 
-      <h3>
-        ${goalLabel} pakket
-      </h3>
+        <p>
+          Ik heb het pakket samengesteld
+          uit echte producten die momenteel
+          in FitDealFinder staan.
+        </p>
 
-      <p>
-        Ik heb het pakket samengesteld
-        uit echte producten die momenteel
-        in FitDealFinder staan.
-      </p>
+        <div class="ai-package-list">
+          ${items}
+        </div>
 
-      <div class="ai-package-list">
-        ${items}
-      </div>
+        <div class="ai-package-total">
+          <span>Totaal</span>
+          <strong>
+            ${escapeHtml(
+              money(total)
+            )}
+          </strong>
+        </div>
 
-      <div class="ai-package-total">
-        <span>Totaal</span>
-        <strong>
+        <div class="ai-package-budget">
+          Budget:
           ${escapeHtml(
-            money(total)
+            money(budget)
           )}
-        </strong>
+          · over:
+          ${escapeHtml(
+            money(remaining)
+          )}
+        </div>
+
+        <p class="ai-package-note">
+          De selectie blijft binnen je opgegeven budget.
+        </p>
+
       </div>
-
-      <div class="ai-package-budget">
-        Budget:
-        ${escapeHtml(
-          money(budget)
-        )}
-        · over:
-        ${escapeHtml(
-          money(remaining)
-        )}
-      </div>
-
-      <p class="ai-package-note">
-        De selectie blijft binnen je opgegeven budget.
-      </p>
-
-    </div>
-  `;
+    `;
   }
 
   form.addEventListener(
@@ -2785,6 +2786,8 @@ BELANGRIJK:
     }
   );
 }
+
+
 /* =========================================================
    AFFILIATE / DEAL TRACKING
 ========================================================= */
@@ -2912,4 +2915,4 @@ if (
   );
 } else {
   init();
-        }
+}
