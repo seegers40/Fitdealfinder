@@ -1226,3 +1226,29 @@ img {
 .ai-package-price {
   margin-top: 4px;
 }
+.ai-package-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-package-product-image {
+  width: 65px !important;
+  height: 65px !important;
+  min-width: 65px !important;
+  max-width: 65px !important;
+  flex: 0 0 65px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.ai-package-product-image img {
+  width: 65px !important;
+  height: 65px !important;
+  max-width: 65px !important;
+  max-height: 65px !important;
+  object-fit: contain !important;
+  display: block;
+}
