@@ -1048,7 +1048,21 @@
       .container {
         width: min(var(--container), calc(100% - 28px));
       }
+.product-card .product-image {
+  height: 190px;
+  min-height: 190px;
+  overflow: hidden;
+}
 
+.product-card .product-image > img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
+}l
       .nav {
         min-height: 64px;
       }
