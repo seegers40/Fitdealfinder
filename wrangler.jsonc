@@ -24,6 +24,17 @@
     "binding": "AI"
   },
 
+  "ratelimits": [
+    {
+      "name": "AI_RATE_LIMITER",
+      "namespace_id": "260909",
+      "simple": {
+        "limit": 20,
+        "period": 60
+      }
+    }
+  ],
+
   "triggers": {
     "crons": [
       "17 * * * *"
