@@ -1955,6 +1955,7 @@ function createPlanner() {
    AI SUPPLEMENT COACH
 ========================================================= */
 
+
 function setupAI() {
   const form = $("#ai-form");
   const input = $("#ai-input");
@@ -1985,6 +1986,18 @@ function setupAI() {
   function detectGoal(message) {
     const text = normalize(message);
 
+    /*
+      Eerst lean bulk controleren.
+      Anders zou "lean bulk" ook als gewone bulk worden gezien.
+    */
+    if (
+      text.includes("lean bulk") ||
+      text.includes("lean-bulk") ||
+      text.includes("leanbulk")
+    ) {
+      return "lean-bulk";
+    }
+
     if (
       text.includes("bulk") ||
       text.includes("bulken") ||
@@ -1993,13 +2006,6 @@ function setupAI() {
       text.includes("spiermassa")
     ) {
       return "bulk";
-    }
-
-    if (
-      text.includes("lean bulk") ||
-      text.includes("lean-bulk")
-    ) {
-      return "lean-bulk";
     }
 
     if (
@@ -2014,106 +2020,502 @@ function setupAI() {
     return "";
   }
 
-  function buildProductContext(message) {
-    const budget = extractBudget(message);
-    const goal = detectGoal(message);
+  function productTextForPackage(product) {
+    return normalize(
+      [
+        product.name,
+        product.brand,
+        product.category
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
+  }
 
-    let candidates = state.products
-      .filter(isUsableProduct)
-      .filter(product => {
-        if (
-          budget !== null &&
-          price(product) > budget
-        ) {
-          return false;
-        }
+  function hasWord(product, words) {
+    const text = productTextForPackage(product);
 
-        return true;
-      });
+    return words.some(word =>
+      text.includes(normalize(word))
+    );
+  }
 
-    if (goal) {
-      candidates = candidates
-        .map(product => ({
-          product,
-          score: goalScore(product, goal)
-        }))
-        .filter(item => item.score > 0)
-        .sort((a, b) => {
-          if (b.score !== a.score) {
-            return b.score - a.score;
+  function packageRole(product, goal) {
+    const text = productTextForPackage(product);
+
+    /*
+      Producten die geen echte pakketfunctie hebben,
+      niet als onderdeel van een pakket gebruiken.
+    */
+    const excluded = [
+      "water",
+      "kokoswater",
+      "drink",
+      "drank",
+      "juice",
+      "sap",
+      "soda",
+      "limonade",
+      "thee",
+      "koffie",
+      "collageen",
+      "collagen",
+      "vitamine",
+      "vitamin",
+      "mineral",
+      "magnesium",
+      "zinc",
+      "omega"
+    ];
+
+    if (excluded.some(word => text.includes(word))) {
+      return "";
+    }
+
+    const isProtein =
+      hasWord(product, [
+        "protein",
+        "proteine",
+        "whey",
+        "casein",
+        "caseine",
+        "isolaat",
+        "isolate"
+      ]);
+
+    const isCreatine =
+      hasWord(product, [
+        "creatine"
+      ]);
+
+    const isCarb =
+      hasWord(product, [
+        "gainer",
+        "mass",
+        "carb",
+        "carbs",
+        "carbohydrate",
+        "havermout",
+        "oats",
+        "oat"
+      ]);
+
+    const isCutSupport =
+      hasWord(product, [
+        "fat burner",
+        "fatburner",
+        "thermogenic",
+        "caffeine",
+        "cafeine",
+        "carnitine",
+        "l-carnitine",
+        "cla",
+        "shred",
+        "burn"
+      ]);
+
+    if (goal === "bulk") {
+      if (isProtein) {
+        return "protein";
+      }
+
+      if (isCarb) {
+        return "carb";
+      }
+
+      if (isCreatine) {
+        return "creatine";
+      }
+
+      return "";
+    }
+
+    if (goal === "lean-bulk") {
+      if (isProtein) {
+        return "protein";
+      }
+
+      if (isCarb) {
+        return "carb";
+      }
+
+      if (isCreatine) {
+        return "creatine";
+      }
+
+      return "";
+    }
+
+    if (goal === "cut") {
+      if (isProtein) {
+        return "protein";
+      }
+
+      if (isCutSupport) {
+        return "cut-support";
+      }
+
+      if (isCreatine) {
+        return "creatine";
+      }
+
+      return "";
+    }
+
+    /*
+      Geen specifiek doel:
+      alleen algemene supplementrollen.
+    */
+    if (isProtein) {
+      return "protein";
+    }
+
+    if (isCreatine) {
+      return "creatine";
+    }
+
+    return "";
+  }
+
+  function sortPackageCandidates(products) {
+    return products.slice().sort((a, b) => {
+      const priceA = price(a);
+      const priceB = price(b);
+
+      if (priceA !== priceB) {
+        return priceA - priceB;
+      }
+
+      const dealA =
+        Number(a.deal_score) || 0;
+
+      const dealB =
+        Number(b.deal_score) || 0;
+
+      return dealB - dealA;
+    });
+  }
+
+  function chooseCheapestRole(
+    products,
+    role,
+    usedIds,
+    remainingBudget
+  ) {
+    const candidates =
+      sortPackageCandidates(
+        products.filter(product => {
+          if (!isUsableProduct(product)) {
+            return false;
           }
 
-          const dealA =
-            Number(a.product.deal_score) || 0;
+          const id =
+            product.id ||
+            product.external_id ||
+            product.slug ||
+            product.name;
 
-          const dealB =
-            Number(b.product.deal_score) || 0;
+          if (usedIds.has(String(id))) {
+            return false;
+          }
 
-          return dealB - dealA;
+          if (packageRole(product, currentGoal) !== role) {
+            return false;
+          }
+
+          return price(product) <= remainingBudget;
         })
-        .map(item => item.product);
-    } else {
-      candidates.sort((a, b) => {
-        const dealA =
-          Number(a.deal_score) || 0;
-
-        const dealB =
-          Number(b.deal_score) || 0;
-
-        return dealB - dealA;
-      });
-    }
-
-    const seen = new Set();
-
-    const selected = [];
-
-    for (const product of candidates) {
-      const key = normalize(
-        product.name
       );
 
-      if (!key || seen.has(key)) {
-        continue;
-      }
+    return candidates[0] || null;
+  }
 
-      seen.add(key);
-      selected.push(product);
+  let currentGoal = "";
 
-      if (selected.length >= 12) {
-        break;
-      }
-    }
+  function buildExactPackage(message) {
+    const budget =
+      extractBudget(message);
 
-    if (!selected.length) {
+    const goal =
+      detectGoal(message);
+
+    currentGoal = goal;
+
+    if (budget === null) {
       return {
-        budget,
-        goal,
-        context:
-          "Er zijn momenteel geen passende producten gevonden in de FitDealFinder-database."
+        ok: false,
+        reason:
+          "Geef een budget op, bijvoorbeeld €75."
       };
     }
 
-    const lines = selected.map(
-      (product, index) => {
-        return [
-          `${index + 1}. ${product.name}`,
-          `Prijs: ${money(
-            price(product),
-            product.currency
-          )}`,
-          `Winkel: ${
-            product.merchant_name || "Onbekend"
-          }`
-        ].join(" | ");
+    if (!goal) {
+      return {
+        ok: false,
+        reason:
+          "Geef ook een doel op: cut, bulk of lean bulk."
+      };
+    }
+
+    const products =
+      state.products
+        .filter(isUsableProduct)
+        .filter(product =>
+          price(product) <= budget
+        );
+
+    if (!products.length) {
+      return {
+        ok: false,
+        reason:
+          "Er zijn geen geschikte producten binnen dit budget gevonden."
+      };
+    }
+
+    /*
+      Voor ieder doel bepalen we welke onderdelen
+      het pakket minimaal moet bevatten.
+    */
+    let requiredRoles = [];
+
+    if (goal === "bulk") {
+      requiredRoles = [
+        "protein",
+        "carb",
+        "creatine"
+      ];
+    }
+
+    if (goal === "lean-bulk") {
+      requiredRoles = [
+        "protein",
+        "carb",
+        "creatine"
+      ];
+    }
+
+    if (goal === "cut") {
+      requiredRoles = [
+        "protein",
+        "cut-support",
+        "creatine"
+      ];
+    }
+
+    /*
+      We proberen eerst een compleet pakket.
+      Belangrijk: iedere toevoeging wordt direct
+      gecontroleerd tegen het resterende budget.
+    */
+    const selected = [];
+    const usedIds = new Set();
+
+    function tryBuildPackage(
+      roles,
+      index,
+      remaining
+    ) {
+      if (index >= roles.length) {
+        return selected.slice();
       }
-    );
+
+      const role =
+        roles[index];
+
+      const candidates =
+        sortPackageCandidates(
+          products.filter(product => {
+            if (!isUsableProduct(product)) {
+              return false;
+            }
+
+            const id =
+              product.id ||
+              product.external_id ||
+              product.slug ||
+              product.name;
+
+            if (usedIds.has(String(id))) {
+              return false;
+            }
+
+            if (
+              packageRole(
+                product,
+                goal
+              ) !== role
+            ) {
+              return false;
+            }
+
+            return price(product) <= remaining;
+          })
+        );
+
+      for (const candidate of candidates) {
+        const id =
+          candidate.id ||
+          candidate.external_id ||
+          candidate.slug ||
+          candidate.name;
+
+        usedIds.add(String(id));
+        selected.push(candidate);
+
+        const result =
+          tryBuildPackage(
+            roles,
+            index + 1,
+            remaining - price(candidate)
+          );
+
+        if (result) {
+          return result;
+        }
+
+        selected.pop();
+        usedIds.delete(String(id));
+      }
+
+      return null;
+    }
+
+    const completePackage =
+      tryBuildPackage(
+        requiredRoles,
+        0,
+        budget
+      );
+
+    if (!completePackage) {
+      return {
+        ok: false,
+        reason:
+          `Ik kan met de huidige producten geen compleet ${goal} pakket binnen €${budget.toFixed(2).replace(".", ",")} samenstellen.`
+      };
+    }
+
+    const total =
+      completePackage.reduce(
+        (sum, product) =>
+          sum + price(product),
+        0
+      );
+
+    /*
+      Harde veiligheidscontrole.
+      Het pakket mag NOOIT boven het budget komen.
+    */
+    if (total > budget + 0.001) {
+      return {
+        ok: false,
+        reason:
+          "Er is geen geldig pakket binnen het opgegeven budget gevonden."
+      };
+    }
 
     return {
-      budget,
+      ok: true,
       goal,
-      context: lines.join("\n")
+      budget,
+      products:
+        completePackage,
+      total
     };
+  }
+
+  function renderExactPackage(packageData) {
+    const {
+      goal,
+      budget,
+      products,
+      total
+    } = packageData;
+
+    const remaining =
+      budget - total;
+
+    const goalLabel =
+      goal === "bulk"
+        ? "Bulk"
+        : goal === "lean-bulk"
+          ? "Lean Bulk"
+          : "Cut";
+
+    const items =
+      products
+        .map(product => {
+          const productPrice =
+            price(product);
+
+          return `
+            <div class="ai-package-item">
+              <div>
+                <strong>
+                  ${escapeHtml(product.name)}
+                </strong>
+                <small>
+                  ${escapeHtml(
+                    product.merchant_name ||
+                    "Winkel onbekend"
+                  )}
+                </small>
+              </div>
+
+              <strong>
+                ${escapeHtml(
+                  money(
+                    productPrice,
+                    product.currency
+                  )
+                )}
+              </strong>
+            </div>
+          `;
+        })
+        .join("");
+
+    responseBox.innerHTML = `
+      <div class="ai-package">
+        <h3>
+          ${goalLabel} pakket
+        </h3>
+
+        <p>
+          Ik heb het pakket samengesteld
+          uit echte producten die momenteel
+          in FitDealFinder staan.
+        </p>
+
+        <div class="ai-package-list">
+          ${items}
+        </div>
+
+        <div class="ai-package-total">
+          <span>Totaal</span>
+          <strong>
+            ${escapeHtml(
+              money(total)
+            )}
+          </strong>
+        </div>
+
+        <div class="ai-package-budget">
+          Budget:
+          ${escapeHtml(
+            money(budget)
+          )}
+          · over:
+          ${escapeHtml(
+            money(remaining)
+          )}
+        </div>
+
+        <p class="ai-package-note">
+          De selectie blijft binnen je opgegeven budget.
+        </p>
+      </div>
+    `;
   }
 
   form.addEventListener(
@@ -2128,6 +2530,147 @@ function setupAI() {
         return;
       }
 
+      const isPackageRequest =
+        /pakket|pakketje|samenstellen|bundel|combinatie|set/i.test(
+          message
+        );
+
+      /*
+        Pakketverzoeken worden nu NIET meer aan de AI
+        overgelaten. Eerst maken we het pakket
+        wiskundig correct met echte producten.
+      */
+      if (isPackageRequest) {
+        responseBox.innerHTML = `
+          <p>
+            Ik stel je pakket samen met
+            echte FitDealFinder-producten...
+          </p>
+        `;
+
+        try {
+          const packageData =
+            buildExactPackage(message);
+
+          if (!packageData.ok) {
+            responseBox.innerHTML = `
+              <p>
+                ${escapeHtml(
+                  packageData.reason
+                )}
+              </p>
+            `;
+            return;
+          }
+
+          renderExactPackage(
+            packageData
+          );
+
+          /*
+            Daarna vragen we AI alleen om uitleg.
+            De AI mag de producten, prijzen of
+            het totaal NIET bepalen.
+          */
+          try {
+            const productLines =
+              packageData.products
+                .map(product =>
+                  `- ${product.name} | ${money(price(product), product.currency)} | ${product.merchant_name || "onbekende winkel"}`
+                )
+                .join("\n");
+
+            const explanationRequest = `
+Leg kort uit waarom dit exacte FitDealFinder-pakket logisch is voor ${packageData.goal}.
+
+Gebruik uitsluitend deze al gekozen producten:
+
+${productLines}
+
+Budget: ${money(packageData.budget)}
+Exact totaal: ${money(packageData.total)}
+
+BELANGRIJK:
+- verander geen productnamen;
+- verander geen prijzen;
+- voeg geen producten toe;
+- verwijder geen producten;
+- verander het totaal niet;
+- geef alleen een korte uitleg.
+`.trim();
+
+            const response =
+              await fetch(
+                API_AI,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type":
+                      "application/json",
+                    Accept:
+                      "application/json"
+                  },
+                  body:
+                    JSON.stringify({
+                      message:
+                        explanationRequest
+                    })
+                }
+              );
+
+            if (response.ok) {
+              const data =
+                await response.json();
+
+              const answer =
+                data.answer ||
+                data.response ||
+                data.message ||
+                "";
+
+              if (answer) {
+                responseBox.innerHTML += `
+                  <div class="ai-package-explanation">
+                    <strong>
+                      Waarom dit pakket?
+                    </strong>
+                    <p>
+                      ${escapeHtml(answer)}
+                    </p>
+                  </div>
+                `;
+              }
+            }
+          } catch (aiError) {
+            console.warn(
+              "AI uitleg niet beschikbaar:",
+              aiError
+            );
+          }
+
+          return;
+        } catch (error) {
+          console.error(
+            "FitDealFinder pakket error:",
+            error
+          );
+
+          responseBox.innerHTML = `
+            <p>
+              Het pakket kon momenteel niet
+              worden samengesteld. Probeer het
+              opnieuw.
+            </p>
+          `;
+
+          return;
+        }
+      }
+
+      /*
+        Gewone AI-vragen blijven via de bestaande
+        AI Coach werken.
+      */
       responseBox.innerHTML = `
         <p>
           Even nadenken...
@@ -2135,50 +2678,6 @@ function setupAI() {
       `;
 
       try {
-        const productData =
-          buildProductContext(message);
-
-        const packageRequest =
-          /pakket|pakketje|samenstellen|bundel|combinatie|set/i.test(
-            message
-          );
-
-        const contextMessage = `
-GEBRUIK DEZE ECHTE FITDEALFINDER-PRODUCTEN ALS BRON.
-
-Gebruikersvraag:
-${message}
-
-Doel:
-${productData.goal || "niet specifiek opgegeven"}
-
-Budget:
-${
-  productData.budget !== null
-    ? money(productData.budget)
-    : "niet opgegeven"
-}
-
-Beschikbare echte producten:
-${productData.context}
-
-BELANGRIJKE REGELS:
-- Gebruik uitsluitend producten uit bovenstaande lijst.
-- Verzin geen productnamen.
-- Verzin geen prijzen.
-- Verzin geen winkels.
-- Als de gebruiker om een pakket vraagt, stel het pakket samen met producten uit bovenstaande lijst.
-- Blijf binnen het opgegeven budget.
-- Noem per gekozen product de exacte productnaam, winkel en prijs.
-- Bereken het totaalbedrag.
-- Als het budget niet voldoende is voor een goed pakket, zeg dat eerlijk.
-${
-  packageRequest
-    ? "- Geef dus een concreet pakket en geen algemeen voorbeeldpakket."
-    : ""
-}
-`.trim();
-
         const response =
           await fetch(
             API_AI,
@@ -2192,8 +2691,7 @@ ${
               },
               body:
                 JSON.stringify({
-                  message:
-                    contextMessage
+                  message
                 })
             }
           );
@@ -2218,7 +2716,6 @@ ${
             ${escapeHtml(answer)}
           </p>
         `;
-
       } catch (error) {
         console.error(
           "FitDealFinder AI error:",
@@ -2236,8 +2733,6 @@ ${
     }
   );
 }
-
-
 /* =========================================================
    AFFILIATE / DEAL TRACKING
 ========================================================= */
