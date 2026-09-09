@@ -4,14 +4,6 @@
  * FitDealFinder.nl
  * Frontend application
  *
- * Aansluiting op:
- * - public/index.html
- * - public/styles.css
- * - worker.ts
- * - D1 products API
- *
- * Geen externe libraries nodig.
- *
  * BELANGRIJK:
  * FitDealFinder is GEEN webshop.
  * Er is daarom geen winkelmandfunctionaliteit.
@@ -105,22 +97,16 @@ function safeHttpUrl(value) {
 function renderAIText(value) {
   let text = String(value ?? "");
 
-  /*
-   * Eerst volledig escapen.
-   * AI-output mag nooit rechtstreeks
-   * als HTML worden geïnjecteerd.
-   */
   text = escapeHtml(text);
 
   /*
-   * Markdown-links:
-   * [Bekijk deal](https://...)
+   * Markdown links:
+   * [tekst](https://voorbeeld.nl)
    */
   text = text.replace(
     /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi,
     (match, label, url) => {
-      const safeUrl =
-        safeHttpUrl(url);
+      const safeUrl = safeHttpUrl(url);
 
       if (!safeUrl) {
         return label;
@@ -140,8 +126,7 @@ function renderAIText(value) {
   );
 
   /*
-   * Vet:
-   * **tekst**
+   * Markdown bold.
    */
   text = text.replace(
     /\*\*([^*]+)\*\*/g,
@@ -149,21 +134,18 @@ function renderAIText(value) {
   );
 
   /*
-   * Kale HTTPS/HTTP-links klikbaar maken.
+   * Kale URL's klikbaar maken.
    */
   text = text.replace(
     /(^|[\s>])(https?:\/\/[^\s<]+)/gi,
     (match, prefix, url) => {
-      const cleanUrl =
-        url.replace(
-          /[.,!?;:]+$/,
-          ""
-        );
+      const cleanUrl = url.replace(
+        /[.,!?;:]+$/,
+        ""
+      );
 
       const trailing =
-        url.slice(
-          cleanUrl.length
-        );
+        url.slice(cleanUrl.length);
 
       const safeUrl =
         safeHttpUrl(cleanUrl);
@@ -186,9 +168,6 @@ function renderAIText(value) {
     }
   );
 
-  /*
-   * Nieuwe regels behouden.
-   */
   text = text.replace(
     /\n/g,
     "<br>"
@@ -231,6 +210,22 @@ function productText(product) {
   ].join(" "));
 }
 
+/*
+ * Voor productcategorieën gebruiken we bewust
+ * NIET de description.
+ *
+ * Zo kan een shaker met bijvoorbeeld een
+ * beschrijving waarin "creatine" voorkomt
+ * niet als creatine worden aangemerkt.
+ */
+function productIdentityText(product) {
+  return normalize([
+    product?.name,
+    product?.brand,
+    product?.category
+  ].join(" "));
+}
+
 function scrollToDeals() {
   const deals = $("#deals");
 
@@ -249,6 +244,7 @@ function scrollToDeals() {
 
 const BAD_WORDS = [
   "drinkbeker",
+  "shaker",
   "shaker cup",
   "waterfles",
   "water bottle",
@@ -302,7 +298,7 @@ function isUsableProduct(product) {
 
 
 /* =========================================================
-   GOAL DEFINITIONS
+   GOALS
 ========================================================= */
 
 const CUT_STRONG_WORDS = [
@@ -410,11 +406,6 @@ const GENERAL_SUPPLEMENT_WORDS = [
   "pump"
 ];
 
-
-/* =========================================================
-   GOAL MATCHING
-========================================================= */
-
 function hasAny(text, words) {
   return words.some(word =>
     text.includes(normalize(word))
@@ -427,16 +418,14 @@ function goalScore(product, goal) {
   }
 
   const text =
-    normalize([
-      product?.name,
-      product?.brand,
-      product?.category
-    ].join(" "));
+    productIdentityText(product);
 
   const normalizedGoal =
     normalize(goal);
 
-  if (normalizedGoal === "cut") {
+  if (
+    normalizedGoal === "cut"
+  ) {
     if (
       hasAny(
         text,
@@ -458,7 +447,9 @@ function goalScore(product, goal) {
     return 0;
   }
 
-  if (normalizedGoal === "bulk") {
+  if (
+    normalizedGoal === "bulk"
+  ) {
     if (
       hasAny(
         text,
@@ -534,7 +525,10 @@ function matchesGoal(product, goal) {
    CATEGORIES
 ========================================================= */
 
-function matchesCategory(product, category) {
+function matchesCategory(
+  product,
+  category
+) {
   if (!category) {
     return true;
   }
@@ -542,18 +536,14 @@ function matchesCategory(product, category) {
   const normalizedCategory =
     normalize(category);
 
-  const categoryText =
-    normalize([
-      product?.name,
-      product?.brand,
-      product?.category
-    ].join(" "));
+  const text =
+    productIdentityText(product);
 
   if (
     normalizedCategory ===
     "proteine"
   ) {
-    return hasAny(categoryText, [
+    return hasAny(text, [
       "protein",
       "proteine",
       "whey",
@@ -569,8 +559,9 @@ function matchesCategory(product, category) {
     normalizedCategory ===
     "creatine"
   ) {
-    return hasAny(categoryText, [
+    return hasAny(text, [
       "creatine",
+      "creatine monohydrate",
       "creatine monohydrate",
       "creatine hcl"
     ]);
@@ -580,7 +571,7 @@ function matchesCategory(product, category) {
     normalizedCategory ===
     "pre-workout"
   ) {
-    return hasAny(categoryText, [
+    return hasAny(text, [
       "pre workout",
       "pre-workout",
       "preworkout"
@@ -592,7 +583,7 @@ function matchesCategory(product, category) {
     "supplementen"
   ) {
     return hasAny(
-      categoryText,
+      text,
       GENERAL_SUPPLEMENT_WORDS
     );
   }
@@ -602,10 +593,13 @@ function matchesCategory(product, category) {
 
 
 /* =========================================================
-   SEARCH
+   NORMAL SEARCH
 ========================================================= */
 
-function matchesSearch(product, query) {
+function matchesSearch(
+  product,
+  query
+) {
   if (!query) {
     return true;
   }
@@ -625,7 +619,7 @@ function matchesSearch(product, query) {
 
 
 /* =========================================================
-   FILTER PIPELINE
+   NORMAL PRODUCT FILTER
 ========================================================= */
 
 function applyFilters() {
@@ -885,8 +879,12 @@ function productCard(product) {
     product.image_url
       ? `
         <img
-          src="${escapeHtml(product.image_url)}"
-          alt="${escapeHtml(product.name)}"
+          src="${escapeHtml(
+            product.image_url
+          )}"
+          alt="${escapeHtml(
+            product.name
+          )}"
           loading="lazy"
           onerror="this.style.display='none'"
         >
@@ -1096,7 +1094,7 @@ function updateLoadMore() {
 
 
 /* =========================================================
-   SEARCH
+   SEARCH FORM
 ========================================================= */
 
 function setupSearch() {
@@ -1376,11 +1374,6 @@ function plannerProductKey(
   return name;
 }
 
-
-/* =========================================================
-   SHOPPING PLANNER STYLES
-========================================================= */
-
 function injectPlannerStyles() {
   if (
     $("#planner-styles")
@@ -1408,17 +1401,13 @@ function injectPlannerStyles() {
 
     .planner-result-item {
       display: grid;
-      grid-template-columns:
-        65px 1fr;
+      grid-template-columns: 65px 1fr;
       align-items: center;
       gap: 16px;
       padding: 22px;
-      border:
-        1px solid
-        rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.08);
       border-radius: 20px;
-      background:
-        rgba(3,7,18,.55);
+      background: rgba(3,7,18,.55);
     }
 
     .planner-product-image {
@@ -1499,38 +1488,13 @@ function injectPlannerStyles() {
       color: #fff !important;
       font-weight: 900;
       text-decoration: none;
-      transition: .2s ease;
-    }
-
-    .planner-deal-button:hover {
-      background: #00bd43;
-      transform: translateY(-1px);
     }
 
     @media (max-width: 700px) {
       .planner-result-item {
-        grid-template-columns:
-          65px 1fr;
+        grid-template-columns: 65px 1fr;
         gap: 14px;
         padding: 18px;
-      }
-
-      .planner-product-image {
-        grid-column: 1;
-        grid-row: 1;
-      }
-
-      .planner-product-info {
-        grid-column: 2;
-        grid-row: 1;
-      }
-
-      .planner-product-link strong {
-        font-size: 17px;
-      }
-
-      .planner-product-price {
-        font-size: 17px;
       }
 
       .planner-deal-button {
@@ -1544,11 +1508,6 @@ function injectPlannerStyles() {
     style
   );
 }
-
-
-/* =========================================================
-   CREATE SHOPPING PLANNER
-========================================================= */
 
 function createPlanner() {
   const {
@@ -1665,28 +1624,6 @@ function createPlanner() {
               );
             }
 
-            const discountA =
-              Number(
-                a.product
-                  .discount_percent
-              ) || 0;
-
-            const discountB =
-              Number(
-                b.product
-                  .discount_percent
-              ) || 0;
-
-            if (
-              discountB !==
-              discountA
-            ) {
-              return (
-                discountB -
-                discountA
-              );
-            }
-
             return (
               price(a.product) -
               price(b.product)
@@ -1696,6 +1633,11 @@ function createPlanner() {
             item.product
           );
 
+      /*
+       * Bestaande budgetlogica behouden:
+       * niet proberen het volledige budget
+       * op te maken.
+       */
       const seen =
         new Set();
 
@@ -1757,95 +1699,93 @@ function createPlanner() {
         <div class="planner-results">
 
           ${shortlist
-            .map(
-              product => {
-                const image =
-                  product.image_url
-                    ? `
-                      <img
-                        src="${escapeHtml(
-                          product.image_url
-                        )}"
-                        alt="${escapeHtml(
-                          product.name
-                        )}"
-                        loading="lazy"
-                        width="65"
-                        height="65"
-                        onerror="this.style.display='none'"
-                      >
-                    `
-                    : `
-                      <div
-                        class="planner-product-image-placeholder"
-                      >
-                        FitDealFinder
-                      </div>
-                    `;
+            .map(product => {
+              const image =
+                product.image_url
+                  ? `
+                    <img
+                      src="${escapeHtml(
+                        product.image_url
+                      )}"
+                      alt="${escapeHtml(
+                        product.name
+                      )}"
+                      loading="lazy"
+                      width="65"
+                      height="65"
+                      onerror="this.style.display='none'"
+                    >
+                  `
+                  : `
+                    <div
+                      class="planner-product-image-placeholder"
+                    >
+                      FitDealFinder
+                    </div>
+                  `;
 
-                const dealUrl =
-                  `/go/${encodeURIComponent(
-                    String(product.id)
-                  )}`;
+              const dealUrl =
+                `/go/${encodeURIComponent(
+                  String(product.id)
+                )}`;
 
-                return `
+              return `
+                <div
+                  class="planner-result-item"
+                >
+
+                  <a
+                    href="${dealUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="planner-product-image"
+                    aria-label="Bekijk deal van ${escapeHtml(
+                      product.name
+                    )}"
+                  >
+                    ${image}
+                  </a>
+
                   <div
-                    class="planner-result-item"
+                    class="planner-product-info"
                   >
 
                     <a
                       href="${dealUrl}"
                       target="_blank"
                       rel="noopener noreferrer"
-                      class="planner-product-image"
-                      aria-label="Bekijk deal van ${escapeHtml(
-                        product.name
-                      )}"
+                      class="planner-product-link"
                     >
-                      ${image}
+                      <strong>
+                        ${escapeHtml(
+                          product.name
+                        )}
+                      </strong>
                     </a>
 
-                    <div
-                      class="planner-product-info"
+                    <span
+                      class="planner-product-price"
                     >
+                      ${money(
+                        price(product),
+                        product.currency
+                      )}
+                    </span>
 
-                      <a
-                        href="${dealUrl}"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="planner-product-link"
-                      >
-                        <strong>
-                          ${escapeHtml(
-                            product.name
-                          )}
-                        </strong>
-                      </a>
-
-                      <span
-                        class="planner-product-price"
-                      >
-                        ${money(
-                          price(product),
-                          product.currency
-                        )}
-                      </span>
-
-                      <a
-                        href="${dealUrl}"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="planner-deal-button"
-                      >
-                        Bekijk deal →
-                      </a>
-
-                    </div>
+                    <a
+                      href="${dealUrl}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="planner-deal-button"
+                    >
+                      Bekijk deal →
+                    </a>
 
                   </div>
-                `;
-              }
-            )
+
+                </div>
+              `;
+            })
             .join("")}
 
         </div>
@@ -1859,7 +1799,54 @@ function createPlanner() {
    AI PRODUCT SEARCH
 ========================================================= */
 
-const AI_PRODUCT_STOP_WORDS = [
+/*
+ * Alleen deze productsoorten worden
+ * direct herkend door de AI-zoekfunctie.
+ */
+const AI_PRODUCT_TERMS = [
+  "creatine",
+  "creatine monohydraat",
+  "creatine monohydrate",
+  "creatine hcl",
+
+  "protein",
+  "proteine",
+  "whey",
+  "whey protein",
+  "whey isolate",
+  "isolaat",
+  "isolate",
+
+  "casein",
+  "caseine",
+
+  "pre workout",
+  "pre-workout",
+  "preworkout",
+
+  "mass gainer",
+  "gainer",
+
+  "bcaa",
+  "amino",
+
+  "carnitine",
+  "l-carnitine",
+
+  "fat burner",
+  "fatburner",
+
+  "cafeine",
+  "caffeine",
+
+  "magnesium",
+  "omega",
+
+  "electrolyte",
+  "electrolytes"
+];
+
+const AI_STOP_WORDS = [
   "zoek",
   "vind",
   "vinden",
@@ -1900,310 +1887,473 @@ const AI_PRODUCT_STOP_WORDS = [
   "is",
   "zijn",
   "momenteel",
+  "vandaag",
   "nu",
   "site",
   "website"
 ];
 
-function detectAIProductQuery(message) {
+function containsSearchIntent(text) {
+  const intents = [
+    "zoek",
+    "vind",
+    "goedkoopste",
+    "goedkoop",
+    "beste",
+    "deal",
+    "deals",
+    "prijs",
+    "prijzen",
+    "welke",
+    "waar"
+  ];
+
+  return intents.some(word =>
+    text.includes(word)
+  );
+}
+
+function detectProductType(message) {
   const text =
     normalize(message);
 
-  const productTerms = [
-    "creatine",
-    "creatine monohydraat",
-    "creatine monohydrate",
-    "protein",
-    "proteine",
-    "whey",
-    "whey protein",
-    "whey isolate",
-    "isolaat",
-    "isolate",
-    "casein",
-    "caseine",
-    "pre workout",
-    "pre-workout",
-    "preworkout",
-    "mass gainer",
-    "gainer",
-    "bcaa",
-    "amino",
-    "carnitine",
-    "fat burner",
-    "fatburner",
-    "cafeine",
-    "caffeine",
-    "magnesium",
-    "omega",
-    "electrolyte",
-    "electrolytes"
-  ];
-
-  const hasProductTerm =
-    productTerms.some(term =>
-      text.includes(
-        normalize(term)
-      )
-    );
-
-  const hasSearchIntent =
-    [
-      "zoek",
-      "vind",
-      "goedkoopste",
-      "goedkoop",
-      "beste",
-      "deal",
-      "deals",
-      "prijs",
-      "prijzen",
-      "welke",
-      "waar"
-    ].some(term =>
-      text.includes(term)
-    );
-
-  if (
-    !hasProductTerm ||
-    !hasSearchIntent
-  ) {
-    return null;
-  }
-
-  let query =
-    text;
-
-  for (
-    const word of AI_PRODUCT_STOP_WORDS
-  ) {
-    query =
-      query.replace(
-        new RegExp(
-          `\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
-          "gi"
-        ),
-        " "
-      );
-  }
-
-  query =
-    query
-      .replace(
-        /[€$£]\s*\d+(?:[.,]\d+)?/g,
-        " "
-      )
-      .replace(
-        /\d+(?:[.,]\d+)?\s*(?:euro|eur)/gi,
-        " "
-      )
-      .replace(
-        /\s+/g,
-        " "
-      )
-      .trim();
-
   /*
-   * Specifieke termen behouden wanneer
-   * de algemene schoonmaak ze heeft
-   * aangeraakt.
+   * VOLGORDE IS BELANGRIJK.
+   *
+   * Eerst specifieke termen.
    */
+  const sortedTerms =
+    AI_PRODUCT_TERMS
+      .slice()
+      .sort(
+        (a, b) =>
+          normalize(b).length -
+          normalize(a).length
+      );
+
   for (
-    const term of productTerms
+    const term of sortedTerms
   ) {
     if (
       text.includes(
         normalize(term)
       )
     ) {
-      query =
-        `${query} ${normalize(term)}`
-          .replace(
-            /\s+/g,
-            " "
-          )
-          .trim();
+      if (
+        normalize(term).includes(
+          "creatine"
+        )
+      ) {
+        return "creatine";
+      }
+
+      if (
+        normalize(term).includes(
+          "pre workout"
+        ) ||
+        normalize(term).includes(
+          "pre-workout"
+        ) ||
+        normalize(term).includes(
+          "preworkout"
+        )
+      ) {
+        return "pre-workout";
+      }
+
+      if (
+        normalize(term).includes(
+          "whey"
+        ) ||
+        normalize(term).includes(
+          "protein"
+        ) ||
+        normalize(term).includes(
+          "proteine"
+        ) ||
+        normalize(term).includes(
+          "casein"
+        ) ||
+        normalize(term).includes(
+          "caseine"
+        ) ||
+        normalize(term).includes(
+          "isolate"
+        ) ||
+        normalize(term).includes(
+          "isolaat"
+        )
+      ) {
+        return "proteine";
+      }
+
+      if (
+        normalize(term).includes(
+          "gainer"
+        ) ||
+        normalize(term).includes(
+          "mass"
+        )
+      ) {
+        return "gainer";
+      }
+
+      if (
+        normalize(term).includes(
+          "carnitine"
+        ) ||
+        normalize(term).includes(
+          "caffeine"
+        ) ||
+        normalize(term).includes(
+          "cafeine"
+        ) ||
+        normalize(term).includes(
+          "fat burner"
+        ) ||
+        normalize(term).includes(
+          "fatburner"
+        )
+      ) {
+        return "cut-support";
+      }
+
+      return normalize(term);
     }
   }
 
+  return "";
+}
+
+function detectAIProductQuery(
+  message
+) {
+  const text =
+    normalize(message);
+
+  const productType =
+    detectProductType(
+      message
+    );
+
+  if (
+    !productType
+  ) {
+    return null;
+  }
+
+  if (
+    !containsSearchIntent(text)
+  ) {
+    return null;
+  }
+
   return {
-    query,
+    productType,
+
     cheapest:
-      text.includes("goedkoopste") ||
-      text.includes("goedkoop"),
+      text.includes(
+        "goedkoopste"
+      ) ||
+      text.includes(
+        "goedkoop"
+      ),
 
     best:
-      text.includes("beste") ||
-      text.includes("deal")
+      text.includes(
+        "beste"
+      ) ||
+      text.includes(
+        "deal"
+      )
   };
 }
 
+
+/* =========================================================
+   STRICT PRODUCT MATCHING
+========================================================= */
+
+function matchesExactProductType(
+  product,
+  productType
+) {
+  if (
+    !isUsableProduct(product)
+  ) {
+    return false;
+  }
+
+  /*
+   * EXTREEM BELANGRIJK:
+   * alleen naam + merk + categorie.
+   *
+   * Niet description.
+   */
+  const text =
+    productIdentityText(
+      product
+    );
+
+  /*
+   * Algemene uitsluitingen.
+   */
+  if (
+    BAD_WORDS.some(word =>
+      text.includes(
+        normalize(word)
+      )
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    productType ===
+    "creatine"
+  ) {
+    /*
+     * Product MOET daadwerkelijk
+     * "creatine" in naam/categorie/merk
+     * bevatten.
+     */
+    return text.includes(
+      "creatine"
+    );
+  }
+
+  if (
+    productType ===
+    "proteine"
+  ) {
+    return hasAny(text, [
+      "protein",
+      "proteine",
+      "whey",
+      "casein",
+      "caseine",
+      "isolate",
+      "isolaat"
+    ]);
+  }
+
+  if (
+    productType ===
+    "pre-workout"
+  ) {
+    return hasAny(text, [
+      "pre workout",
+      "pre-workout",
+      "preworkout"
+    ]);
+  }
+
+  if (
+    productType ===
+    "gainer"
+  ) {
+    return hasAny(text, [
+      "gainer",
+      "mass gainer",
+      "mass-gainer"
+    ]);
+  }
+
+  if (
+    productType ===
+    "cut-support"
+  ) {
+    return hasAny(text, [
+      "fat burner",
+      "fatburner",
+      "thermogenic",
+      "caffeine",
+      "cafeine",
+      "carnitine",
+      "l-carnitine",
+      "cla",
+      "shred"
+    ]);
+  }
+
+  return text.includes(
+    normalize(productType)
+  );
+}
+
+
+/* =========================================================
+   FIND AI PRODUCTS
+========================================================= */
+
 function findAIProducts(message) {
-  const queryData =
+  const request =
     detectAIProductQuery(
       message
     );
 
-  if (!queryData) {
+  if (!request) {
     return null;
   }
 
   const {
-    query,
+    productType,
     cheapest,
     best
-  } =
-    queryData;
+  } = request;
 
+  /*
+   * Alleen STRIKTE matches.
+   */
   let candidates =
     state.products
       .filter(isUsableProduct)
       .filter(product =>
-        matchesSearch(
+        matchesExactProductType(
           product,
-          query
+          productType
         )
       );
 
   /*
-   * Wanneer de zoekterm door
-   * Nederlandse woorden moeilijk
-   * wordt, proberen we specifiek
-   * de productsoort te herkennen.
+   * Alleen producten met een
+   * geldige positieve prijs.
    */
-  if (!candidates.length) {
-    const text =
-      normalize(message);
-
-    if (
-      text.includes("creatine")
-    ) {
-      candidates =
-        state.products
-          .filter(isUsableProduct)
-          .filter(product =>
-            hasAny(
-              productText(product),
-              [
-                "creatine"
-              ]
-            )
-          );
-    } else if (
-      text.includes("whey") ||
-      text.includes("protein") ||
-      text.includes("proteine")
-    ) {
-      candidates =
-        state.products
-          .filter(isUsableProduct)
-          .filter(product =>
-            hasAny(
-              productText(product),
-              [
-                "whey",
-                "protein",
-                "proteine"
-              ]
-            )
-          );
-    } else if (
-      text.includes("pre workout") ||
-      text.includes("pre-workout") ||
-      text.includes("preworkout")
-    ) {
-      candidates =
-        state.products
-          .filter(isUsableProduct)
-          .filter(product =>
-            hasAny(
-              productText(product),
-              [
-                "pre workout",
-                "pre-workout",
-                "preworkout"
-              ]
-            )
-          );
-    }
-  }
-
-  if (!candidates.length) {
-    return {
-      query,
-      products: [],
-      cheapest,
-      best
-    };
-  }
-
   candidates =
-    candidates
-      .slice()
-      .sort((a, b) => {
-        if (
-          cheapest
-        ) {
-          return (
-            price(a) -
-            price(b)
+    candidates.filter(
+      product => {
+        const value =
+          Number(
+            product.price
           );
-        }
-
-        const dealA =
-          Number(
-            a.deal_score
-          ) || 0;
-
-        const dealB =
-          Number(
-            b.deal_score
-          ) || 0;
-
-        if (
-          dealA !==
-          dealB
-        ) {
-          return (
-            dealB -
-            dealA
-          );
-        }
-
-        const discountA =
-          Number(
-            a.discount_percent
-          ) || 0;
-
-        const discountB =
-          Number(
-            b.discount_percent
-          ) || 0;
-
-        if (
-          discountA !==
-          discountB
-        ) {
-          return (
-            discountB -
-            discountA
-          );
-        }
 
         return (
-          price(a) -
-          price(b)
+          Number.isFinite(
+            value
+          ) &&
+          value > 0
         );
-      })
-      .slice(0, 5);
+      }
+    );
+
+  /*
+   * Op voorraad eerst wanneer
+   * voorraadinformatie beschikbaar is.
+   */
+  candidates.sort(
+    (a, b) => {
+      const stockA =
+        Number(a.in_stock);
+
+      const stockB =
+        Number(b.in_stock);
+
+      if (
+        (stockA === 1) !==
+        (stockB === 1)
+      ) {
+        return (
+          stockB === 1
+            ? 1
+            : -1
+        );
+      }
+
+      /*
+       * GOEDKOOPSTE:
+       * prijs is leidend.
+       */
+      if (
+        cheapest
+      ) {
+        const priceDifference =
+          price(a) -
+          price(b);
+
+        if (
+          priceDifference !==
+          0
+        ) {
+          return priceDifference;
+        }
+
+        /*
+         * Bij exact gelijke prijs:
+         * hogere deal score eerst.
+         */
+        return (
+          (Number(
+            b.deal_score
+          ) || 0) -
+          (Number(
+            a.deal_score
+          ) || 0)
+        );
+      }
+
+      /*
+       * BESTE DEAL:
+       * deal score eerst.
+       */
+      const scoreA =
+        Number(
+          a.deal_score
+        ) || 0;
+
+      const scoreB =
+        Number(
+          b.deal_score
+        ) || 0;
+
+      if (
+        scoreA !== scoreB
+      ) {
+        return (
+          scoreB -
+          scoreA
+        );
+      }
+
+      const discountA =
+        Number(
+          a.discount_percent
+        ) || 0;
+
+      const discountB =
+        Number(
+          b.discount_percent
+        ) || 0;
+
+      if (
+        discountA !==
+        discountB
+      ) {
+        return (
+          discountB -
+          discountA
+        );
+      }
+
+      return (
+        price(a) -
+        price(b)
+      );
+    }
+  );
 
   return {
-    query,
-    products: candidates,
+    productType,
     cheapest,
-    best
+    best,
+    products:
+      candidates
   };
 }
+
+
+/* =========================================================
+   AI PRODUCT RESULT
+========================================================= */
 
 function renderAIProductResults(
   result
@@ -2218,23 +2368,54 @@ function renderAIProductResults(
     return false;
   }
 
+  /*
+   * -------------------------------------------------------
+   * HIER ZIT DE BELANGRIJKSTE FIX.
+   *
+   * Bij "goedkoopste" tonen we ALLEEN
+   * het eerste product.
+   * -------------------------------------------------------
+   */
+
+  const productsToShow =
+    result.cheapest
+      ? [result.products[0]]
+      : result.products.slice(
+          0,
+          5
+        );
+
   const firstProduct =
     result.products[0];
 
   const title =
     result.cheapest
-      ? "Goedkoopste passende deal"
+      ? "Goedkoopste creatine"
       : result.best
         ? "Beste passende deals"
         : "Passende deals";
 
   const intro =
     result.cheapest
-      ? "Ik heb de actuele producten in FitDealFinder doorzocht en gesorteerd op prijs."
-      : "Ik heb de actuele producten in FitDealFinder gevonden.";
+      ? "Ik heb de actuele FitDealFinder-producten gecontroleerd en op laagste prijs gesorteerd."
+      : "Ik heb de actuele FitDealFinder-producten gecontroleerd.";
+
+  const firstPrice =
+    money(
+      price(firstProduct),
+      firstProduct.currency
+    );
+
+  const firstMerchant =
+    firstProduct.merchant_name ||
+    "winkel onbekend";
+
+  const firstName =
+    firstProduct.name ||
+    "Product";
 
   const items =
-    result.products
+    productsToShow
       .map(
         (product, index) => {
           const dealUrl =
@@ -2259,7 +2440,9 @@ function renderAIProductResults(
                 >
               `
               : `
-                <div class="ai-product-placeholder">
+                <div
+                  class="ai-product-placeholder"
+                >
                   FitDealFinder
                 </div>
               `;
@@ -2295,17 +2478,17 @@ function renderAIProductResults(
                 class="ai-product-result-info"
               >
 
-                ${
-                  index === 0
-                    ? `
-                      <span
-                        class="ai-product-result-badge"
-                      >
-                        ${result.cheapest ? "Goedkoopste" : "Top deal"}
-                      </span>
-                    `
-                    : ""
-                }
+                <span
+                  class="ai-product-result-badge"
+                >
+                  ${
+                    result.cheapest
+                      ? "Goedkoopste"
+                      : index === 0
+                        ? "Top deal"
+                        : "Deal"
+                  }
+                </span>
 
                 <a
                   href="${dealUrl}"
@@ -2330,6 +2513,7 @@ function renderAIProductResults(
                 <div
                   class="ai-product-result-price"
                 >
+
                   <strong>
                     ${escapeHtml(
                       money(
@@ -2343,7 +2527,9 @@ function renderAIProductResults(
                     oldPrice >
                     price(product)
                       ? `
-                        <span class="old-price">
+                        <span
+                          class="old-price"
+                        >
                           ${escapeHtml(
                             money(
                               oldPrice,
@@ -2358,12 +2544,15 @@ function renderAIProductResults(
                   ${
                     discount > 0
                       ? `
-                        <span class="discount">
+                        <span
+                          class="discount"
+                        >
                           -${discount}%
                         </span>
                       `
                       : ""
                   }
+
                 </div>
 
                 <a
@@ -2383,43 +2572,6 @@ function renderAIProductResults(
       )
       .join("");
 
-  const firstName =
-    firstProduct?.name ||
-    "";
-
-  const firstPrice =
-    money(
-      price(firstProduct),
-      firstProduct.currency
-    );
-
-  const firstMerchant =
-    firstProduct.merchant_name ||
-    "onbekende winkel";
-
-  const summary =
-    result.cheapest
-      ? `
-        De goedkoopste passende optie
-        die ik nu in FitDealFinder vind is
-        <strong>${escapeHtml(
-          firstName
-        )}</strong>
-        van
-        <strong>${escapeHtml(
-          firstMerchant
-        )}</strong>
-        voor
-        <strong>${escapeHtml(
-          firstPrice
-        )}</strong>.
-      `
-      : `
-        Ik heb ${result.products.length}
-        passende deals gevonden in
-        FitDealFinder.
-      `;
-
   const responseBox =
     $("#ai-response");
 
@@ -2428,7 +2580,9 @@ function renderAIProductResults(
   }
 
   responseBox.innerHTML = `
-    <div class="ai-product-search">
+    <div
+      class="ai-product-search"
+    >
 
       <h3>
         ${escapeHtml(title)}
@@ -2438,17 +2592,55 @@ function renderAIProductResults(
         ${escapeHtml(intro)}
       </p>
 
-      <p class="ai-product-search-summary">
-        ${summary}
-      </p>
+      ${
+        result.cheapest
+          ? `
+            <p
+              class="ai-product-search-summary"
+            >
+              De goedkoopste match die ik
+              nu vind is
+              <strong>
+                ${escapeHtml(
+                  firstName
+                )}
+              </strong>
+              van
+              <strong>
+                ${escapeHtml(
+                  firstMerchant
+                )}
+              </strong>
+              voor
+              <strong>
+                ${escapeHtml(
+                  firstPrice
+                )}
+              </strong>.
+            </p>
+          `
+          : `
+            <p
+              class="ai-product-search-summary"
+            >
+              Ik heb
+              ${productsToShow.length}
+              passende producten gevonden.
+            </p>
+          `
+      }
 
-      <div class="ai-product-result-list">
+      <div
+        class="ai-product-result-list"
+      >
         ${items}
       </div>
 
-      <p class="ai-product-search-note">
-        Prijzen en voorraad kunnen door de
-        betreffende winkel worden gewijzigd.
+      <p
+        class="ai-product-search-note"
+      >
+        Prijzen en voorraad kunnen door
+        de betreffende winkel worden gewijzigd.
       </p>
 
     </div>
@@ -2459,7 +2651,7 @@ function renderAIProductResults(
 
 
 /* =========================================================
-   AI SEARCH STYLES
+   AI PRODUCT STYLES
 ========================================================= */
 
 function injectAIProductStyles() {
@@ -2558,7 +2750,8 @@ function injectAIProductStyles() {
       align-items: center;
       justify-content: center;
       border-radius: 10px;
-      background: rgba(255,255,255,.05);
+      background:
+        rgba(255,255,255,.05);
       color: #9eacbd;
       font-size: 9px;
       font-weight: 800;
@@ -2574,7 +2767,8 @@ function injectAIProductStyles() {
       margin-bottom: 5px;
       padding: 4px 8px;
       border-radius: 999px;
-      background: rgba(54,201,120,.14);
+      background:
+        rgba(54,201,120,.14);
       color: #67e5a2;
       font-size: 11px;
       font-weight: 900;
@@ -2729,9 +2923,15 @@ function setupAI() {
       normalize(message);
 
     if (
-      text.includes("lean bulk") ||
-      text.includes("lean-bulk") ||
-      text.includes("leanbulk")
+      text.includes(
+        "lean bulk"
+      ) ||
+      text.includes(
+        "lean-bulk"
+      ) ||
+      text.includes(
+        "leanbulk"
+      )
     ) {
       return "lean-bulk";
     }
@@ -2758,16 +2958,16 @@ function setupAI() {
     return "";
   }
 
-  function productTextForPackage(product) {
-    return normalize(
-      [
-        product.name,
-        product.brand,
-        product.category
-      ]
-        .filter(Boolean)
-        .join(" ")
-    );
+  function productTextForPackage(
+    product
+  ) {
+    return normalize([
+      product.name,
+      product.brand,
+      product.category
+    ]
+      .filter(Boolean)
+      .join(" "));
   }
 
   function hasWord(
@@ -2796,8 +2996,9 @@ function setupAI() {
       );
 
     const excluded = [
+      "shaker",
       "water",
-      "kokoswater",
+      "waterfles",
       "drink",
       "drank",
       "juice",
@@ -2983,8 +3184,6 @@ function setupAI() {
       });
   }
 
-  let currentGoal = "";
-
   function buildExactPackage(
     message
   ) {
@@ -2997,9 +3196,6 @@ function setupAI() {
       detectGoal(
         message
       );
-
-    currentGoal =
-      goal;
 
     if (
       budget === null
@@ -3246,103 +3442,102 @@ function setupAI() {
 
     const items =
       products
-        .map(
-          product => {
-            const productPrice =
-              price(product);
+        .map(product => {
+          const productPrice =
+            price(product);
 
-            const image =
-              product.image_url
-                ? `
-                  <img
-                    src="${escapeHtml(product.image_url)}"
-                    alt="${escapeHtml(product.name)}"
-                    loading="lazy"
-                    width="65"
-                    height="65"
-                    onerror="this.style.display='none'"
-                  >
-                `
-                : `
-                  <div
-                    class="product-image-placeholder"
-                  >
-                    FitDealFinder
-                  </div>
-                `;
+          const image =
+            product.image_url
+              ? `
+                <img
+                  src="${escapeHtml(
+                    product.image_url
+                  )}"
+                  alt="${escapeHtml(
+                    product.name
+                  )}"
+                  loading="lazy"
+                  width="65"
+                  height="65"
+                  onerror="this.style.display='none'"
+                >
+              `
+              : `
+                <div
+                  class="product-image-placeholder"
+                >
+                  FitDealFinder
+                </div>
+              `;
 
-            const dealUrl =
-              `/go/${encodeURIComponent(
-                String(product.id)
-              )}`;
+          const dealUrl =
+            `/go/${encodeURIComponent(
+              String(product.id)
+            )}`;
 
-            return `
+          return `
+            <div
+              class="ai-package-item"
+            >
+
+              <a
+                href="${dealUrl}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="ai-package-product-image"
+              >
+                ${image}
+              </a>
+
               <div
-                class="ai-package-item"
+                class="ai-package-product-info"
               >
 
                 <a
                   href="${dealUrl}"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="ai-package-product-image"
-                  aria-label="Bekijk deal van ${escapeHtml(
-                    product.name
-                  )}"
+                  class="ai-package-product-link"
                 >
-                  ${image}
-                </a>
-
-                <div
-                  class="ai-package-product-info"
-                >
-
-                  <a
-                    href="${dealUrl}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="ai-package-product-link"
-                  >
-                    <strong>
-                      ${escapeHtml(
-                        product.name
-                      )}
-                    </strong>
-                  </a>
-
-                  <small>
+                  <strong>
                     ${escapeHtml(
-                      product.merchant_name ||
-                      "Winkel onbekend"
-                    )}
-                  </small>
-
-                  <strong
-                    class="ai-package-price"
-                  >
-                    ${escapeHtml(
-                      money(
-                        productPrice,
-                        product.currency
-                      )
+                      product.name
                     )}
                   </strong>
+                </a>
 
-                  <a
-                    href="${dealUrl}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="ai-package-deal-button"
-                  >
-                    Bekijk deal →
-                  </a>
+                <small>
+                  ${escapeHtml(
+                    product.merchant_name ||
+                    "Winkel onbekend"
+                  )}
+                </small>
 
-                </div>
+                <strong
+                  class="ai-package-price"
+                >
+                  ${escapeHtml(
+                    money(
+                      productPrice,
+                      product.currency
+                    )
+                  )}
+                </strong>
+
+                <a
+                  href="${dealUrl}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="ai-package-deal-button"
+                >
+                  Bekijk deal →
+                </a>
 
               </div>
-            `;
-          }
-        )
+
+            </div>
+          `;
+        })
         .join("");
 
     responseBox.innerHTML = `
@@ -3354,8 +3549,7 @@ function setupAI() {
 
         <p>
           Ik heb het pakket samengesteld
-          uit echte producten die momenteel
-          in FitDealFinder staan.
+          uit echte FitDealFinder-producten.
         </p>
 
         <div class="ai-package-list">
@@ -3392,11 +3586,6 @@ function setupAI() {
       </div>
     `;
   }
-
-
-  /* =======================================================
-     AI PACKAGE STYLES
-  ======================================================= */
 
   function injectAIPackageStyles() {
     if (
@@ -3435,7 +3624,6 @@ function setupAI() {
         max-width: 65px !important;
         max-height: 65px !important;
         object-fit: contain !important;
-        object-position: center !important;
       }
 
       .ai-package-product-link {
@@ -3460,12 +3648,10 @@ function setupAI() {
         color: #fff !important;
         font-weight: 900;
         text-decoration: none;
-        transition: .2s ease;
       }
 
       .ai-package-deal-button:hover {
         background: #00bd43;
-        transform: translateY(-1px);
       }
 
       .ai-package-explanation {
@@ -3498,11 +3684,6 @@ function setupAI() {
     );
   }
 
-
-  /* =======================================================
-     AI FORM
-  ======================================================= */
-
   injectAIPackageStyles();
 
   form.addEventListener(
@@ -3518,21 +3699,9 @@ function setupAI() {
       }
 
       /*
-       * -----------------------------------------------------
-       * ECHTE PRODUCTZOEKOPDRACHT
-       * -----------------------------------------------------
-       *
-       * Bijvoorbeeld:
-       *
-       * "zoek de goedkoopste creatine"
-       * "wat is de goedkoopste whey?"
-       * "zoek een goede pre workout"
-       *
-       * Deze vragen worden eerst tegen de echte
-       * FitDealFinder-productdatabase gehouden.
-       *
-       * De AI krijgt dus niet de kans om zelf
-       * een product, prijs of link te verzinnen.
+       * =====================================================
+       * 1. ECHTE PRODUCTZOEKOPDRACHT
+       * =====================================================
        */
 
       const productSearch =
@@ -3552,18 +3721,15 @@ function setupAI() {
           return;
         }
 
-        /*
-         * Als er geen producten zijn,
-         * mag de gewone AI uitleggen dat
-         * er momenteel niets gevonden is.
-         */
         responseBox.innerHTML = `
-          <div class="ai-response-content">
+          <div
+            class="ai-response-content"
+          >
             <p>
-              Ik heb de actuele producten van
-              FitDealFinder gecontroleerd,
-              maar kon op dit moment geen
-              passende producten vinden.
+              Ik heb de actuele producten
+              van FitDealFinder gecontroleerd,
+              maar geen passende producten
+              gevonden.
             </p>
           </div>
         `;
@@ -3571,18 +3737,16 @@ function setupAI() {
         return;
       }
 
+      /*
+       * =====================================================
+       * 2. PAKKET
+       * =====================================================
+       */
+
       const isPackageRequest =
         /pakket|pakketje|samenstellen|bundel|combinatie|set/i.test(
           message
         );
-
-      /*
-       * Pakketverzoeken worden niet
-       * door AI bepaald.
-       *
-       * Eerst wordt het pakket
-       * wiskundig correct opgebouwd.
-       */
 
       if (
         isPackageRequest
@@ -3619,10 +3783,9 @@ function setupAI() {
           );
 
           /*
-           * AI geeft alleen uitleg.
-           *
-           * AI mag geen producten,
-           * prijzen of totaal aanpassen.
+           * Alleen uitleg van AI.
+           * Productkeuze en totaal zijn
+           * al door de frontend bepaald.
            */
 
           try {
@@ -3729,8 +3892,8 @@ BELANGRIJK:
           responseBox.innerHTML = `
             <p>
               Het pakket kon momenteel niet
-              worden samengesteld. Probeer het
-              opnieuw.
+              worden samengesteld.
+              Probeer het opnieuw.
             </p>
           `;
 
@@ -3738,11 +3901,10 @@ BELANGRIJK:
         }
       }
 
-
       /*
-       * -----------------------------------------------------
-       * GEWONE AI-VRAGEN
-       * -----------------------------------------------------
+       * =====================================================
+       * 3. GEWONE AI-VRAAG
+       * =====================================================
        */
 
       responseBox.innerHTML = `
@@ -3788,7 +3950,9 @@ BELANGRIJK:
           "Ik kon hier nu geen antwoord op geven.";
 
         responseBox.innerHTML = `
-          <div class="ai-response-content">
+          <div
+            class="ai-response-content"
+          >
             ${renderAIText(answer)}
           </div>
         `;
@@ -3820,21 +3984,27 @@ BELANGRIJK:
 
 function setupDealTracking() {
   /*
-   * Tracking gebeurt server-side via
-   * /go/:id.
+   * /go/:id wordt server-side afgehandeld.
    *
-   * Er wordt hier geen extra
-   * /api/click endpoint aangeroepen.
-   *
-   * Daardoor kan tracking nooit
-   * de daadwerkelijke dealklik
-   * blokkeren.
+   * Geen preventDefault:
+   * de gebruiker wordt altijd normaal
+   * naar de deal doorgestuurd.
    */
   document.addEventListener(
     "click",
     event => {
+      const target =
+        event.target;
+
+      if (
+        !target ||
+        !target.closest
+      ) {
+        return;
+      }
+
       const link =
-        event.target.closest(
+        target.closest(
           'a[href^="/go/"]'
         );
 
@@ -3843,10 +4013,10 @@ function setupDealTracking() {
       }
 
       /*
-       * Geen preventDefault.
+       * Bewust leeg.
        *
-       * De browser volgt gewoon
-       * de /go/:id redirect.
+       * De klik mag nooit worden
+       * geblokkeerd.
        */
     }
   );
