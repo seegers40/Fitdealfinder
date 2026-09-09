@@ -1796,10 +1796,39 @@ function createPlanner() {
             (a, b) =>
               (Number(b.deal_score) || 0) -
               (Number(a.deal_score) || 0)
-          )
-          .slice(0, 5);
+          );
 
-      if (!candidates.length) {
+      /*
+       * ENIGE AANPASSING:
+       *
+       * De shortlist wordt nu op productnaam
+       * gededupliceerd. Hetzelfde product kan
+       * daardoor niet twee keer in de shortlist
+       * verschijnen.
+       */
+      const seenPlannerProducts = new Set();
+
+      const uniquePlannerProducts =
+        candidates.filter(product => {
+          const key =
+            normalize(product?.name || "");
+
+          if (
+            !key ||
+            seenPlannerProducts.has(key)
+          ) {
+            return false;
+          }
+
+          seenPlannerProducts.add(key);
+
+          return true;
+        });
+
+      const shortlist =
+        uniquePlannerProducts.slice(0, 5);
+
+      if (!shortlist.length) {
         result.innerHTML = `
           <p>
             Binnen dit budget vonden we nu geen passende producten.
@@ -1812,7 +1841,7 @@ function createPlanner() {
       result.innerHTML = `
         <div class="planner-results">
 
-          ${candidates
+          ${shortlist
             .map(
               product => `
                 <div class="planner-result-item">
