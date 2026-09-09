@@ -327,49 +327,82 @@ function matchesGoal(product, goal) {
    CATEGORIES
 ========================================================= */
 
+/*
+ * AANGEPAST:
+ *
+ * Categorieën gebruiken uitsluitend:
+ * - productnaam
+ * - merk
+ * - het echte category-veld
+ *
+ * De volledige beschrijving wordt hier NIET gebruikt.
+ *
+ * Daardoor kan bijvoorbeeld een creatineproduct
+ * niet door het woord "protein" in de omschrijving
+ * opeens onder Proteïne verschijnen.
+ */
+
 function matchesCategory(product, category) {
   if (!category) return true;
 
-  const normalizedCategory = normalize(category);
-  const text = productText(product);
+  const normalizedCategory =
+    normalize(category);
 
+  const categoryText = normalize([
+    product?.name,
+    product?.brand,
+    product?.category
+  ].join(" "));
+
+  /*
+   * PROTEÏNE
+   */
   if (normalizedCategory === "proteine") {
-    return hasAny(text, [
+    return hasAny(categoryText, [
       "protein",
       "proteine",
       "whey",
+      "whey protein",
       "casein",
       "caseine",
       "isolate",
-      "isolaat",
-      "gainer",
-      "mass"
+      "isolaat"
     ]);
   }
 
+  /*
+   * CREATINE
+   */
   if (normalizedCategory === "creatine") {
-    return text.includes("creatine");
+    return hasAny(categoryText, [
+      "creatine",
+      "creatine monohydrate",
+      "creatine hcl"
+    ]);
   }
 
+  /*
+   * PRE-WORKOUT
+   */
   if (normalizedCategory === "pre-workout") {
-    return hasAny(text, [
+    return hasAny(categoryText, [
       "pre workout",
       "pre-workout",
-      "preworkout",
-      "pump",
-      "citrulline",
-      "beta alanine"
+      "preworkout"
     ]);
   }
 
+  /*
+   * SUPPLEMENTEN
+   */
   if (normalizedCategory === "supplementen") {
     return hasAny(
-      text,
+      categoryText,
       GENERAL_SUPPLEMENT_WORDS
     );
   }
 
-  return true;
+  return false;
 }
 
 
