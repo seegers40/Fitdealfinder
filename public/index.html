@@ -89,7 +89,10 @@
       margin: 0 auto;
     }
 
-    /* HEADER */
+
+    /* =====================================================
+       HEADER
+    ===================================================== */
 
     .site-header {
       position: sticky;
@@ -159,7 +162,10 @@
       font-weight: 900;
     }
 
-    /* HERO */
+
+    /* =====================================================
+       HERO
+    ===================================================== */
 
     .hero {
       position: relative;
@@ -176,7 +182,12 @@
           rgba(35,95,155,.22),
           transparent 34%
         ),
-        linear-gradient(135deg,#050c16,#081525 52%,#10253d);
+        linear-gradient(
+          135deg,
+          #050c16,
+          #081525 52%,
+          #10253d
+        );
     }
 
     .hero-grid {
@@ -228,7 +239,10 @@
       line-height: 1.6;
     }
 
-    /* SEARCH */
+
+    /* =====================================================
+       SEARCH
+    ===================================================== */
 
     .search-wrap {
       margin-top: 30px;
@@ -302,7 +316,10 @@
       color: #07140d;
     }
 
-    /* HERO VISUAL */
+
+    /* =====================================================
+       HERO VISUAL
+    ===================================================== */
 
     .hero-visual {
       position: relative;
@@ -382,7 +399,12 @@
       width: 135px;
       height: 190px;
       transform: translateX(-50%);
-      background: linear-gradient(100deg,#526170,#a5b0ba 44%,#586674);
+      background: linear-gradient(
+        100deg,
+        #526170,
+        #a5b0ba 44%,
+        #586674
+      );
       clip-path: polygon(
         27% 0,
         73% 0,
@@ -401,7 +423,11 @@
       width: 47px;
       height: 190px;
       border-radius: 50px;
-      background: linear-gradient(145deg,#a8b3bd,#586573);
+      background: linear-gradient(
+        145deg,
+        #a8b3bd,
+        #586573
+      );
     }
 
     .person-arm.left {
@@ -420,7 +446,11 @@
       width: 58px;
       height: 175px;
       border-radius: 32px;
-      background: linear-gradient(145deg,#687583,#35414e);
+      background: linear-gradient(
+        145deg,
+        #687583,
+        #35414e
+      );
     }
 
     .person-leg.left {
@@ -467,7 +497,10 @@
       font-weight: 950;
     }
 
-    /* TRUST */
+
+    /* =====================================================
+       TRUST
+    ===================================================== */
 
     .trust {
       background: #fff;
@@ -501,7 +534,10 @@
       font-weight: 950;
     }
 
-    /* MAIN */
+
+    /* =====================================================
+       MAIN
+    ===================================================== */
 
     main {
       background: var(--page);
@@ -554,7 +590,10 @@
       white-space: nowrap;
     }
 
-    /* CATEGORIES */
+
+    /* =====================================================
+       CATEGORIES
+    ===================================================== */
 
     .categories {
       display: grid;
@@ -613,7 +652,10 @@
       line-height: 1.45;
     }
 
-    /* PRODUCTS */
+
+    /* =====================================================
+       PRODUCTS
+    ===================================================== */
 
     .products-grid {
       display: grid;
@@ -636,39 +678,33 @@
       box-shadow: 0 18px 45px rgba(7,17,31,.1);
     }
 
-    /*
-      BELANGRIJK:
-      app.js maakt rechtstreeks een IMG met class="product-image".
-      Daarom moet de afbeelding zelf hier worden gestyled.
-    */
+    .product-card .product-image {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 230px;
+      min-height: 230px;
+      overflow: hidden;
+      padding: 18px;
+      background:
+        radial-gradient(
+          circle at 50% 35%,
+          #f5f8fb,
+          #e9eef3
+        );
+    }
 
-    
-.product-card .product-image {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 230px;
-  min-height: 230px;
-  overflow: hidden;
-  padding: 18px;
-  background:
-    radial-gradient(
-      circle at 50% 35%,
-      #f5f8fb,
-      #e9eef3
-    );
-}
+    .product-card .product-image > img {
+      display: block;
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      object-position: center;
+    }
 
-.product-card .product-image > img {
-  display: block;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  object-position: center;
-}
     .product-image-placeholder {
       display: grid !important;
       place-items: center;
@@ -676,18 +712,23 @@
       height: 230px;
       min-height: 230px;
       padding: 0 !important;
-      background: linear-gradient(
-        145deg,
-        #e9eef3,
-        #f8fafc
-      ) !important;
+      background:
+        linear-gradient(
+          145deg,
+          #e9eef3,
+          #f8fafc
+        ) !important;
       color: #8793a2;
       font-size: 25px;
       font-weight: 950;
       letter-spacing: .08em;
     }
 
-    .product-card-body {
+    /*
+     * Nieuwe productkaart uit app.js.
+     */
+
+    .product-content {
       padding: 20px;
     }
 
@@ -699,7 +740,7 @@
       letter-spacing: .08em;
     }
 
-    .product-title {
+    .product-content h3 {
       min-height: 52px;
       margin: 10px 0 5px;
       color: #101925;
@@ -707,17 +748,7 @@
       line-height: 1.25;
     }
 
-    .product-title a:hover {
-      color: #15935a;
-    }
-
-    .product-store {
-      color: #697789;
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .product-price-row {
+    .product-price {
       display: flex;
       align-items: baseline;
       flex-wrap: wrap;
@@ -725,66 +756,73 @@
       margin-top: 17px;
     }
 
-    .product-price {
+    .product-price strong {
       color: #101925;
       font-size: 23px;
       font-weight: 950;
     }
 
-    .product-old-price {
+    .old-price {
       color: #929dab;
       font-size: 14px;
       text-decoration: line-through;
     }
 
-    .product-discount {
+    .discount {
       color: #15935a;
       font-size: 13px;
       font-weight: 950;
     }
 
     .product-meta {
-      margin-top: 7px;
-      color: #15935a;
-      font-size: 11px;
-      font-weight: 850;
-    }
-
-    .product-goals {
       display: flex;
+      align-items: center;
       flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 13px;
+      gap: 8px;
+      margin-top: 12px;
+      color: #697789;
+      font-size: 12px;
+      font-weight: 750;
     }
 
-    .product-goal {
-      padding: 6px 9px;
-      border-radius: 999px;
-      background: #edf8f2;
-      color: #147b49;
-      font-size: 11px;
+    .stock {
+      color: #15935a;
       font-weight: 850;
     }
 
-    .product-button {
+    .stock.out {
+      color: var(--red);
+    }
+
+    .product-actions {
+      margin-top: 18px;
+    }
+
+    .deal-button {
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 46px;
-      margin-top: 18px;
+      width: 100%;
+      min-height: 48px;
+      padding: 0 18px;
       border-radius: 12px;
-      background: #07111f;
+      background: #00a83b;
       color: #fff;
       font-weight: 900;
       transition: .2s ease;
     }
 
-    .product-button:hover {
-      background: #142942;
+    .deal-button:hover {
+      background: #00bd43;
+      transform: translateY(-1px);
     }
 
-    /* MESSAGES */
 
+    /* =====================================================
+       MESSAGES
+    ===================================================== */
+
+    .empty-state,
     .products-message {
       grid-column: 1 / -1;
       padding: 40px 25px;
@@ -796,12 +834,16 @@
       line-height: 1.7;
     }
 
-    .products-message strong {
+    .products-message strong,
+    .empty-state h3 {
       color: #182332;
       font-size: 18px;
     }
 
-    /* LOAD MORE */
+
+    /* =====================================================
+       LOAD MORE
+    ===================================================== */
 
     .load-more-wrap {
       display: flex;
@@ -822,7 +864,10 @@
       background: #142942;
     }
 
-    /* TOOLS */
+
+    /* =====================================================
+       TOOLS
+    ===================================================== */
 
     .tools {
       color: #fff;
@@ -926,7 +971,194 @@
       line-height: 1.5;
     }
 
-    /* INFO */
+
+    /* =====================================================
+       AI PACKAGE
+    ===================================================== */
+
+    .ai-package {
+      display: grid;
+      gap: 16px;
+    }
+
+    .ai-package h3 {
+      margin: 0;
+      color: #fff;
+    }
+
+    .ai-package-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .ai-package-item {
+      display: grid;
+      grid-template-columns: 65px 1fr;
+      gap: 14px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 15px;
+      background: rgba(255,255,255,.04);
+    }
+
+    .ai-package-product-image {
+      width: 65px;
+      height: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
+    .ai-package-product-image img {
+      width: 65px !important;
+      height: 65px !important;
+      max-width: 65px !important;
+      max-height: 65px !important;
+      object-fit: contain !important;
+      display: block !important;
+    }
+
+    .ai-package-product-info {
+      min-width: 0;
+    }
+
+    .ai-package-product-link {
+      display: block;
+      color: #fff;
+    }
+
+    .ai-package-product-link:hover {
+      color: var(--green);
+    }
+
+    .ai-package-product-info small {
+      display: block;
+      margin-top: 4px;
+      color: #9eacbd;
+    }
+
+    .ai-package-price {
+      display: block;
+      margin-top: 5px;
+      color: var(--green);
+    }
+
+    .ai-package-total,
+    .ai-package-budget {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+    }
+
+    .ai-package-total {
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,.1);
+      color: #fff;
+    }
+
+    .ai-package-budget {
+      color: #aebaca;
+      font-size: 14px;
+    }
+
+    .ai-package-note {
+      color: #9eacbd !important;
+      font-size: 13px;
+    }
+
+    .ai-package-explanation {
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255,255,255,.1);
+    }
+
+    .ai-package-explanation strong {
+      color: var(--green);
+    }
+
+
+    /* =====================================================
+       PLANNER
+    ===================================================== */
+
+    #planner-result {
+      margin-top: 24px;
+    }
+
+    .planner-results {
+      display: grid;
+      gap: 16px;
+    }
+
+    .planner-result-item {
+      display: grid;
+      grid-template-columns:
+        65px 1fr auto;
+      align-items: center;
+      gap: 16px;
+      padding: 22px;
+      border:
+        1px solid
+        rgba(255,255,255,.08);
+      border-radius: 20px;
+      background:
+        rgba(3,7,18,.55);
+    }
+
+    .planner-product-image {
+      width: 65px;
+      height: 65px;
+      min-width: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
+    .planner-product-image img {
+      width: 65px !important;
+      height: 65px !important;
+      max-width: 65px !important;
+      max-height: 65px !important;
+      object-fit: contain !important;
+      display: block !important;
+    }
+
+    .planner-product-image-placeholder {
+      width: 65px;
+      height: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(255,255,255,.05);
+      color: #9eacbd;
+      font-size: 10px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .planner-result-item strong {
+      color: #fff;
+      font-size: 18px;
+      line-height: 1.4;
+    }
+
+    .planner-result-item span {
+      color: #36c978;
+      font-weight: 800;
+      font-size: 18px;
+      white-space: nowrap;
+    }
+
+
+    /* =====================================================
+       INFO
+    ===================================================== */
 
     .info-grid {
       display: grid;
@@ -965,7 +1197,10 @@
       background: #f5f7f9;
     }
 
-    /* FOOTER */
+
+    /* =====================================================
+       FOOTER
+    ===================================================== */
 
     footer {
       padding: 45px 0;
@@ -1009,9 +1244,13 @@
       line-height: 1.6;
     }
 
-    /* MOBILE */
+
+    /* =====================================================
+       MOBILE
+    ===================================================== */
 
     @media (max-width: 900px) {
+
       .hero-grid {
         grid-template-columns: 1fr;
         gap: 35px;
@@ -1044,25 +1283,53 @@
       }
     }
 
-    @media (max-width: 650px) {
-      .container {
-        width: min(var(--container), calc(100% - 28px));
-      }
-.product-card .product-image {
-  height: 190px;
-  min-height: 190px;
-  overflow: hidden;
-}
 
-.product-card .product-image > img {
-  display: block;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  object-position: center;
-}l
+    @media (max-width: 700px) {
+
+      .planner-result-item {
+        grid-template-columns:
+          65px 1fr;
+      }
+
+      .planner-product-image {
+        grid-row: 1;
+      }
+
+      .planner-result-item strong {
+        grid-column: 2;
+      }
+
+      .planner-result-item span {
+        grid-column: 2;
+      }
+
+      .ai-package-item {
+        grid-template-columns: 55px 1fr;
+      }
+
+      .ai-package-product-image {
+        width: 55px;
+        height: 55px;
+      }
+
+      .ai-package-product-image img {
+        width: 55px !important;
+        height: 55px !important;
+        max-width: 55px !important;
+        max-height: 55px !important;
+      }
+    }
+
+
+    @media (max-width: 650px) {
+
+      .container {
+        width: min(
+          var(--container),
+          calc(100% - 28px)
+        );
+      }
+
       .nav {
         min-height: 64px;
       }
@@ -1076,7 +1343,11 @@
       }
 
       h1 {
-        font-size: clamp(42px,13vw,62px);
+        font-size: clamp(
+          42px,
+          13vw,
+          62px
+        );
       }
 
       .hero-text {
@@ -1135,34 +1406,100 @@
       .footer-links {
         margin-top: 18px;
       }
+
+      .product-card .product-image {
+        height: 190px;
+        min-height: 190px;
+        overflow: hidden;
+      }
+
+      .product-card .product-image > img {
+        display: block;
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        object-position: center;
+      }
+
+      .product-content {
+        padding: 18px;
+      }
+
+      .product-content h3 {
+        min-height: auto;
+        font-size: 17px;
+      }
+
+      .product-price strong {
+        font-size: 21px;
+      }
     }
   </style>
 </head>
 
+
 <body id="top">
 
+
+<!-- =====================================================
+     HEADER
+===================================================== -->
+
 <header class="site-header">
+
   <div class="container nav">
 
-    <a class="brand" href="#top" aria-label="FitDealFinder home">
-      <div class="brand-mark">F</div>
+    <a
+      class="brand"
+      href="#top"
+      aria-label="FitDealFinder home"
+    >
+
+      <div class="brand-mark">
+        F
+      </div>
 
       <div class="brand-name">
         Fit<span>Deal</span>Finder.nl
       </div>
+
     </a>
 
-    <nav class="nav-links" aria-label="Hoofdnavigatie">
-      <a href="#deals">Deals</a>
-      <a href="#categories">Categorieën</a>
-      <a href="#coach">AI Coach</a>
-      <a href="#planner">Planner</a>
-      <a class="nav-cta" href="#deals">
+
+    <nav
+      class="nav-links"
+      aria-label="Hoofdnavigatie"
+    >
+
+      <a href="#deals">
+        Deals
+      </a>
+
+      <a href="#categories">
+        Categorieën
+      </a>
+
+      <a href="#coach">
+        AI Coach
+      </a>
+
+      <a href="#planner">
+        Planner
+      </a>
+
+      <a
+        class="nav-cta"
+        href="#deals"
+      >
         Bekijk deals
       </a>
+
     </nav>
 
   </div>
+
 </header>
 
 
@@ -1177,31 +1514,40 @@
     <div>
 
       <div class="eyebrow">
+
         <span class="eyebrow-dot"></span>
+
         Slimmer fitness shoppen
+
       </div>
+
 
       <h1>
         Vind betere
         <span>fitnessdeals.</span>
       </h1>
 
+
       <p class="hero-text">
         Vergelijk fitnessproducten, prijzen en aanbiedingen
         voor jouw doel. Van Cut en Bulk tot Lean Bulk.
       </p>
+
 
       <div class="search-wrap">
 
         <form
           class="search-box"
           id="search-form"
-          onsubmit="return false;"
         >
 
-          <div class="search-icon" aria-hidden="true">
+          <div
+            class="search-icon"
+            aria-hidden="true"
+          >
             ⌕
           </div>
+
 
           <input
             id="search-input"
@@ -1211,6 +1557,7 @@
             aria-label="Zoek producten"
           >
 
+
           <button
             class="search-button"
             type="submit"
@@ -1219,6 +1566,7 @@
           </button>
 
         </form>
+
 
         <div
           class="goals"
@@ -1233,6 +1581,7 @@
             Cut
           </button>
 
+
           <button
             class="goal"
             type="button"
@@ -1240,6 +1589,7 @@
           >
             Bulk
           </button>
+
 
           <button
             class="goal"
@@ -1256,32 +1606,48 @@
     </div>
 
 
+    <!-- HERO VISUAL -->
+
     <div class="hero-visual">
 
       <div class="visual-card">
 
         <div class="visual-ring"></div>
 
+
         <div class="person">
 
           <div class="person-head"></div>
+
           <div class="person-neck"></div>
+
           <div class="person-body"></div>
 
           <div class="person-arm left"></div>
+
           <div class="person-arm right"></div>
 
           <div class="person-leg left"></div>
+
           <div class="person-leg right"></div>
 
         </div>
 
+
         <div class="visual-bottom">
 
           <div>
-            <strong>Jouw doel.</strong>
-            <small>Onze deals.</small>
+
+            <strong>
+              Jouw doel.
+            </strong>
+
+            <small>
+              Onze deals.
+            </small>
+
           </div>
+
 
           <div class="score">
             DEAL
@@ -1307,18 +1673,35 @@
   <div class="container trust-grid">
 
     <div class="trust-item">
-      <div class="trust-icon">✓</div>
+
+      <div class="trust-icon">
+        ✓
+      </div>
+
       Actuele productgegevens
+
     </div>
 
+
     <div class="trust-item">
-      <div class="trust-icon">€</div>
+
+      <div class="trust-icon">
+        €
+      </div>
+
       Prijzen vergelijken
+
     </div>
 
+
     <div class="trust-item">
-      <div class="trust-icon">↗</div>
+
+      <div class="trust-icon">
+        ↗
+      </div>
+
       Rechtstreeks naar de winkel
+
     </div>
 
   </div>
@@ -1363,6 +1746,7 @@
 
 
     <div class="categories">
+
 
       <button
         class="category"
@@ -1447,6 +1831,7 @@
 
       </button>
 
+
     </div>
 
   </div>
@@ -1484,6 +1869,7 @@
         </p>
 
       </div>
+
 
       <div
         id="result-count"
@@ -1576,7 +1962,7 @@
     <div class="tools-grid">
 
 
-      <!-- AI -->
+      <!-- AI COACH -->
 
       <div class="tool-card">
 
@@ -1608,6 +1994,7 @@
             autocomplete="off"
           >
 
+
           <button type="submit">
             Vraag de AI Coach
           </button>
@@ -1625,7 +2012,7 @@
       </div>
 
 
-      <!-- PLANNER -->
+      <!-- SHOPPING PLANNER -->
 
       <div
         id="planner"
@@ -1763,7 +2150,6 @@
 
     </div>
 
-
   </div>
 
 </section>
@@ -1830,7 +2216,11 @@
      APP
 ===================================================== -->
 
-<script src="/app.js" defer></script>
+<script
+  src="/app.js"
+  defer
+></script>
+
 
 </body>
-          </html>
+            </html>
