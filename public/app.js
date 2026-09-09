@@ -79,7 +79,9 @@ function escapeHtml(value) {
 function price(product) {
   const value = Number(product?.price);
 
-  return Number.isFinite(value) ? value : 0;
+  return Number.isFinite(value)
+    ? value
+    : 0;
 }
 
 function money(value, currency = "EUR") {
@@ -89,7 +91,9 @@ function money(value, currency = "EUR") {
       currency: currency || "EUR"
     }).format(Number(value) || 0);
   } catch {
-    return `€ ${Number(value || 0).toFixed(2).replace(".", ",")}`;
+    return `€ ${Number(value || 0)
+      .toFixed(2)
+      .replace(".", ",")}`;
   }
 }
 
@@ -152,7 +156,10 @@ function isUsableProduct(product) {
   if (!product.id) return false;
   if (!product.name) return false;
 
-  if (!product.product_url && !product.affiliate_url) {
+  if (
+    !product.product_url &&
+    !product.affiliate_url
+  ) {
     return false;
   }
 
@@ -296,7 +303,10 @@ function matchesGoal(product, goal) {
   }
 
   const generalSupplement =
-    hasAny(text, GENERAL_SUPPLEMENT_WORDS);
+    hasAny(
+      text,
+      GENERAL_SUPPLEMENT_WORDS
+    );
 
   if (normalizedGoal === "cut") {
     return (
@@ -333,13 +343,17 @@ function matchesCategory(product, category) {
   const normalizedCategory =
     normalize(category);
 
-  const categoryText = normalize([
-    product?.name,
-    product?.brand,
-    product?.category
-  ].join(" "));
+  const categoryText =
+    normalize([
+      product?.name,
+      product?.brand,
+      product?.category
+    ].join(" "));
 
-  if (normalizedCategory === "proteine") {
+  if (
+    normalizedCategory ===
+    "proteine"
+  ) {
     return hasAny(categoryText, [
       "protein",
       "proteine",
@@ -352,7 +366,10 @@ function matchesCategory(product, category) {
     ]);
   }
 
-  if (normalizedCategory === "creatine") {
+  if (
+    normalizedCategory ===
+    "creatine"
+  ) {
     return hasAny(categoryText, [
       "creatine",
       "creatine monohydrate",
@@ -360,7 +377,10 @@ function matchesCategory(product, category) {
     ]);
   }
 
-  if (normalizedCategory === "pre-workout") {
+  if (
+    normalizedCategory ===
+    "pre-workout"
+  ) {
     return hasAny(categoryText, [
       "pre workout",
       "pre-workout",
@@ -368,7 +388,10 @@ function matchesCategory(product, category) {
     ]);
   }
 
-  if (normalizedCategory === "supplementen") {
+  if (
+    normalizedCategory ===
+    "supplementen"
+  ) {
     return hasAny(
       categoryText,
       GENERAL_SUPPLEMENT_WORDS
@@ -386,11 +409,13 @@ function matchesCategory(product, category) {
 function matchesSearch(product, query) {
   if (!query) return true;
 
-  const words = normalize(query)
-    .split(/\s+/)
-    .filter(Boolean);
+  const words =
+    normalize(query)
+      .split(/\s+/)
+      .filter(Boolean);
 
-  const text = productText(product);
+  const text =
+    productText(product);
 
   return words.every(word =>
     text.includes(word)
@@ -403,23 +428,37 @@ function matchesSearch(product, query) {
 ========================================================= */
 
 function applyFilters() {
-  const query = normalize(state.search);
+  const query =
+    normalize(state.search);
 
-  state.filtered = state.products
-    .filter(isUsableProduct)
-    .filter(product =>
-      matchesSearch(product, query)
-    )
-    .filter(product =>
-      matchesGoal(product, state.goal)
-    )
-    .filter(product =>
-      matchesCategory(product, state.category)
-    );
+  state.filtered =
+    state.products
+      .filter(isUsableProduct)
+      .filter(product =>
+        matchesSearch(
+          product,
+          query
+        )
+      )
+      .filter(product =>
+        matchesGoal(
+          product,
+          state.goal
+        )
+      )
+      .filter(product =>
+        matchesCategory(
+          product,
+          state.category
+        )
+      );
 
   state.filtered.sort((a, b) => {
-    const scoreA = Number(a.deal_score) || 0;
-    const scoreB = Number(b.deal_score) || 0;
+    const scoreA =
+      Number(a.deal_score) || 0;
+
+    const scoreB =
+      Number(b.deal_score) || 0;
 
     if (scoreA !== scoreB) {
       return scoreB - scoreA;
@@ -438,7 +477,8 @@ function applyFilters() {
     return price(a) - price(b);
   });
 
-  state.visibleCount = PRODUCTS_PER_VIEW;
+  state.visibleCount =
+    PRODUCTS_PER_VIEW;
 
   renderProducts();
 }
@@ -453,13 +493,19 @@ async function loadProducts() {
 
   state.loading = true;
 
-  const grid = $("#products-grid");
+  const grid =
+    $("#products-grid");
 
-  if (grid && !state.products.length) {
+  if (
+    grid &&
+    !state.products.length
+  ) {
     grid.innerHTML = `
       <div class="empty-state">
         <h3>Deals laden...</h3>
-        <p>We halen de actuele producten op.</p>
+        <p>
+          We halen de actuele producten op.
+        </p>
       </div>
     `;
   }
@@ -475,11 +521,13 @@ async function loadProducts() {
       const url =
         `${API_PRODUCTS}?limit=${PAGE_SIZE}&offset=${offset}`;
 
-      const response = await fetch(url, {
-        headers: {
-          Accept: "application/json"
-        }
-      });
+      const response =
+        await fetch(url, {
+          headers: {
+            Accept:
+              "application/json"
+          }
+        });
 
       if (!response.ok) {
         throw new Error(
@@ -487,32 +535,48 @@ async function loadProducts() {
         );
       }
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       const batch =
         Array.isArray(data)
           ? data
-          : Array.isArray(data.products)
+          : Array.isArray(
+              data.products
+            )
             ? data.products
-            : Array.isArray(data.data)
+            : Array.isArray(
+                data.data
+              )
               ? data.data
               : [];
 
       products.push(...batch);
 
-      if (batch.length < PAGE_SIZE) {
+      if (
+        batch.length <
+        PAGE_SIZE
+      ) {
         break;
       }
 
-      if (products.length >= MAX_PRODUCTS) {
+      if (
+        products.length >=
+        MAX_PRODUCTS
+      ) {
         break;
       }
     }
 
-    const unique = new Map();
+    const unique =
+      new Map();
 
-    for (const product of products) {
-      if (!product?.id) continue;
+    for (
+      const product of products
+    ) {
+      if (!product?.id) {
+        continue;
+      }
 
       unique.set(
         String(product.id),
@@ -520,9 +584,11 @@ async function loadProducts() {
       );
     }
 
-    state.products = [...unique.values()];
+    state.products =
+      [...unique.values()];
 
     applyFilters();
+
   } catch (error) {
     console.error(
       "FitDealFinder product loading error:",
@@ -532,16 +598,22 @@ async function loadProducts() {
     if (grid) {
       grid.innerHTML = `
         <div class="empty-state">
-          <h3>Deals konden niet worden geladen</h3>
+          <h3>
+            Deals konden niet worden geladen
+          </h3>
+
           <p>
-            Er ging iets mis met het ophalen van de producten.
-            Probeer de pagina opnieuw te laden.
+            Er ging iets mis met het
+            ophalen van de producten.
+            Probeer de pagina opnieuw
+            te laden.
           </p>
         </div>
       `;
     }
 
     updateProductCount(0);
+
   } finally {
     state.loading = false;
   }
@@ -553,40 +625,54 @@ async function loadProducts() {
 ========================================================= */
 
 function productCard(product) {
-  const currentPrice = price(product);
+  const currentPrice =
+    price(product);
+
   const oldPriceValue =
     Number(product.old_price) || 0;
 
   const hasDiscount =
-    oldPriceValue > currentPrice;
+    oldPriceValue >
+    currentPrice;
 
   const discount =
     Number(product.discount_percent) > 0
       ? Math.round(
-          Number(product.discount_percent)
+          Number(
+            product.discount_percent
+          )
         )
       : hasDiscount
         ? Math.round(
-            ((oldPriceValue - currentPrice) /
-              oldPriceValue) *
-              100
+            (
+              (
+                oldPriceValue -
+                currentPrice
+              ) /
+              oldPriceValue
+            ) * 100
           )
         : 0;
 
-  const image = product.image_url
-    ? `
-      <img
-        src="${escapeHtml(product.image_url)}"
-        alt="${escapeHtml(product.name)}"
-        loading="lazy"
-        onerror="this.style.display='none'"
-      >
-    `
-    : `
-      <div class="product-image-placeholder">
-        FitDealFinder
-      </div>
-    `;
+  const image =
+    product.image_url
+      ? `
+        <img
+          src="${escapeHtml(
+            product.image_url
+          )}"
+          alt="${escapeHtml(
+            product.name
+          )}"
+          loading="lazy"
+          onerror="this.style.display='none'"
+        >
+      `
+      : `
+        <div class="product-image-placeholder">
+          FitDealFinder
+        </div>
+      `;
 
   const stock =
     Number(product.in_stock) === 1
@@ -612,7 +698,9 @@ function productCard(product) {
         </div>
 
         <h3>
-          ${escapeHtml(product.name)}
+          ${escapeHtml(
+            product.name
+          )}
         </h3>
 
         <div class="product-price">
@@ -650,13 +738,16 @@ function productCard(product) {
         </div>
 
         <div class="product-meta">
+
           ${stock}
 
           <span>
             ${escapeHtml(
-              product.merchant_name || ""
+              product.merchant_name ||
+              ""
             )}
           </span>
+
         </div>
 
         <div class="product-actions">
@@ -694,7 +785,8 @@ function productCard(product) {
 ========================================================= */
 
 function renderProducts() {
-  const grid = $("#products-grid");
+  const grid =
+    $("#products-grid");
 
   if (!grid) return;
 
@@ -707,40 +799,38 @@ function renderProducts() {
   if (!visible.length) {
     grid.innerHTML = `
       <div class="empty-state">
-        <h3>Geen producten gevonden</h3>
+        <h3>
+          Geen passende producten
+        </h3>
+
         <p>
-          Probeer een andere zoekterm,
-          categorie of doel.
+          Pas je zoekopdracht,
+          doel of categorie aan.
         </p>
       </div>
     `;
-  } else {
-    grid.innerHTML =
-      visible
-        .map(productCard)
-        .join("");
+
+    updateProductCount(0);
+    updateLoadMore();
+
+    return;
   }
+
+  grid.innerHTML =
+    visible
+      .map(productCard)
+      .join("");
 
   updateProductCount(
     state.filtered.length
   );
 
   updateLoadMore();
-  updateGoalButtons();
-  updateCategoryButtons();
 }
-
-
-/* =========================================================
-   PRODUCT COUNT
-========================================================= */
 
 function updateProductCount(count) {
   const element =
-    first(
-      "#result-count",
-      "#product-count"
-    );
+    $("#result-count");
 
   if (!element) return;
 
@@ -748,210 +838,203 @@ function updateProductCount(count) {
     `${count} producten`;
 }
 
-
-/* =========================================================
-   LOAD MORE
-========================================================= */
-
 function updateLoadMore() {
   const button =
-    first(
-      "#load-more",
-      "#load-more-products"
-    );
+    $("#load-more");
 
   if (!button) return;
 
-  const hasMore =
+  if (
     state.visibleCount <
-    state.filtered.length;
-
-  button.hidden = !hasMore;
-
-  if (hasMore) {
-    button.disabled = false;
+    state.filtered.length
+  ) {
+    button.hidden = false;
     button.textContent =
       "Meer producten laden";
-  }
-}
-
-function loadMore() {
-  state.visibleCount +=
-    PRODUCTS_PER_VIEW;
-
-  renderProducts();
-
-  const button =
-    first(
-      "#load-more",
-      "#load-more-products"
-    );
-
-  if (button) {
-    button.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest"
-    });
+  } else {
+    button.hidden = true;
   }
 }
 
 
 /* =========================================================
-   SEARCH EVENTS
+   SEARCH
 ========================================================= */
 
 function setupSearch() {
-  const form = $("#search-form");
+  const form =
+    $("#search-form");
 
   const input =
-    first(
-      "#search-input",
-      "#search"
-    );
+    $("#search-input");
 
-  if (!input) return;
+  if (!form || !input) {
+    return;
+  }
+
+  form.addEventListener(
+    "submit",
+    event => {
+      event.preventDefault();
+
+      state.search =
+        input.value || "";
+
+      state.goal = "";
+      state.category = "";
+
+      $all(
+        "[data-goal]"
+      ).forEach(button =>
+        button.classList.remove(
+          "active"
+        )
+      );
+
+      $all(
+        "[data-category]"
+      ).forEach(button =>
+        button.classList.remove(
+          "active"
+        )
+      );
+
+      applyFilters();
+      scrollToDeals();
+    }
+  );
 
   input.addEventListener(
     "input",
     () => {
-      state.search = input.value;
+      state.search =
+        input.value || "";
+
       applyFilters();
     }
   );
+}
 
-  input.addEventListener(
-    "search",
-    () => {
-      state.search = input.value;
-      applyFilters();
-    }
-  );
 
-  if (form) {
-    form.addEventListener(
-      "submit",
-      event => {
-        event.preventDefault();
+/* =========================================================
+   GOALS
+========================================================= */
 
-        state.search = input.value;
+function setupGoals() {
+  $all(
+    "[data-goal]"
+  ).forEach(button => {
+    button.addEventListener(
+      "click",
+      () => {
+        const goal =
+          normalize(
+            button.dataset.goal
+          );
+
+        state.goal =
+          state.goal === goal
+            ? ""
+            : goal;
+
+        state.category = "";
+
+        $all(
+          "[data-goal]"
+        ).forEach(item => {
+          item.classList.toggle(
+            "active",
+            item === button &&
+              state.goal === goal
+          );
+        });
+
+        $all(
+          "[data-category]"
+        ).forEach(item =>
+          item.classList.remove(
+            "active"
+          )
+        );
 
         applyFilters();
         scrollToDeals();
       }
     );
-  }
+  });
 }
 
 
 /* =========================================================
-   GOAL BUTTONS
-========================================================= */
-
-function setupGoals() {
-  $all("[data-goal]").forEach(
-    button => {
-      button.addEventListener(
-        "click",
-        () => {
-          const goal =
-            normalize(
-              button.dataset.goal || ""
-            );
-
-          state.goal =
-            state.goal === goal
-              ? ""
-              : goal;
-
-          state.category = "";
-
-          applyFilters();
-          scrollToDeals();
-        }
-      );
-    }
-  );
-}
-
-function updateGoalButtons() {
-  $all("[data-goal]").forEach(
-    button => {
-      const value =
-        normalize(
-          button.dataset.goal || ""
-        );
-
-      button.classList.toggle(
-        "active",
-        value === state.goal
-      );
-    }
-  );
-}
-
-
-/* =========================================================
-   CATEGORY BUTTONS
+   CATEGORIES
 ========================================================= */
 
 function setupCategories() {
-  $all("[data-category]").forEach(
-    button => {
-      button.addEventListener(
-        "click",
-        () => {
-          const category =
-            normalize(
-              button.dataset.category || ""
-            );
+  $all(
+    "[data-category]"
+  ).forEach(button => {
+    button.addEventListener(
+      "click",
+      () => {
+        const category =
+          normalize(
+            button.dataset.category
+          );
 
-          state.category =
-            state.category === category
-              ? ""
-              : category;
+        state.category =
+          state.category === category
+            ? ""
+            : category;
 
-          applyFilters();
-          scrollToDeals();
-        }
-      );
-    }
-  );
-}
+        state.goal = "";
 
-function updateCategoryButtons() {
-  $all("[data-category]").forEach(
-    button => {
-      const value =
-        normalize(
-          button.dataset.category || ""
+        $all(
+          "[data-category]"
+        ).forEach(item => {
+          item.classList.toggle(
+            "active",
+            item === button &&
+              state.category ===
+                category
+          );
+        });
+
+        $all(
+          "[data-goal]"
+        ).forEach(item =>
+          item.classList.remove(
+            "active"
+          )
         );
 
-      button.classList.toggle(
-        "active",
-        value === state.category
-      );
-    }
-  );
+        applyFilters();
+        scrollToDeals();
+      }
+    );
+  });
 }
 
 
 /* =========================================================
-   CART STORAGE
+   CART
 ========================================================= */
 
 function loadCart() {
   try {
     const raw =
-      localStorage.getItem(CART_KEY);
-
-    if (!raw) return [];
+      localStorage.getItem(
+        CART_KEY
+      );
 
     const parsed =
-      JSON.parse(raw);
+      raw
+        ? JSON.parse(raw)
+        : [];
 
     return Array.isArray(parsed)
       ? parsed
       : [];
+
   } catch {
     return [];
   }
@@ -961,79 +1044,85 @@ function saveCart() {
   try {
     localStorage.setItem(
       CART_KEY,
-      JSON.stringify(state.cart)
+      JSON.stringify(
+        state.cart
+      )
     );
-  } catch (error) {
-    console.warn(
-      "Could not save cart:",
-      error
-    );
+  } catch {
+    // localStorage kan geblokkeerd zijn.
   }
 }
 
+function cartProductById(id) {
+  return state.products.find(
+    product =>
+      String(product.id) ===
+      String(id)
+  );
+}
 
-/* =========================================================
-   CART
-========================================================= */
-
-function addToCart(productId) {
-  const id = String(productId);
-
+function addToCart(id) {
   const product =
-    state.products.find(
-      item =>
-        String(item.id) === id
-    );
+    cartProductById(id);
 
-  if (!product) return;
+  if (!product) {
+    return;
+  }
 
   const existing =
     state.cart.find(
       item =>
-        String(item.id) === id
+        String(item.id) ===
+        String(id)
     );
 
   if (existing) {
     existing.quantity =
-      Math.min(
-        Number(existing.quantity || 1) + 1,
-        99
-      );
+      (Number(
+        existing.quantity
+      ) || 1) + 1;
   } else {
     state.cart.push({
-      id,
+      id: String(product.id),
+      name: product.name,
+      price: price(product),
+      currency:
+        product.currency ||
+        "EUR",
+      merchant_name:
+        product.merchant_name ||
+        "",
       quantity: 1
     });
   }
 
   saveCart();
   renderCart();
-  openCart();
+  updateCartTriggers();
 }
 
-function removeFromCart(productId) {
-  const id = String(productId);
-
+function removeFromCart(id) {
   state.cart =
     state.cart.filter(
       item =>
-        String(item.id) !== id
+        String(item.id) !==
+        String(id)
     );
 
   saveCart();
   renderCart();
+  updateCartTriggers();
 }
 
 function changeCartQuantity(
-  productId,
+  id,
   delta
 ) {
-  const id = String(productId);
-
   const item =
     state.cart.find(
       cartItem =>
-        String(cartItem.id) === id
+        String(cartItem.id) ===
+        String(id)
     );
 
   if (!item) return;
@@ -1041,575 +1130,349 @@ function changeCartQuantity(
   item.quantity =
     Math.max(
       1,
-      Math.min(
-        99,
-        Number(item.quantity || 1) +
-          delta
-      )
+      (Number(
+        item.quantity
+      ) || 1) + delta
     );
 
   saveCart();
   renderCart();
 }
 
-function cartProducts() {
-  return state.cart
-    .map(item => {
-      const product =
-        state.products.find(
-          candidate =>
-            String(candidate.id) ===
-            String(item.id)
-        );
-
-      if (!product) return null;
-
-      return {
-        product,
-        quantity:
-          Number(item.quantity) || 1
-      };
-    })
-    .filter(Boolean);
-}
-
-function cartTotal() {
-  return cartProducts()
-    .reduce(
-      (total, item) =>
-        total +
-        price(item.product) *
-          item.quantity,
-      0
-    );
-}
-
-function cartCount() {
-  return state.cart
-    .reduce(
-      (total, item) =>
-        total +
-        (Number(item.quantity) || 1),
-      0
-    );
-}
-
-
-/* =========================================================
-   CART UI
-========================================================= */
-
-function ensureCartUI() {
-  if ($("#fitdeal-cart-overlay")) {
-    return;
-  }
-
-  document.body.insertAdjacentHTML(
-    "beforeend",
-    `
-      <div
-        id="fitdeal-cart-overlay"
-        class="fitdeal-cart-overlay"
-        hidden
-      >
-        <div
-          class="fitdeal-cart-panel"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Winkelmand"
-        >
-
-          <div class="fitdeal-cart-header">
-            <div>
-              <strong>Winkelmand</strong>
-              <span id="fitdeal-cart-count">
-                0 producten
-              </span>
-            </div>
-
-            <button
-              type="button"
-              id="fitdeal-cart-close"
-              aria-label="Winkelmand sluiten"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div
-            id="fitdeal-cart-items"
-            class="fitdeal-cart-items"
-          ></div>
-
-          <div
-            id="fitdeal-cart-footer"
-            class="fitdeal-cart-footer"
-          ></div>
-
-        </div>
-      </div>
-    `
-  );
-
-  const overlay =
-    $("#fitdeal-cart-overlay");
-
-  const close =
-    $("#fitdeal-cart-close");
-
-  close?.addEventListener(
-    "click",
-    closeCart
-  );
-
-  overlay?.addEventListener(
-    "click",
-    event => {
-      if (event.target === overlay) {
-        closeCart();
-      }
-    }
-  );
-}
-
-function injectCartStyles() {
-  if ($("#fitdeal-cart-styles")) {
-    return;
-  }
-
-  const style =
-    document.createElement("style");
-
-  style.id =
-    "fitdeal-cart-styles";
-
-  style.textContent = `
-    .fitdeal-cart-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      display: flex;
-      justify-content: flex-end;
-      background: rgba(0,0,0,.62);
-    }
-
-    .fitdeal-cart-overlay[hidden] {
-      display: none;
-    }
-
-    .fitdeal-cart-panel {
-      width: min(440px, 100%);
-      height: 100%;
-      overflow: auto;
-      background: #07111f;
-      color: #f5f8fb;
-      box-shadow: -20px 0 70px rgba(0,0,0,.35);
-      padding: 22px;
-    }
-
-    .fitdeal-cart-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding-bottom: 18px;
-      border-bottom: 1px solid rgba(255,255,255,.1);
-    }
-
-    .fitdeal-cart-header strong {
-      display: block;
-      font-size: 21px;
-    }
-
-    .fitdeal-cart-header span {
-      display: block;
-      margin-top: 3px;
-      color: #9eacbd;
-      font-size: 13px;
-    }
-
-    #fitdeal-cart-close {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      background: rgba(255,255,255,.08);
-      color: #fff;
-      font-size: 18px;
-    }
-
-    .fitdeal-cart-item {
-      display: grid;
-      grid-template-columns: 70px 1fr;
-      gap: 13px;
-      padding: 18px 0;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-    }
-
-    .fitdeal-cart-item img {
-      width: 70px;
-      height: 70px;
-      object-fit: contain;
-      border-radius: 12px;
-      background: #fff;
-    }
-
-    .fitdeal-cart-item h4 {
-      margin: 0 0 6px;
-      font-size: 14px;
-      line-height: 1.35;
-    }
-
-    .fitdeal-cart-price {
-      font-weight: 800;
-      color: #67e5a2;
-    }
-
-    .fitdeal-cart-controls {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      margin-top: 10px;
-    }
-
-    .fitdeal-cart-controls button {
-      width: 30px;
-      height: 30px;
-      border-radius: 8px;
-      background: #142942;
-      color: #fff;
-    }
-
-    .fitdeal-cart-remove {
-      margin-left: auto;
-      color: #ff8b94;
-      background: transparent !important;
-      width: auto !important;
-      padding: 0 5px;
-    }
-
-    .fitdeal-cart-footer {
-      position: sticky;
-      bottom: 0;
-      padding-top: 20px;
-      margin-top: 8px;
-      background: #07111f;
-    }
-
-    .fitdeal-cart-total {
-      display: flex;
-      justify-content: space-between;
-      gap: 15px;
-      font-size: 19px;
-      font-weight: 900;
-    }
-
-    .fitdeal-cart-note {
-      margin: 10px 0 16px;
-      color: #9eacbd;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .fitdeal-cart-close-button {
-      width: 100%;
-      min-height: 48px;
-      border-radius: 12px;
-      background: #67e5a2;
-      color: #07140d;
-      font-weight: 900;
-    }
-
-    .fitdeal-cart-empty {
-      padding: 45px 10px;
-      text-align: center;
-      color: #9eacbd;
-    }
-  `;
-
-  document.head.appendChild(style);
-}
-
 function renderCart() {
-  ensureCartUI();
+  const cart =
+    first(
+      "#cart",
+      "#shopping-cart",
+      "#cart-panel"
+    );
 
-  const itemsElement =
-    $("#fitdeal-cart-items");
-
-  const footerElement =
-    $("#fitdeal-cart-footer");
-
-  const countElement =
-    $("#fitdeal-cart-count");
-
-  if (!itemsElement) return;
-
-  const items =
-    cartProducts();
-
-  if (countElement) {
-    countElement.textContent =
-      `${cartCount()} ${
-        cartCount() === 1
-          ? "product"
-          : "producten"
-      }`;
+  if (!cart) {
+    return;
   }
 
-  if (!items.length) {
-    itemsElement.innerHTML = `
-      <div class="fitdeal-cart-empty">
-        <strong>Je winkelmand is leeg.</strong>
-        <p>
-          Voeg een product toe vanuit de deals.
-        </p>
-      </div>
-    `;
+  const existingEmpty =
+    cart.querySelector(
+      ".cart-empty"
+    );
 
-    if (footerElement) {
-      footerElement.innerHTML = "";
+  if (
+    !state.cart.length
+  ) {
+    if (existingEmpty) {
+      existingEmpty.hidden =
+        false;
     }
 
     return;
   }
 
-  itemsElement.innerHTML =
-    items
-      .map(({ product, quantity }) => `
-        <div
-          class="fitdeal-cart-item"
-          data-cart-id="${escapeHtml(
-            String(product.id)
-          )}"
-        >
-
-          ${
-            product.image_url
-              ? `
-                <img
-                  src="${escapeHtml(
-                    product.image_url
-                  )}"
-                  alt=""
-                >
-              `
-              : `
-                <div></div>
-              `
-          }
-
-          <div>
-
-            <h4>
-              ${escapeHtml(
-                product.name
-              )}
-            </h4>
-
-            <div class="fitdeal-cart-price">
-              ${money(
-                price(product),
-                product.currency
-              )}
-            </div>
-
-            <div class="fitdeal-cart-controls">
-
-              <button
-                type="button"
-                data-cart-minus="${escapeHtml(
-                  String(product.id)
-                )}"
-              >
-                −
-              </button>
-
-              <span>
-                ${quantity}
-              </span>
-
-              <button
-                type="button"
-                data-cart-plus="${escapeHtml(
-                  String(product.id)
-                )}"
-              >
-                +
-              </button>
-
-              <button
-                type="button"
-                class="fitdeal-cart-remove"
-                data-cart-remove="${escapeHtml(
-                  String(product.id)
-                )}"
-              >
-                Verwijder
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-      `)
-      .join("");
-
-  if (footerElement) {
-    footerElement.innerHTML = `
-      <div class="fitdeal-cart-total">
-        <span>Totaal</span>
-        <span>
-          ${money(cartTotal())}
-        </span>
-      </div>
-
-      <p class="fitdeal-cart-note">
-        Dit is een vergelijkingsmandje.
-        Je koopt rechtstreeks bij de betreffende winkel.
-      </p>
-
-      <button
-        type="button"
-        class="fitdeal-cart-close-button"
-        data-cart-close
-      >
-        Verder winkelen
-      </button>
-    `;
-  }
-}
-
-function openCart() {
-  ensureCartUI();
-  renderCart();
-
-  const overlay =
-    $("#fitdeal-cart-overlay");
-
-  if (overlay) {
-    overlay.hidden = false;
-    document.body.style.overflow =
-      "hidden";
-  }
-}
-
-function closeCart() {
-  const overlay =
-    $("#fitdeal-cart-overlay");
-
-  if (overlay) {
-    overlay.hidden = true;
-  }
-
-  document.body.style.overflow = "";
-}
-
-function setupCartEvents() {
-  ensureCartUI();
-  injectCartStyles();
-
-  document.addEventListener(
-    "click",
-    event => {
-      const target =
-        event.target.closest?.(
-          "[data-add-cart], [data-cart-plus], [data-cart-minus], [data-cart-remove], [data-cart-close]"
-        );
-
-      if (!target) return;
-
-      if (
-        target.dataset.addCart
-      ) {
-        addToCart(
-          target.dataset.addCart
-        );
-        return;
-      }
-
-      if (
-        target.dataset.cartPlus
-      ) {
-        changeCartQuantity(
-          target.dataset.cartPlus,
-          1
-        );
-        return;
-      }
-
-      if (
-        target.dataset.cartMinus
-      ) {
-        changeCartQuantity(
-          target.dataset.cartMinus,
-          -1
-        );
-        return;
-      }
-
-      if (
-        target.dataset.cartRemove
-      ) {
-        removeFromCart(
-          target.dataset.cartRemove
-        );
-        return;
-      }
-
-      if (
-        target.dataset.cartClose !==
-        undefined
-      ) {
-        closeCart();
-      }
-    }
-  );
-}
-
-
-/* =========================================================
-   CART BUTTON / HEADER
-========================================================= */
-
-function setupCartTrigger() {
-  const selectors = [
-    "#cart-button",
-    "#cart-toggle",
-    "[data-cart-toggle]",
-    ".cart-toggle",
-    ".cart-button-header"
-  ];
-
-  for (const selector of selectors) {
-    $all(selector).forEach(
-      button => {
-        button.addEventListener(
-          "click",
-          event => {
-            event.preventDefault();
-            openCart();
-          }
-        );
-      }
+  const total =
+    state.cart.reduce(
+      (sum, item) =>
+        sum +
+        (
+          Number(item.price) ||
+          0
+        ) *
+          (
+            Number(
+              item.quantity
+            ) || 1
+          ),
+      0
     );
-  }
+
+  cart.innerHTML = `
+    <div class="cart-items">
+
+      ${state.cart
+        .map(
+          item => `
+            <div class="cart-item">
+
+              <div>
+                <strong>
+                  ${escapeHtml(
+                    item.name
+                  )}
+                </strong>
+
+                <div>
+                  ${money(
+                    item.price,
+                    item.currency
+                  )}
+                </div>
+              </div>
+
+              <div class="cart-quantity">
+
+                <button
+                  type="button"
+                  data-cart-minus="${escapeHtml(
+                    item.id
+                  )}"
+                >
+                  −
+                </button>
+
+                <span>
+                  ${Number(
+                    item.quantity
+                  ) || 1}
+                </span>
+
+                <button
+                  type="button"
+                  data-cart-plus="${escapeHtml(
+                    item.id
+                  )}"
+                >
+                  +
+                </button>
+
+              </div>
+
+              <button
+                type="button"
+                data-cart-remove="${escapeHtml(
+                  item.id
+                )}"
+              >
+                Verwijderen
+              </button>
+
+            </div>
+          `
+        )
+        .join("")}
+
+    </div>
+
+    <div class="cart-total">
+      <strong>
+        Totaal
+      </strong>
+
+      <strong>
+        ${money(total)}
+      </strong>
+    </div>
+  `;
 }
 
 function updateCartTriggers() {
-  const count = cartCount();
+  const count =
+    state.cart.reduce(
+      (sum, item) =>
+        sum +
+        (
+          Number(
+            item.quantity
+          ) || 1
+        ),
+      0
+    );
 
   $all(
-    "#cart-count, [data-cart-count]"
+    "[data-cart-count]"
   ).forEach(element => {
     element.textContent =
       String(count);
   });
 }
 
+function setupCartEvents() {
+  document.addEventListener(
+    "click",
+    event => {
+      const addButton =
+        event.target.closest(
+          "[data-add-cart]"
+        );
+
+      if (addButton) {
+        addToCart(
+          addButton.dataset
+            .addCart
+        );
+
+        return;
+      }
+
+      const removeButton =
+        event.target.closest(
+          "[data-cart-remove]"
+        );
+
+      if (removeButton) {
+        removeFromCart(
+          removeButton.dataset
+            .cartRemove
+        );
+
+        return;
+      }
+
+      const plusButton =
+        event.target.closest(
+          "[data-cart-plus]"
+        );
+
+      if (plusButton) {
+        changeCartQuantity(
+          plusButton.dataset
+            .cartPlus,
+          1
+        );
+
+        return;
+      }
+
+      const minusButton =
+        event.target.closest(
+          "[data-cart-minus]"
+        );
+
+      if (minusButton) {
+        changeCartQuantity(
+          minusButton.dataset
+            .cartMinus,
+          -1
+        );
+      }
+    }
+  );
+}
+
+function setupCartTrigger() {
+  $all(
+    "[data-cart-trigger]"
+  ).forEach(button => {
+    button.addEventListener(
+      "click",
+      () => {
+        const cart =
+          first(
+            "#cart",
+            "#shopping-cart",
+            "#cart-panel"
+          );
+
+        if (cart) {
+          cart.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+        }
+      }
+    );
+  });
+
+  renderCart();
+}
+
 
 /* =========================================================
-   PLANNER
+   SHOPPING PLANNER
 ========================================================= */
+
+/*
+ * BELANGRIJK:
+ * De planner gebruikt bewust NIET matchesGoal().
+ *
+ * matchesGoal() is bedoeld voor de algemene
+ * doel-filter op de website en is bewust breed.
+ *
+ * De planner moet juist specifiek zijn.
+ */
+
+const PLANNER_EXCLUDED_WORDS = [
+  "kokoswater",
+  "water",
+  "drink",
+  "drank",
+  "juice",
+  "sap",
+  "soda",
+  "limonade",
+  "thee",
+  "koffie",
+  "collageen",
+  "collagen",
+  "citrulline",
+  "beta alanine",
+  "pump",
+  "vitamin",
+  "vitamine",
+  "mineral",
+  "magnesium",
+  "zinc",
+  "omega"
+];
+
+const PLANNER_GOAL_WORDS = {
+  cut: [
+    "protein",
+    "proteine",
+    "whey",
+    "whey protein",
+    "isolate",
+    "isolaat",
+    "casein",
+    "caseine",
+    "creatine",
+    "caffeine",
+    "cafeine",
+    "carnitine",
+    "l-carnitine",
+    "fat burner",
+    "fatburner",
+    "thermogenic",
+    "weight loss"
+  ],
+
+  bulk: [
+    "protein",
+    "proteine",
+    "whey",
+    "whey protein",
+    "mass gainer",
+    "mass-gainer",
+    "gainer",
+    "weight gainer",
+    "weight-gainer",
+    "mass",
+    "creatine",
+    "carb",
+    "carbs",
+    "carbohydrate",
+    "carbohydrates",
+    "havermout",
+    "oats"
+  ],
+
+  "lean-bulk": [
+    "protein",
+    "proteine",
+    "whey",
+    "whey protein",
+    "isolate",
+    "isolaat",
+    "casein",
+    "caseine",
+    "creatine",
+    "amino",
+    "bcaa",
+    "carb",
+    "carbs",
+    "carbohydrate",
+    "carbohydrates",
+    "havermout",
+    "oats"
+  ]
+};
 
 function getPlannerElements() {
   return {
@@ -1630,204 +1493,177 @@ function getPlannerElements() {
   };
 }
 
-function plannerKeywords(goal) {
-  const normalized =
-    normalize(goal);
-
-  if (normalized === "cut") {
-    return [
-      "protein",
-      "proteine",
-      "whey",
-      "creatine",
-      "caffeine",
-      "carnitine"
-    ];
-  }
-
-  if (normalized === "bulk") {
-    return [
-      "gainer",
-      "mass",
-      "protein",
-      "proteine",
-      "whey",
-      "creatine"
-    ];
-  }
-
-  return [
-    "protein",
-    "proteine",
-    "whey",
-    "creatine",
-    "amino",
-    "bcaa",
-    "pre workout"
-  ];
+function plannerText(product) {
+  return normalize([
+    product?.name,
+    product?.brand,
+    product?.category
+  ].join(" "));
 }
 
-
-/* =========================================================
-   PLANNER FILTERING
-========================================================= */
-
-/*
- * Alleen producten die daadwerkelijk als supplement
- * kunnen worden gebruikt.
- *
- * Dranken zoals kokoswater mogen niet in de shortlist.
- */
-const PLANNER_EXCLUDED_WORDS = [
-  "kokoswater",
-  "water",
-  "drink",
-  "drank",
-  "juice",
-  "sap",
-  "soda",
-  "limonade",
-  "thee",
-  "koffie"
-];
-
-function isPlannerProduct(product) {
-  if (!isUsableProduct(product)) {
+function isPlannerProductForGoal(
+  product,
+  goal
+) {
+  if (
+    !isUsableProduct(product)
+  ) {
     return false;
   }
 
-  const text = productText(product);
+  const text =
+    plannerText(product);
 
   if (
-    PLANNER_EXCLUDED_WORDS.some(word =>
-      text.includes(normalize(word))
+    PLANNER_EXCLUDED_WORDS.some(
+      word =>
+        text.includes(
+          normalize(word)
+        )
     )
   ) {
     return false;
   }
 
+  const keywords =
+    PLANNER_GOAL_WORDS[
+      normalize(goal)
+    ] || [];
+
   return hasAny(
     text,
-    GENERAL_SUPPLEMENT_WORDS
+    keywords
   );
 }
 
-
-/*
- * Varianten van hetzelfde product worden
- * onder dezelfde sleutel gezet.
- *
- * Bijvoorbeeld:
- *
- * Real Creatine
- * Real Creatine Tabs
- *
- * worden allebei:
- *
- * real creatine
- */
-function plannerProductKey(product) {
-  let name = normalize(
-    product?.name || ""
-  );
+function plannerProductKey(
+  product
+) {
+  let name =
+    normalize(
+      product?.name || ""
+    );
 
   name = name
-    .replace(/\btablets?\b/g, "")
-    .replace(/\btabs?\b/g, "")
-    .replace(/\bcapsules?\b/g, "")
-    .replace(/\bcaps?\b/g, "")
-    .replace(/\bsoftgels?\b/g, "")
-    .replace(/\s+/g, " ")
+    .replace(
+      /\btablets?\b/g,
+      ""
+    )
+    .replace(
+      /\btabs?\b/g,
+      ""
+    )
+    .replace(
+      /\bcapsules?\b/g,
+      ""
+    )
+    .replace(
+      /\bcaps?\b/g,
+      ""
+    )
+    .replace(
+      /\bsoftgels?\b/g,
+      ""
+    )
+    .replace(
+      /\s+/g,
+      " "
+    )
     .trim();
 
   return name;
 }
 
-
-/* =========================================================
-   PLANNER STYLES
-========================================================= */
-
 function injectPlannerStyles() {
-  if ($("#fitdeal-planner-styles")) {
+  if (
+    $("#planner-styles")
+  ) {
     return;
   }
 
   const style =
-    document.createElement("style");
+    document.createElement(
+      "style"
+    );
 
   style.id =
-    "fitdeal-planner-styles";
+    "planner-styles";
 
   style.textContent = `
     #planner-result {
-      width: 100%;
-      margin-top: 20px;
+      margin-top: 24px;
     }
 
-    #planner-result .planner-results {
+    .planner-results {
       display: grid;
-      gap: 14px;
-      width: 100%;
+      gap: 16px;
     }
 
-    #planner-result .planner-result-item {
-      display: flex;
+    .planner-result-item {
+      display: grid;
+      grid-template-columns:
+        1fr auto auto;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 10px 14px;
-      width: 100%;
-      box-sizing: border-box;
-      padding: 16px;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 16px;
-      background: #080d18;
-      color: #f4f7fb;
+      gap: 18px;
+      padding: 22px;
+      border:
+        1px solid
+        rgba(255,255,255,.08);
+      border-radius: 20px;
+      background:
+        rgba(3,7,18,.55);
     }
 
-    #planner-result .planner-result-item strong {
-      flex: 1 1 100%;
-      margin: 0;
-      color: #f4f7fb;
-      font-size: 16px;
+    .planner-result-item strong {
+      color: #fff;
+      font-size: 18px;
       line-height: 1.4;
     }
 
-    #planner-result .planner-result-item > span {
-      color: #67e5a2;
-      font-size: 16px;
+    .planner-result-item span {
+      color: #36c978;
       font-weight: 800;
+      font-size: 18px;
+      white-space: nowrap;
     }
 
-    #planner-result .planner-result-item .cart-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 42px;
-      margin: 0;
-      padding: 9px 16px;
+    .planner-result-item .cart-button {
       border: 0;
-      border-radius: 10px;
+      border-radius: 12px;
+      padding: 12px 18px;
       background: #00a83b;
-      color: #ffffff;
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1;
+      color: #fff;
+      font-weight: 800;
       cursor: pointer;
     }
 
-    #planner-result .planner-result-item .cart-button:hover {
-      background: #00bd45;
+    .planner-result-item
+      .cart-button:hover {
+      background: #00bd43;
+    }
+
+    @media (max-width: 700px) {
+      .planner-result-item {
+        grid-template-columns:
+          1fr auto;
+      }
+
+      .planner-result-item strong {
+        grid-column:
+          1 / -1;
+      }
+
+      .planner-result-item
+        .cart-button {
+        justify-self: end;
+      }
     }
   `;
 
-  document.head.appendChild(style);
+  document.head.appendChild(
+    style
+  );
 }
-
-
-/* =========================================================
-   CREATE PLANNER
-========================================================= */
 
 function createPlanner() {
   const {
@@ -1835,26 +1671,29 @@ function createPlanner() {
     goal,
     budget,
     result
-  } = getPlannerElements();
+  } =
+    getPlannerElements();
 
-  if (!container || !goal || !budget || !result) {
-    return;
-  }
-
-  /*
-   * We gebruiken het bestaande HTML-element.
-   * Geen tweede planner ernaast.
-   */
-
-  const form =
-    goal.closest("form") ||
-    container.querySelector("form");
-
-  if (!form) {
+  if (
+    !container ||
+    !goal ||
+    !budget ||
+    !result
+  ) {
     return;
   }
 
   injectPlannerStyles();
+
+  const form =
+    goal.closest("form") ||
+    container.querySelector(
+      "form"
+    );
+
+  if (!form) {
+    return;
+  }
 
   form.addEventListener(
     "submit",
@@ -1862,99 +1701,124 @@ function createPlanner() {
       event.preventDefault();
 
       const selectedGoal =
-        normalize(goal.value);
+        normalize(
+          goal.value
+        );
 
       const maxBudget =
         Number(
           String(
             budget.value || ""
-          ).replace(",", ".")
+          ).replace(
+            ",",
+            "."
+          )
         );
 
       if (
         !selectedGoal ||
-        !Number.isFinite(maxBudget) ||
+        !Number.isFinite(
+          maxBudget
+        ) ||
         maxBudget <= 0
       ) {
         result.innerHTML = `
           <p>
-            Kies een doel en vul een geldig budget in.
+            Kies een doel en vul
+            een geldig budget in.
           </p>
         `;
 
         return;
       }
 
-      const keywords =
-        plannerKeywords(
-          selectedGoal
-        );
+      /*
+       * HIER zit de belangrijke aanpassing:
+       *
+       * Niet meer:
+       *
+       * matchesGoal(product, selectedGoal)
+       *
+       * plus algemene supplementen.
+       *
+       * Alleen producten die specifiek
+       * bij het gekozen planner-doel horen.
+       */
 
       const candidates =
         state.products
-          .filter(isPlannerProduct)
-          .filter(product => {
+          .filter(product =>
+            isPlannerProductForGoal(
+              product,
+              selectedGoal
+            )
+          )
+          .filter(product =>
+            price(product) <=
+            maxBudget
+          )
+          .sort((a, b) => {
+            const scoreA =
+              Number(
+                a.deal_score
+              ) || 0;
+
+            const scoreB =
+              Number(
+                b.deal_score
+              ) || 0;
+
             if (
-              price(product) >
-              maxBudget
+              scoreA !==
+              scoreB
+            ) {
+              return (
+                scoreB -
+                scoreA
+              );
+            }
+
+            return (
+              price(a) -
+              price(b)
+            );
+          });
+
+      const seen =
+        new Set();
+
+      const shortlist =
+        candidates
+          .filter(product => {
+            const key =
+              plannerProductKey(
+                product
+              );
+
+            if (
+              !key ||
+              seen.has(key)
             ) {
               return false;
             }
 
-            return (
-              matchesGoal(
-                product,
-                selectedGoal
-              ) ||
-              hasAny(
-                productText(product),
-                keywords
-              )
-            );
+            seen.add(key);
+
+            return true;
           })
-          .sort(
-            (a, b) =>
-              (Number(b.deal_score) || 0) -
-              (Number(a.deal_score) || 0)
-          );
+          .slice(0, 5);
 
-      /*
-       * Eén basisproduct maximaal één keer.
-       *
-       * Hierdoor worden bijvoorbeeld:
-       * Real Creatine
-       * Real Creatine Tabs
-       *
-       * niet allebei getoond.
-       */
-
-      const seenPlannerProducts =
-        new Set();
-
-      const uniquePlannerProducts =
-        candidates.filter(product => {
-          const key =
-            plannerProductKey(product);
-
-          if (
-            !key ||
-            seenPlannerProducts.has(key)
-          ) {
-            return false;
-          }
-
-          seenPlannerProducts.add(key);
-
-          return true;
-        });
-
-      const shortlist =
-        uniquePlannerProducts.slice(0, 5);
-
-      if (!shortlist.length) {
+      if (
+        !shortlist.length
+      ) {
         result.innerHTML = `
           <p>
-            Binnen dit budget vonden we nu geen passende producten.
+            Binnen dit budget vonden
+            we nu geen passende
+            producten voor
+            ${escapeHtml(
+              selectedGoal
+            )}.
           </p>
         `;
 
@@ -1967,7 +1831,9 @@ function createPlanner() {
           ${shortlist
             .map(
               product => `
-                <div class="planner-result-item">
+                <div
+                  class="planner-result-item"
+                >
 
                   <strong>
                     ${escapeHtml(
@@ -1986,7 +1852,9 @@ function createPlanner() {
                     type="button"
                     class="cart-button"
                     data-add-cart="${escapeHtml(
-                      String(product.id)
+                      String(
+                        product.id
+                      )
                     )}"
                   >
                     Toevoegen
@@ -2009,21 +1877,20 @@ function createPlanner() {
 ========================================================= */
 
 function setupAI() {
-  const form = $("#ai-form");
+  const form =
+    $("#ai-form");
 
   const input =
-    first(
-      "#ai-input",
-      "#ai-question"
-    );
+    $("#ai-input");
 
-  const output =
-    first(
-      "#ai-response",
-      "#ai-output"
-    );
+  const responseBox =
+    $("#ai-response");
 
-  if (!form || !input || !output) {
+  if (
+    !form ||
+    !input ||
+    !responseBox
+  ) {
     return;
   }
 
@@ -2039,20 +1906,11 @@ function setupAI() {
         return;
       }
 
-      output.innerHTML = `
+      responseBox.innerHTML = `
         <p>
           Even nadenken...
         </p>
       `;
-
-      const submit =
-        form.querySelector(
-          'button[type="submit"]'
-        );
-
-      if (submit) {
-        submit.disabled = true;
-      }
 
       try {
         const response =
@@ -2061,92 +1919,60 @@ function setupAI() {
             {
               method: "POST",
               headers: {
-                "content-type":
+                "Content-Type":
                   "application/json",
                 Accept:
                   "application/json"
               },
-              body: JSON.stringify({
-                message
-              })
+              body:
+                JSON.stringify({
+                  message
+                })
             }
           );
+
+        if (!response.ok) {
+          throw new Error(
+            `AI API gaf status ${response.status}`
+          );
+        }
 
         const data =
           await response.json();
 
-        if (!response.ok) {
-          throw new Error(
-            data?.error ||
-            `AI status ${response.status}`
-          );
-        }
-
         const answer =
-          data?.response ??
-          data?.answer ??
-          data?.message ??
-          data?.text ??
-          "";
+          data.answer ||
+          data.response ||
+          data.message ||
+          "Ik kon hier nu geen antwoord op geven.";
 
-        if (!answer) {
-          throw new Error(
-            "Geen AI-antwoord ontvangen."
-          );
-        }
-
-        output.innerHTML = `
-          <div class="ai-answer">
-            ${formatAIText(answer)}
-          </div>
+        responseBox.innerHTML = `
+          <p>
+            ${escapeHtml(answer)}
+          </p>
         `;
+
       } catch (error) {
         console.error(
-          "AI Coach error:",
+          "FitDealFinder AI error:",
           error
         );
 
-        output.innerHTML = `
+        responseBox.innerHTML = `
           <p>
-            De Supplement Coach is momenteel niet beschikbaar.
+            De Supplement Coach is
+            momenteel niet beschikbaar.
             Probeer het later opnieuw.
           </p>
         `;
-      } finally {
-        if (submit) {
-          submit.disabled = false;
-        }
       }
     }
   );
 }
 
-function formatAIText(value) {
-  const text =
-    String(value || "").trim();
-
-  return escapeHtml(text)
-    .replace(
-      /\n\n+/g,
-      "</p><p>"
-    )
-    .replace(
-      /\n/g,
-      "<br>"
-    )
-    .replace(
-      /^/,
-      "<p>"
-    )
-    .replace(
-      /$/,
-      "</p>"
-    );
-}
-
 
 /* =========================================================
-   DEAL / AFFILIATE TRACKING
+   AFFILIATE / DEAL TRACKING
 ========================================================= */
 
 function setupDealTracking() {
@@ -2154,16 +1980,41 @@ function setupDealTracking() {
     "click",
     event => {
       const link =
-        event.target.closest?.(
+        event.target.closest(
           'a[href^="/go/"]'
         );
 
-      if (!link) return;
+      if (!link) {
+        return;
+      }
 
-      /*
-       * De daadwerkelijke affiliate redirect
-       * wordt door worker.ts afgehandeld.
-       */
+      const match =
+        link
+          .getAttribute("href")
+          ?.match(
+            /^\/go\/([^/?#]+)/
+          );
+
+      if (!match) {
+        return;
+      }
+
+      const productId =
+        decodeURIComponent(
+          match[1]
+        );
+
+      fetch(
+        `/api/click/${encodeURIComponent(
+          productId
+        )}`,
+        {
+          method: "POST",
+          keepalive: true
+        }
+      ).catch(() => {
+        // Tracking mag de klik niet blokkeren.
+      });
     }
   );
 }
@@ -2178,17 +2029,45 @@ function setupKeyboard() {
     "keydown",
     event => {
       if (
-        event.key === "Escape"
+        event.key === "/" &&
+        document.activeElement?.tagName !==
+          "INPUT" &&
+        document.activeElement?.tagName !==
+          "TEXTAREA" &&
+        document.activeElement?.tagName !==
+          "SELECT"
       ) {
-        closeCart();
+        event.preventDefault();
+
+        const input =
+          $("#search-input");
+
+        if (input) {
+          input.focus();
+        }
       }
     }
   );
+
+  const loadMore =
+    $("#load-more");
+
+  if (loadMore) {
+    loadMore.addEventListener(
+      "click",
+      () => {
+        state.visibleCount +=
+          PRODUCTS_PER_VIEW;
+
+        renderProducts();
+      }
+    );
+  }
 }
 
 
 /* =========================================================
-   INITIALISATION
+   INIT
 ========================================================= */
 
 function init() {
@@ -2219,4 +2098,4 @@ if (
   );
 } else {
   init();
-}
+        }}
