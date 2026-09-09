@@ -1,4 +1,3 @@
-
 "use strict";
 
 /*
@@ -1628,6 +1627,11 @@ function plannerProductKey(
   return name;
 }
 
+
+/* =========================================================
+   SHOPPING PLANNER STYLES
+========================================================= */
+
 function injectPlannerStyles() {
   if (
     $("#planner-styles")
@@ -1656,9 +1660,9 @@ function injectPlannerStyles() {
     .planner-result-item {
       display: grid;
       grid-template-columns:
-        1fr auto auto;
+        65px 1fr auto auto;
       align-items: center;
-      gap: 18px;
+      gap: 16px;
       padding: 22px;
       border:
         1px solid
@@ -1666,6 +1670,40 @@ function injectPlannerStyles() {
       border-radius: 20px;
       background:
         rgba(3,7,18,.55);
+    }
+
+    .planner-product-image {
+      width: 65px;
+      height: 65px;
+      min-width: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
+    .planner-product-image img {
+      width: 65px !important;
+      height: 65px !important;
+      max-width: 65px !important;
+      max-height: 65px !important;
+      object-fit: contain !important;
+      display: block !important;
+    }
+
+    .planner-product-image-placeholder {
+      width: 65px;
+      height: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(255,255,255,.05);
+      color: #9eacbd;
+      font-size: 10px;
+      font-weight: 800;
+      text-align: center;
     }
 
     .planner-result-item strong {
@@ -1699,16 +1737,26 @@ function injectPlannerStyles() {
     @media (max-width: 700px) {
       .planner-result-item {
         grid-template-columns:
-          1fr auto;
+          65px 1fr auto;
+      }
+
+      .planner-product-image {
+        grid-row: 1;
       }
 
       .planner-result-item strong {
         grid-column:
-          1 / -1;
+          2 / -1;
+      }
+
+      .planner-result-item span {
+        grid-column: 2;
       }
 
       .planner-result-item
         .cart-button {
+        grid-column: 3;
+        grid-row: 2;
         justify-self: end;
       }
     }
@@ -1718,6 +1766,11 @@ function injectPlannerStyles() {
     style
   );
 }
+
+
+/* =========================================================
+   CREATE SHOPPING PLANNER
+========================================================= */
 
 function createPlanner() {
   const {
@@ -1906,43 +1959,94 @@ function createPlanner() {
         return;
       }
 
+      /*
+       * AANGEPAST:
+       * De Shopping Planner toont nu ook
+       * de echte productafbeelding.
+       *
+       * Alleen deze planner-afbeeldingen
+       * worden op 65x65px gezet.
+       *
+       * De normale productkaarten blijven
+       * volledig ongewijzigd.
+       */
       result.innerHTML = `
         <div class="planner-results">
 
           ${shortlist
             .map(
-              product => `
-                <div
-                  class="planner-result-item"
-                >
+              product => {
+                const image =
+                  product.image_url
+                    ? `
+                      <img
+                        src="${escapeHtml(
+                          product.image_url
+                        )}"
+                        alt="${escapeHtml(
+                          product.name
+                        )}"
+                        loading="lazy"
+                        style="
+                          width:65px !important;
+                          height:65px !important;
+                          max-width:65px !important;
+                          max-height:65px !important;
+                          min-width:65px !important;
+                          min-height:65px !important;
+                          object-fit:contain !important;
+                          display:block !important;
+                        "
+                        onerror="this.style.display='none'"
+                      >
+                    `
+                    : `
+                      <div
+                        class="planner-product-image-placeholder"
+                      >
+                        FitDealFinder
+                      </div>
+                    `;
 
-                  <strong>
-                    ${escapeHtml(
-                      product.name
-                    )}
-                  </strong>
-
-                  <span>
-                    ${money(
-                      price(product),
-                      product.currency
-                    )}
-                  </span>
-
-                  <button
-                    type="button"
-                    class="cart-button"
-                    data-add-cart="${escapeHtml(
-                      String(
-                        product.id
-                      )
-                    )}"
+                return `
+                  <div
+                    class="planner-result-item"
                   >
-                    Toevoegen
-                  </button>
 
-                </div>
-              `
+                    <div
+                      class="planner-product-image"
+                    >
+                      ${image}
+                    </div>
+
+                    <strong>
+                      ${escapeHtml(
+                        product.name
+                      )}
+                    </strong>
+
+                    <span>
+                      ${money(
+                        price(product),
+                        product.currency
+                      )}
+                    </span>
+
+                    <button
+                      type="button"
+                      class="cart-button"
+                      data-add-cart="${escapeHtml(
+                        String(
+                          product.id
+                        )
+                      )}"
+                    >
+                      Toevoegen
+                    </button>
+
+                  </div>
+                `;
+              }
             )
             .join("")}
 
