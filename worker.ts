@@ -74,6 +74,76 @@ function errorResponse(
   );
 }
 
+/**
+ * Security headers.
+ *
+ * Deze worden centraal toegepast op alle responses.
+ *
+ * CSP is afgestemd op de huidige FitDealFinder-site:
+ * - eigen scripts/styles
+ * - inline scripts/styles die momenteel in de frontend aanwezig zijn
+ * - HTTPS productafbeeldingen
+ * - HTTPS fonts/media
+ * - API-calls naar dezelfde origin
+ */
+function withSecurityHeaders(
+  response: Response,
+): Response {
+  const headers =
+    new Headers(
+      response.headers,
+    );
+
+  headers.set(
+    "X-Frame-Options",
+    "DENY",
+  );
+
+  headers.set(
+    "X-Content-Type-Options",
+    "nosniff",
+  );
+
+  headers.set(
+    "Referrer-Policy",
+    "strict-origin-when-cross-origin",
+  );
+
+  headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=()",
+  );
+
+  headers.set(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' https: data:",
+      "connect-src 'self'",
+      "font-src 'self' data: https:",
+      "media-src 'self' https:",
+      "upgrade-insecure-requests",
+    ].join("; "),
+  );
+
+  return new Response(
+    response.body,
+    {
+      status:
+        response.status,
+      statusText:
+        response.statusText,
+      headers,
+    },
+  );
+}
+
 function asRecord(
   value: unknown,
 ): Record<string, unknown> {
@@ -2921,6 +2991,8 @@ export default {
     const url =
       new URL(request.url);
 
+    let response: Response;
+
     try {
       if (
         url.pathname ===
@@ -2928,24 +3000,22 @@ export default {
         request.method ===
           "GET"
       ) {
-        return handleHealth(
-          env,
-        );
-      }
-
-      if (
+        response =
+          await handleHealth(
+            env,
+          );
+      } else if (
         url.pathname ===
           "/api/products" &&
         request.method ===
           "GET"
       ) {
-        return handleProducts(
-          request,
-          env,
-        );
-      }
-
-      if (
+        response =
+          await handleProducts(
+            request,
+            env,
+          );
+      } else if (
         url.pathname.startsWith(
           "/api/products/",
         ) &&
@@ -2960,87 +3030,89 @@ export default {
             )
             .split("/")[0];
 
-        return handleProduct(
-          env,
-          id,
-        );
-      }
-
-      if (
+        response =
+          await handleProduct(
+            env,
+            id,
+          );
+      } else if (
         url.pathname ===
         "/api/ai/chat"
       ) {
-        return handleAi(
-          request,
-          env,
-        );
-      }
-
-      if (
+        response =
+          await handleAi(
+            request,
+            env,
+          );
+      } else if (
         url.pathname ===
           "/api/admin/sync" &&
         request.method ===
           "POST"
       ) {
-        return handleSync(
-          request,
-          env,
-        );
-      }
-
-      if (
+        response =
+          await handleSync(
+            request,
+            env,
+          );
+      } else if (
         url.pathname ===
           "/api/admin/sync-direct" &&
         request.method ===
           "POST"
       ) {
-        return handleDirectSync(
-          request,
-          env,
-        );
-      }
-
-      if (
+        response =
+          await handleDirectSync(
+            request,
+            env,
+          );
+      } else if (
         url.pathname ===
           "/api/admin/logs" &&
         request.method ===
           "GET"
       ) {
-        return handleLogs(
-          request,
-          env,
-        );
-      }
-
-      if (
+        response =
+          await handleLogs(
+            request,
+            env,
+          );
+      } else if (
         url.pathname.startsWith(
           "/go/",
         ) &&
         request.method ===
           "GET"
       ) {
-        return handleRedirect(
-          env,
-          url.pathname.slice(
-            4,
-          ),
-        );
+        response =
+          await handleRedirect(
+            env,
+            url.pathname.slice(
+              4,
+            ),
+          );
+      } else {
+        response =
+          await serveAsset(
+            request,
+            env,
+          );
       }
-
-      return serveAsset(
-        request,
-        env,
-      );
     } catch (
       error
     ) {
-      return errorResponse(
-        error instanceof Error
-          ? error.message
-          : "Interne fout.",
-        500,
-      );
+      response =
+        errorResponse(
+          error instanceof Error
+            ? error.message
+            : "Interne fout.",
+          500,
+        );
     }
+
+    return withSecurityHeaders(
+      response,
+    );
   },
 
   async scheduled(
