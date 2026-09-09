@@ -1412,65 +1412,62 @@ const PLANNER_EXCLUDED_WORDS = [
   "omega"
 ];
 
+
+/* =========================================================
+   ALLEEN DEZE PLANNER-DOELEN ZIJN AANGEPAST
+========================================================= */
+
 const PLANNER_GOAL_WORDS = {
   cut: [
-    "protein",
-    "proteine",
-    "whey",
-    "whey protein",
-    "isolate",
-    "isolaat",
-    "casein",
-    "caseine",
-    "creatine",
-    "caffeine",
-    "cafeine",
-    "carnitine",
-    "l-carnitine",
     "fat burner",
     "fatburner",
     "thermogenic",
-    "weight loss"
+    "weight loss",
+    "gewichtsverlies",
+    "afvallen",
+    "carnitine",
+    "l-carnitine",
+    "caffeine",
+    "cafeine",
+    "cut",
+    "cutting",
+    "shred",
+    "burn"
   ],
 
   bulk: [
-    "protein",
-    "proteine",
-    "whey",
-    "whey protein",
     "mass gainer",
     "mass-gainer",
     "gainer",
     "weight gainer",
     "weight-gainer",
     "mass",
-    "creatine",
     "carb",
     "carbs",
     "carbohydrate",
     "carbohydrates",
     "havermout",
-    "oats"
+    "oats",
+    "bulk",
+    "bulking",
+    "creatine"
   ],
 
   "lean-bulk": [
-    "protein",
-    "proteine",
-    "whey",
-    "whey protein",
+    "whey isolate",
+    "whey-isolate",
     "isolate",
     "isolaat",
     "casein",
     "caseine",
-    "creatine",
+    "protein",
+    "proteine",
+    "whey",
     "amino",
     "bcaa",
-    "carb",
-    "carbs",
-    "carbohydrate",
-    "carbohydrates",
-    "havermout",
-    "oats"
+    "lean bulk",
+    "lean-bulk",
+    "lean mass"
   ]
 };
 
@@ -1733,16 +1730,12 @@ function createPlanner() {
       }
 
       /*
-       * HIER zit de belangrijke aanpassing:
+       * De planner gebruikt uitsluitend
+       * het gekozen doel.
        *
-       * Niet meer:
-       *
-       * matchesGoal(product, selectedGoal)
-       *
-       * plus algemene supplementen.
-       *
-       * Alleen producten die specifiek
-       * bij het gekozen planner-doel horen.
+       * Dus geen matchesGoal()
+       * en geen algemene supplementen-
+       * fallback.
        */
 
       const candidates =
@@ -2098,4 +2091,4 @@ if (
   );
 } else {
   init();
-}
+    }
