@@ -2450,17 +2450,37 @@ function setupAI() {
 
           return `
             <div class="ai-package-item">
-              <div>
-                <strong>
-                  ${escapeHtml(product.name)}
-                </strong>
-                <small>
-                  ${escapeHtml(
-                    product.merchant_name ||
-                    "Winkel onbekend"
-                  )}
-                </small>
-              </div>
+  <div>
+    <a
+      href="/go/${encodeURIComponent(String(product.id))}"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="ai-package-product-link"
+    >
+      <strong>${escapeHtml(product.name)}</strong>
+    </a>
+
+    <small>
+      ${escapeHtml(
+        product.merchant_name || "Winkel onbekend"
+      )}
+    </small>
+  </div>
+
+  <strong>
+    ${escapeHtml(
+      money(productPrice, product.currency)
+    )}
+  </strong>
+
+  <button
+    type="button"
+    class="cart-button"
+    data-add-cart="${escapeHtml(String(product.id))}"
+  >
+    🛒 Toevoegen
+  </button>
+</div>
 
               <strong>
                 ${escapeHtml(
