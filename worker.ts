@@ -2,6 +2,7 @@ interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
   AI: Ai;
+  AI_RATE_LIMITER: RateLimit;
   ADMIN_SECRET?: string;
   AWIN_FEED_URL?: string;
   AWIN_PUBLISHER_ID?: string;
@@ -2768,6 +2769,23 @@ async function handleAi(
     );
   }
 
+  const clientIp =
+    request.headers.get(
+      "cf-connecting-ip",
+    ) ?? "unknown";
+
+  const rateLimit =
+    await env.AI_RATE_LIMITER.limit({
+      key: `ai:${clientIp}`,
+    });
+
+  if (!rateLimit.success) {
+    return errorResponse(
+      "Te veel AI-verzoeken. Probeer het over een minuut opnieuw.",
+      429,
+    );
+  }
+
   let body: unknown;
 
   try {
@@ -3055,3 +3073,4 @@ export default {
     }
   },
 };
+        
