@@ -19,7 +19,6 @@ const API_AI = "/api/ai/chat";
 const PAGE_SIZE = 200;
 const MAX_PRODUCTS = 2000;
 const PRODUCTS_PER_VIEW = 8;
-const CART_KEY = "fitdealfinder_cart";
 
 const state = {
   products: [],
@@ -28,8 +27,7 @@ const state = {
   goal: "",
   category: "",
   visibleCount: PRODUCTS_PER_VIEW,
-  loading: false,
-  cart: loadCart()
+  loading: false
 };
 
 
@@ -784,7 +782,6 @@ function productCard(product) {
         : 0;
 
   /*
-   * AANGEPAST:
    * Geen vaste 65px-afmetingen hier.
    * Dit is de normale productkaart.
    */
@@ -887,19 +884,10 @@ function productCard(product) {
             href="/go/${encodeURIComponent(
               String(product.id)
             )}"
+            style="width:100%;"
           >
-            Bekijk deal
+            Bekijk deal →
           </a>
-
-          <button
-            type="button"
-            class="cart-button"
-            data-add-cart="${escapeHtml(
-              String(product.id)
-            )}"
-          >
-            🛒 In winkelmand
-          </button>
 
         </div>
 
@@ -1146,365 +1134,6 @@ function setupCategories() {
 
 
 /* =========================================================
-   CART
-========================================================= */
-
-function loadCart() {
-  try {
-    const raw =
-      localStorage.getItem(
-        CART_KEY
-      );
-
-    const parsed =
-      raw
-        ? JSON.parse(raw)
-        : [];
-
-    return Array.isArray(parsed)
-      ? parsed
-      : [];
-
-  } catch {
-    return [];
-  }
-}
-
-function saveCart() {
-  try {
-    localStorage.setItem(
-      CART_KEY,
-      JSON.stringify(
-        state.cart
-      )
-    );
-  } catch {
-    // localStorage kan geblokkeerd zijn.
-  }
-}
-
-function cartProductById(id) {
-  return state.products.find(
-    product =>
-      String(product.id) ===
-      String(id)
-  );
-}
-
-function addToCart(id) {
-  const product =
-    cartProductById(id);
-
-  if (!product) {
-    return;
-  }
-
-  const existing =
-    state.cart.find(
-      item =>
-        String(item.id) ===
-        String(id)
-    );
-
-  if (existing) {
-    existing.quantity =
-      (Number(
-        existing.quantity
-      ) || 1) + 1;
-  } else {
-    state.cart.push({
-      id: String(product.id),
-      name: product.name,
-      price: price(product),
-      currency:
-        product.currency ||
-        "EUR",
-      merchant_name:
-        product.merchant_name ||
-        "",
-      quantity: 1
-    });
-  }
-
-  saveCart();
-  renderCart();
-  updateCartTriggers();
-}
-
-function removeFromCart(id) {
-  state.cart =
-    state.cart.filter(
-      item =>
-        String(item.id) !==
-        String(id)
-    );
-
-  saveCart();
-  renderCart();
-  updateCartTriggers();
-}
-
-function changeCartQuantity(
-  id,
-  delta
-) {
-  const item =
-    state.cart.find(
-      cartItem =>
-        String(cartItem.id) ===
-        String(id)
-    );
-
-  if (!item) return;
-
-  item.quantity =
-    Math.max(
-      1,
-      (Number(
-        item.quantity
-      ) || 1) + delta
-    );
-
-  saveCart();
-  renderCart();
-}
-
-function renderCart() {
-  const cart =
-    first(
-      "#cart",
-      "#shopping-cart",
-      "#cart-panel"
-    );
-
-  if (!cart) {
-    return;
-  }
-
-  const existingEmpty =
-    cart.querySelector(
-      ".cart-empty"
-    );
-
-  if (
-    !state.cart.length
-  ) {
-    if (existingEmpty) {
-      existingEmpty.hidden =
-        false;
-    }
-
-    return;
-  }
-
-  const total =
-    state.cart.reduce(
-      (sum, item) =>
-        sum +
-        (
-          Number(item.price) ||
-          0
-        ) *
-          (
-            Number(
-              item.quantity
-            ) || 1
-          ),
-      0
-    );
-
-  cart.innerHTML = `
-    <div class="cart-items">
-
-      ${state.cart
-        .map(
-          item => `
-            <div class="cart-item">
-
-              <div>
-                <strong>
-                  ${escapeHtml(
-                    item.name
-                  )}
-                </strong>
-
-                <div>
-                  ${money(
-                    item.price,
-                    item.currency
-                  )}
-                </div>
-              </div>
-
-              <div class="cart-quantity">
-
-                <button
-                  type="button"
-                  data-cart-minus="${escapeHtml(
-                    item.id
-                  )}"
-                >
-                  −
-                </button>
-
-                <span>
-                  ${Number(
-                    item.quantity
-                  ) || 1}
-                </span>
-
-                <button
-                  type="button"
-                  data-cart-plus="${escapeHtml(
-                    item.id
-                  )}"
-                >
-                  +
-                </button>
-
-              </div>
-
-              <button
-                type="button"
-                data-cart-remove="${escapeHtml(
-                  item.id
-                )}"
-              >
-                Verwijderen
-              </button>
-
-            </div>
-          `
-        )
-        .join("")}
-
-    </div>
-
-    <div class="cart-total">
-      <strong>
-        Totaal
-      </strong>
-
-      <strong>
-        ${money(total)}
-      </strong>
-    </div>
-  `;
-}
-
-function updateCartTriggers() {
-  const count =
-    state.cart.reduce(
-      (sum, item) =>
-        sum +
-        (
-          Number(
-            item.quantity
-          ) || 1
-        ),
-      0
-    );
-
-  $all(
-    "[data-cart-count]"
-  ).forEach(element => {
-    element.textContent =
-      String(count);
-  });
-}
-
-function setupCartEvents() {
-  document.addEventListener(
-    "click",
-    event => {
-      const addButton =
-        event.target.closest(
-          "[data-add-cart]"
-        );
-
-      if (addButton) {
-        addToCart(
-          addButton.dataset
-            .addCart
-        );
-
-        return;
-      }
-
-      const removeButton =
-        event.target.closest(
-          "[data-cart-remove]"
-        );
-
-      if (removeButton) {
-        removeFromCart(
-          removeButton.dataset
-            .cartRemove
-        );
-
-        return;
-      }
-
-      const plusButton =
-        event.target.closest(
-          "[data-cart-plus]"
-        );
-
-      if (plusButton) {
-        changeCartQuantity(
-          plusButton.dataset
-            .cartPlus,
-          1
-        );
-
-        return;
-      }
-
-      const minusButton =
-        event.target.closest(
-          "[data-cart-minus]"
-        );
-
-      if (minusButton) {
-        changeCartQuantity(
-          minusButton.dataset
-            .cartMinus,
-          -1
-        );
-      }
-    }
-  );
-}
-
-function setupCartTrigger() {
-  $all(
-    "[data-cart-trigger]"
-  ).forEach(button => {
-    button.addEventListener(
-      "click",
-      () => {
-        const cart =
-          first(
-            "#cart",
-            "#shopping-cart",
-            "#cart-panel"
-          );
-
-        if (cart) {
-          cart.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-          });
-        }
-      }
-    );
-  });
-
-  renderCart();
-}
-
-
-/* =========================================================
    SHOPPING PLANNER
 ========================================================= */
 
@@ -1660,7 +1289,7 @@ function injectPlannerStyles() {
     .planner-result-item {
       display: grid;
       grid-template-columns:
-        65px 1fr auto auto;
+        65px 1fr auto;
       align-items: center;
       gap: 16px;
       padding: 22px;
@@ -1719,25 +1348,10 @@ function injectPlannerStyles() {
       white-space: nowrap;
     }
 
-    .planner-result-item .cart-button {
-      border: 0;
-      border-radius: 12px;
-      padding: 12px 18px;
-      background: #00a83b;
-      color: #fff;
-      font-weight: 800;
-      cursor: pointer;
-    }
-
-    .planner-result-item
-      .cart-button:hover {
-      background: #00bd43;
-    }
-
     @media (max-width: 700px) {
       .planner-result-item {
         grid-template-columns:
-          65px 1fr auto;
+          65px 1fr;
       }
 
       .planner-product-image {
@@ -1745,19 +1359,11 @@ function injectPlannerStyles() {
       }
 
       .planner-result-item strong {
-        grid-column:
-          2 / -1;
+        grid-column: 2;
       }
 
       .planner-result-item span {
         grid-column: 2;
-      }
-
-      .planner-result-item
-        .cart-button {
-        grid-column: 3;
-        grid-row: 2;
-        justify-self: end;
       }
     }
   `;
@@ -1919,8 +1525,7 @@ function createPlanner() {
           );
 
       /*
-       * AANGEPAST:
-       * Het opgegeven budget geldt nu voor
+       * Het opgegeven budget geldt voor
        * de COMPLETE shortlist.
        *
        * We houden tegelijk de bestaande
@@ -1991,15 +1596,13 @@ function createPlanner() {
       }
 
       /*
-       * AANGEPAST:
-       * De Shopping Planner toont nu ook
-       * de echte productafbeelding.
+       * De Shopping Planner toont de
+       * echte productafbeelding.
        *
-       * Alleen deze planner-afbeeldingen
-       * worden op 65x65px gezet.
-       *
-       * De normale productkaarten blijven
-       * volledig ongewijzigd.
+       * Er is GEEN winkelmandknop meer.
+       * De planner is informatief:
+       * gebruikers kunnen via de producten
+       * naar de betreffende winkel.
        */
       result.innerHTML = `
         <div class="planner-results">
@@ -2062,18 +1665,6 @@ function createPlanner() {
                         product.currency
                       )}
                     </span>
-
-                    <button
-                      type="button"
-                      class="cart-button"
-                      data-add-cart="${escapeHtml(
-                        String(
-                          product.id
-                        )
-                      )}"
-                    >
-                      Toevoegen
-                    </button>
 
                   </div>
                 `;
@@ -2585,7 +2176,6 @@ function setupAI() {
             price(product);
 
           /*
-           * AANGEPAST:
            * Alleen AI-pakketafbeeldingen krijgen
            * hier de vaste afmetingen van 65x65px.
            */
@@ -2645,14 +2235,6 @@ function setupAI() {
                     )
                   )}
                 </strong>
-
-                <button
-                  type="button"
-                  class="cart-button"
-                  data-add-cart="${escapeHtml(String(product.id))}"
-                >
-                  🛒 Toevoegen
-                </button>
 
               </div>
 
@@ -3027,10 +2609,6 @@ function init() {
   setupGoals();
   setupCategories();
 
-  setupCartEvents();
-  setupCartTrigger();
-  updateCartTriggers();
-
   createPlanner();
   setupAI();
 
@@ -3050,4 +2628,4 @@ if (
   );
 } else {
   init();
-  }
+              }
