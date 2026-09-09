@@ -2425,64 +2425,77 @@ function setupAI() {
   }
 
   function renderExactPackage(packageData) {
-    const {
-      goal,
-      budget,
-      products,
-      total
-    } = packageData;
+  const {
+    goal,
+    budget,
+    products,
+    total
+  } = packageData;
 
-    const remaining =
-      budget - total;
+  const remaining =
+    budget - total;
 
-    const goalLabel =
-      goal === "bulk"
-        ? "Bulk"
-        : goal === "lean-bulk"
-          ? "Lean Bulk"
-          : "Cut";
+  const goalLabel =
+    goal === "bulk"
+      ? "Bulk"
+      : goal === "lean-bulk"
+        ? "Lean Bulk"
+        : "Cut";
 
-    const items =
-      products
-        .map(product => {
-          const productPrice =
-            price(product);
+  const items =
+    products
+      .map(product => {
+        const productPrice =
+          price(product);
 
-          return `
-            <div class="ai-package-item">
-  <div>
-    <a
-      href="/go/${encodeURIComponent(String(product.id))}"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="ai-package-product-link"
-    >
-      <strong>${escapeHtml(product.name)}</strong>
-    </a>
+        const image = product.image_url
+          ? `
+            <img
+              src="${escapeHtml(product.image_url)}"
+              alt="${escapeHtml(product.name)}"
+              loading="lazy"
+              onerror="this.style.display='none'"
+            >
+          `
+          : `
+            <div class="product-image-placeholder">
+              FitDealFinder
+            </div>
+          `;
 
-    <small>
-      ${escapeHtml(
-        product.merchant_name || "Winkel onbekend"
-      )}
-    </small>
-  </div>
+        return `
+          <div class="ai-package-item">
 
-  <strong>
-    ${escapeHtml(
-      money(productPrice, product.currency)
-    )}
-  </strong>
+            <a
+              href="/go/${encodeURIComponent(String(product.id))}"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="ai-package-product-image"
+            >
+              ${image}
+            </a>
 
-  <button
-    type="button"
-    class="cart-button"
-    data-add-cart="${escapeHtml(String(product.id))}"
-  >
-    🛒 Toevoegen
-  </button>
-</div>
+            <div class="ai-package-product-info">
 
-              <strong>
+              <a
+                href="/go/${encodeURIComponent(String(product.id))}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="ai-package-product-link"
+              >
+                <strong>
+                  ${escapeHtml(product.name)}
+                </strong>
+              </a>
+
+              <small>
+                ${escapeHtml(
+                  product.merchant_name ||
+                  "Winkel onbekend"
+                )}
+              </small>
+
+              <strong class="ai-package-price">
                 ${escapeHtml(
                   money(
                     productPrice,
@@ -2490,52 +2503,65 @@ function setupAI() {
                   )
                 )}
               </strong>
+
+              <button
+                type="button"
+                class="cart-button"
+                data-add-cart="${escapeHtml(String(product.id))}"
+              >
+                🛒 Toevoegen
+              </button>
+
             </div>
-          `;
-        })
-        .join("");
 
-    responseBox.innerHTML = `
-      <div class="ai-package">
-        <h3>
-          ${goalLabel} pakket
-        </h3>
+          </div>
+        `;
+      })
+      .join("");
 
-        <p>
-          Ik heb het pakket samengesteld
-          uit echte producten die momenteel
-          in FitDealFinder staan.
-        </p>
+  responseBox.innerHTML = `
+    <div class="ai-package">
 
-        <div class="ai-package-list">
-          ${items}
-        </div>
+      <h3>
+        ${goalLabel} pakket
+      </h3>
 
-        <div class="ai-package-total">
-          <span>Totaal</span>
-          <strong>
-            ${escapeHtml(
-              money(total)
-            )}
-          </strong>
-        </div>
+      <p>
+        Ik heb het pakket samengesteld
+        uit echte producten die momenteel
+        in FitDealFinder staan.
+      </p>
 
-        <div class="ai-package-budget">
-          Budget:
-          ${escapeHtml(
-            money(budget)
-          )}
-          · over:
-          ${escapeHtml(
-            money(remaining)
-          )}
-        </div>
-
-        <p class="ai-package-note">
-          De selectie blijft binnen je opgegeven budget.
-        </p>
+      <div class="ai-package-list">
+        ${items}
       </div>
-    `;
+
+      <div class="ai-package-total">
+        <span>Totaal</span>
+        <strong>
+          ${escapeHtml(
+            money(total)
+          )}
+        </strong>
+      </div>
+
+      <div class="ai-package-budget">
+        Budget:
+        ${escapeHtml(
+          money(budget)
+        )}
+        · over:
+        ${escapeHtml(
+          money(remaining)
+        )}
+      </div>
+
+      <p class="ai-package-note">
+        De selectie blijft binnen je opgegeven budget.
+      </p>
+
+    </div>
+  `;
   }
 
   form.addEventListener(
