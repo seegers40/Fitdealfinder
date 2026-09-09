@@ -1956,21 +1956,164 @@ function createPlanner() {
 ========================================================= */
 
 function setupAI() {
-  const form =
-    $("#ai-form");
+  const form = $("#ai-form");
+  const input = $("#ai-input");
+  const responseBox = $("#ai-response");
 
-  const input =
-    $("#ai-input");
-
-  const responseBox =
-    $("#ai-response");
-
-  if (
-    !form ||
-    !input ||
-    !responseBox
-  ) {
+  if (!form || !input || !responseBox) {
     return;
+  }
+
+  function extractBudget(message) {
+    const match = String(message || "").match(
+      /(?:€|eur(?:o)?\s*)?(\d+(?:[.,]\d{1,2})?)(?:\s*(?:euro|eur|€))?/i
+    );
+
+    if (!match) {
+      return null;
+    }
+
+    const value = Number(
+      String(match[1]).replace(",", ".")
+    );
+
+    return Number.isFinite(value) && value > 0
+      ? value
+      : null;
+  }
+
+  function detectGoal(message) {
+    const text = normalize(message);
+
+    if (
+      text.includes("bulk") ||
+      text.includes("bulken") ||
+      text.includes("massa") ||
+      text.includes("aankomen") ||
+      text.includes("spiermassa")
+    ) {
+      return "bulk";
+    }
+
+    if (
+      text.includes("lean bulk") ||
+      text.includes("lean-bulk")
+    ) {
+      return "lean-bulk";
+    }
+
+    if (
+      text.includes("cut") ||
+      text.includes("afvallen") ||
+      text.includes("droger") ||
+      text.includes("vet verliezen")
+    ) {
+      return "cut";
+    }
+
+    return "";
+  }
+
+  function buildProductContext(message) {
+    const budget = extractBudget(message);
+    const goal = detectGoal(message);
+
+    let candidates = state.products
+      .filter(isUsableProduct)
+      .filter(product => {
+        if (
+          budget !== null &&
+          price(product) > budget
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+
+    if (goal) {
+      candidates = candidates
+        .map(product => ({
+          product,
+          score: goalScore(product, goal)
+        }))
+        .filter(item => item.score > 0)
+        .sort((a, b) => {
+          if (b.score !== a.score) {
+            return b.score - a.score;
+          }
+
+          const dealA =
+            Number(a.product.deal_score) || 0;
+
+          const dealB =
+            Number(b.product.deal_score) || 0;
+
+          return dealB - dealA;
+        })
+        .map(item => item.product);
+    } else {
+      candidates.sort((a, b) => {
+        const dealA =
+          Number(a.deal_score) || 0;
+
+        const dealB =
+          Number(b.deal_score) || 0;
+
+        return dealB - dealA;
+      });
+    }
+
+    const seen = new Set();
+
+    const selected = [];
+
+    for (const product of candidates) {
+      const key = normalize(
+        product.name
+      );
+
+      if (!key || seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      selected.push(product);
+
+      if (selected.length >= 12) {
+        break;
+      }
+    }
+
+    if (!selected.length) {
+      return {
+        budget,
+        goal,
+        context:
+          "Er zijn momenteel geen passende producten gevonden in de FitDealFinder-database."
+      };
+    }
+
+    const lines = selected.map(
+      (product, index) => {
+        return [
+          `${index + 1}. ${product.name}`,
+          `Prijs: ${money(
+            price(product),
+            product.currency
+          )}`,
+          `Winkel: ${
+            product.merchant_name || "Onbekend"
+          }`
+        ].join(" | ");
+      }
+    );
+
+    return {
+      budget,
+      goal,
+      context: lines.join("\n")
+    };
   }
 
   form.addEventListener(
@@ -1992,6 +2135,50 @@ function setupAI() {
       `;
 
       try {
+        const productData =
+          buildProductContext(message);
+
+        const packageRequest =
+          /pakket|pakketje|samenstellen|bundel|combinatie|set/i.test(
+            message
+          );
+
+        const contextMessage = `
+GEBRUIK DEZE ECHTE FITDEALFINDER-PRODUCTEN ALS BRON.
+
+Gebruikersvraag:
+${message}
+
+Doel:
+${productData.goal || "niet specifiek opgegeven"}
+
+Budget:
+${
+  productData.budget !== null
+    ? money(productData.budget)
+    : "niet opgegeven"
+}
+
+Beschikbare echte producten:
+${productData.context}
+
+BELANGRIJKE REGELS:
+- Gebruik uitsluitend producten uit bovenstaande lijst.
+- Verzin geen productnamen.
+- Verzin geen prijzen.
+- Verzin geen winkels.
+- Als de gebruiker om een pakket vraagt, stel het pakket samen met producten uit bovenstaande lijst.
+- Blijf binnen het opgegeven budget.
+- Noem per gekozen product de exacte productnaam, winkel en prijs.
+- Bereken het totaalbedrag.
+- Als het budget niet voldoende is voor een goed pakket, zeg dat eerlijk.
+${
+  packageRequest
+    ? "- Geef dus een concreet pakket en geen algemeen voorbeeldpakket."
+    : ""
+}
+`.trim();
+
         const response =
           await fetch(
             API_AI,
@@ -2005,7 +2192,8 @@ function setupAI() {
               },
               body:
                 JSON.stringify({
-                  message
+                  message:
+                    contextMessage
                 })
             }
           );
