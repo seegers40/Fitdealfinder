@@ -327,21 +327,6 @@ function matchesGoal(product, goal) {
    CATEGORIES
 ========================================================= */
 
-/*
- * AANGEPAST:
- *
- * Categorieën gebruiken uitsluitend:
- * - productnaam
- * - merk
- * - het echte category-veld
- *
- * De volledige beschrijving wordt hier NIET gebruikt.
- *
- * Daardoor kan bijvoorbeeld een creatineproduct
- * niet door het woord "protein" in de omschrijving
- * opeens onder Proteïne verschijnen.
- */
-
 function matchesCategory(product, category) {
   if (!category) return true;
 
@@ -354,9 +339,6 @@ function matchesCategory(product, category) {
     product?.category
   ].join(" "));
 
-  /*
-   * PROTEÏNE
-   */
   if (normalizedCategory === "proteine") {
     return hasAny(categoryText, [
       "protein",
@@ -370,9 +352,6 @@ function matchesCategory(product, category) {
     ]);
   }
 
-  /*
-   * CREATINE
-   */
   if (normalizedCategory === "creatine") {
     return hasAny(categoryText, [
       "creatine",
@@ -381,9 +360,6 @@ function matchesCategory(product, category) {
     ]);
   }
 
-  /*
-   * PRE-WORKOUT
-   */
   if (normalizedCategory === "pre-workout") {
     return hasAny(categoryText, [
       "pre workout",
@@ -392,9 +368,6 @@ function matchesCategory(product, category) {
     ]);
   }
 
-  /*
-   * SUPPLEMENTEN
-   */
   if (normalizedCategory === "supplementen") {
     return hasAny(
       categoryText,
@@ -444,11 +417,6 @@ function applyFilters() {
       matchesCategory(product, state.category)
     );
 
-  /*
-   * Beste deals eerst.
-   * Daarna producten met korting.
-   * Daarna prijs laag naar hoog.
-   */
   state.filtered.sort((a, b) => {
     const scoreA = Number(a.deal_score) || 0;
     const scoreB = Number(b.deal_score) || 0;
@@ -890,10 +858,6 @@ function setupGoals() {
               button.dataset.goal || ""
             );
 
-          /*
-           * Nogmaals klikken op hetzelfde doel
-           * zet het doel uit.
-           */
           state.goal =
             state.goal === goal
               ? ""
@@ -946,11 +910,6 @@ function setupCategories() {
               ? ""
               : category;
 
-          /*
-           * Een categorie is leidend.
-           * Een oude doelkeuze mag de categorie
-           * niet leegtrekken.
-           */
           applyFilters();
           scrollToDeals();
         }
@@ -1613,10 +1572,6 @@ function setupCartEvents() {
 ========================================================= */
 
 function setupCartTrigger() {
-  /*
-   * Als index.html al een winkelmandknop heeft,
-   * koppelen we bekende varianten.
-   */
   const selectors = [
     "#cart-button",
     "#cart-toggle",
@@ -1712,6 +1667,168 @@ function plannerKeywords(goal) {
   ];
 }
 
+
+/* =========================================================
+   PLANNER FILTERING
+========================================================= */
+
+/*
+ * Alleen producten die daadwerkelijk als supplement
+ * kunnen worden gebruikt.
+ *
+ * Dranken zoals kokoswater mogen niet in de shortlist.
+ */
+const PLANNER_EXCLUDED_WORDS = [
+  "kokoswater",
+  "water",
+  "drink",
+  "drank",
+  "juice",
+  "sap",
+  "soda",
+  "limonade",
+  "thee",
+  "koffie"
+];
+
+function isPlannerProduct(product) {
+  if (!isUsableProduct(product)) {
+    return false;
+  }
+
+  const text = productText(product);
+
+  if (
+    PLANNER_EXCLUDED_WORDS.some(word =>
+      text.includes(normalize(word))
+    )
+  ) {
+    return false;
+  }
+
+  return hasAny(
+    text,
+    GENERAL_SUPPLEMENT_WORDS
+  );
+}
+
+
+/*
+ * Varianten van hetzelfde product worden
+ * onder dezelfde sleutel gezet.
+ *
+ * Bijvoorbeeld:
+ *
+ * Real Creatine
+ * Real Creatine Tabs
+ *
+ * worden allebei:
+ *
+ * real creatine
+ */
+function plannerProductKey(product) {
+  let name = normalize(
+    product?.name || ""
+  );
+
+  name = name
+    .replace(/\btablets?\b/g, "")
+    .replace(/\btabs?\b/g, "")
+    .replace(/\bcapsules?\b/g, "")
+    .replace(/\bcaps?\b/g, "")
+    .replace(/\bsoftgels?\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return name;
+}
+
+
+/* =========================================================
+   PLANNER STYLES
+========================================================= */
+
+function injectPlannerStyles() {
+  if ($("#fitdeal-planner-styles")) {
+    return;
+  }
+
+  const style =
+    document.createElement("style");
+
+  style.id =
+    "fitdeal-planner-styles";
+
+  style.textContent = `
+    #planner-result {
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    #planner-result .planner-results {
+      display: grid;
+      gap: 14px;
+      width: 100%;
+    }
+
+    #planner-result .planner-result-item {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      background: #080d18;
+      color: #f4f7fb;
+    }
+
+    #planner-result .planner-result-item strong {
+      flex: 1 1 100%;
+      margin: 0;
+      color: #f4f7fb;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    #planner-result .planner-result-item > span {
+      color: #67e5a2;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    #planner-result .planner-result-item .cart-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      margin: 0;
+      padding: 9px 16px;
+      border: 0;
+      border-radius: 10px;
+      background: #00a83b;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    #planner-result .planner-result-item .cart-button:hover {
+      background: #00bd45;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+
+/* =========================================================
+   CREATE PLANNER
+========================================================= */
+
 function createPlanner() {
   const {
     container,
@@ -1728,6 +1845,7 @@ function createPlanner() {
    * We gebruiken het bestaande HTML-element.
    * Geen tweede planner ernaast.
    */
+
   const form =
     goal.closest("form") ||
     container.querySelector("form");
@@ -1735,6 +1853,8 @@ function createPlanner() {
   if (!form) {
     return;
   }
+
+  injectPlannerStyles();
 
   form.addEventListener(
     "submit",
@@ -1772,7 +1892,7 @@ function createPlanner() {
 
       const candidates =
         state.products
-          .filter(isUsableProduct)
+          .filter(isPlannerProduct)
           .filter(product => {
             if (
               price(product) >
@@ -1799,19 +1919,22 @@ function createPlanner() {
           );
 
       /*
-       * ENIGE AANPASSING:
+       * Eén basisproduct maximaal één keer.
        *
-       * De shortlist wordt nu op productnaam
-       * gededupliceerd. Hetzelfde product kan
-       * daardoor niet twee keer in de shortlist
-       * verschijnen.
+       * Hierdoor worden bijvoorbeeld:
+       * Real Creatine
+       * Real Creatine Tabs
+       *
+       * niet allebei getoond.
        */
-      const seenPlannerProducts = new Set();
+
+      const seenPlannerProducts =
+        new Set();
 
       const uniquePlannerProducts =
         candidates.filter(product => {
           const key =
-            normalize(product?.name || "");
+            plannerProductKey(product);
 
           if (
             !key ||
@@ -2002,10 +2125,6 @@ function formatAIText(value) {
   const text =
     String(value || "").trim();
 
-  /*
-   * Geen innerHTML vanuit AI gebruiken.
-   * Eerst volledig escapen.
-   */
   return escapeHtml(text)
     .replace(
       /\n\n+/g,
