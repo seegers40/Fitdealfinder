@@ -75,16 +75,7 @@ function errorResponse(
 }
 
 /**
- * Security headers.
- *
- * Deze worden centraal toegepast op alle responses.
- *
- * CSP is afgestemd op de huidige FitDealFinder-site:
- * - eigen scripts/styles
- * - inline scripts/styles die momenteel in de frontend aanwezig zijn
- * - HTTPS productafbeeldingen
- * - HTTPS fonts/media
- * - API-calls naar dezelfde origin
+ * Centrale security headers.
  */
 function withSecurityHeaders(
   response: Response,
@@ -819,11 +810,9 @@ async function fetchCatalog(
       {
         redirect:
           "follow",
-
         headers: {
           accept:
             "application/json,text/csv,text/xml,application/xml;q=0.9,*/*;q=0.8",
-
           "user-agent":
             "Mozilla/5.0 (compatible; FitDealFinder/4.0; catalog-sync)",
         },
@@ -2047,14 +2036,6 @@ function isAuthorized(
   );
 }
 
-/**
- * Server-side category matching.
- *
- * Dit voorkomt dat bijvoorbeeld:
- * - "Whey Protein" niet onder Proteïne verschijnt
- * - "Creatine Monohydraat" niet onder Creatine verschijnt
- * - "5150 Pre Workout" niet onder Pre-workout verschijnt
- */
 function categoryTerms(
   category: string,
 ): string[] {
@@ -2103,9 +2084,9 @@ function categoryTerms(
 
   if (
     normalized ===
-    "pre-workout" ||
+      "pre-workout" ||
     normalized ===
-    "pre workout"
+      "pre workout"
   ) {
     return [
       "pre-workout",
@@ -2311,20 +2292,6 @@ async function handleProducts(
     );
   }
 
-  /*
-   * Category filtering is deliberately broader than
-   * "category = exact value".
-   *
-   * This lets the API find:
-   * Whey Protein
-   * Whey Isolate
-   * Creatine Monohydrate
-   * 5150 Pre Workout
-   * etc.
-   *
-   * We first use broad SQL matching and then apply the
-   * complete category matcher in JavaScript.
-   */
   if (category) {
     const terms =
       categoryTerms(
@@ -2370,11 +2337,6 @@ async function handleProducts(
     }
   }
 
-  /*
-   * Fetch a larger candidate set when category filtering
-   * is active because the final category matcher is more
-   * precise than SQL LIKE alone.
-   */
   const sqlLimit =
     category
       ? Math.min(
@@ -2825,6 +2787,591 @@ async function handleLogs(
   });
 }
 
+/* =====================================================
+   AI PRODUCT SEARCH
+===================================================== */
+
+const AI_STOP_WORDS = new Set([
+  "de",
+  "het",
+  "een",
+  "en",
+  "of",
+  "voor",
+  "van",
+  "op",
+  "in",
+  "met",
+  "ik",
+  "me",
+  "mijn",
+  "wat",
+  "welke",
+  "welk",
+  "kan",
+  "kun",
+  "zoek",
+  "vinden",
+  "vind",
+  "geef",
+  "laat",
+  "zien",
+  "heb",
+  "nodig",
+  "wil",
+  "graag",
+  "beste",
+  "goedkoopste",
+  "goedkoop",
+  "goedkoopste",
+  "prijs",
+  "prijzen",
+  "deal",
+  "deals",
+  "product",
+  "producten",
+  "vooral",
+  "als",
+  "zijn",
+  "is",
+  "zijn",
+  "dan",
+  "er",
+  "bij",
+  "mij",
+  "jou",
+  "jouw",
+  "op",
+]);
+
+function normalizeAiText(
+  value: string,
+): string {
+  return value
+    .normalize("NFKD")
+    .replace(
+      /[\u0300-\u036f]/g,
+      "",
+    )
+    .toLowerCase();
+}
+
+function extractAiSearchTerms(
+  message: string,
+): string[] {
+  const normalized =
+    normalizeAiText(
+      message,
+    );
+
+  const words =
+    normalized
+      .replace(
+        /[^a-z0-9\s-]/g,
+        " ",
+      )
+      .split(/\s+/)
+      .map(
+        (word) =>
+          word.trim(),
+      )
+      .filter(
+        Boolean,
+      )
+      .filter(
+        (word) =>
+          !AI_STOP_WORDS.has(
+            word,
+          ),
+      )
+      .filter(
+        (word) =>
+          word.length >= 3,
+      );
+
+  const aliases: string[] =
+    [];
+
+  if (
+    normalized.includes(
+      "creatine",
+    )
+  ) {
+    aliases.push(
+      "creatine",
+      "crea",
+    );
+  }
+
+  if (
+    normalized.includes(
+      "whey",
+    ) ||
+    normalized.includes(
+      "proteine",
+    ) ||
+    normalized.includes(
+      "protein",
+    ) ||
+    normalized.includes(
+      "eiwit",
+    )
+  ) {
+    aliases.push(
+      "whey",
+      "protein",
+      "proteine",
+      "eiwit",
+    );
+  }
+
+  if (
+    normalized.includes(
+      "pre workout",
+    ) ||
+    normalized.includes(
+      "pre-workout",
+    ) ||
+    normalized.includes(
+      "preworkout",
+    )
+  ) {
+    aliases.push(
+      "pre workout",
+      "pre-workout",
+      "preworkout",
+    );
+  }
+
+  return Array.from(
+    new Set([
+      ...aliases,
+      ...words,
+    ]),
+  ).slice(
+    0,
+    8,
+  );
+}
+
+function detectAiCategory(
+  message: string,
+): string | null {
+  const normalized =
+    normalizeAiText(
+      message,
+    );
+
+  if (
+    normalized.includes(
+      "creatine",
+    ) ||
+    normalized.includes(
+      "crea ",
+    )
+  ) {
+    return "creatine";
+  }
+
+  if (
+    normalized.includes(
+      "whey",
+    ) ||
+    normalized.includes(
+      "proteine",
+    ) ||
+    normalized.includes(
+      "protein",
+    ) ||
+    normalized.includes(
+      "eiwit",
+    )
+  ) {
+    return "proteine";
+  }
+
+  if (
+    normalized.includes(
+      "pre workout",
+    ) ||
+    normalized.includes(
+      "pre-workout",
+    ) ||
+    normalized.includes(
+      "preworkout",
+    )
+  ) {
+    return "pre-workout";
+  }
+
+  if (
+    normalized.includes(
+      "supplement",
+    ) ||
+    normalized.includes(
+      "vitamine",
+    ) ||
+    normalized.includes(
+      "vitamin",
+    )
+  ) {
+    return "supplementen";
+  }
+
+  return null;
+}
+
+function isCheapestIntent(
+  message: string,
+): boolean {
+  const normalized =
+    normalizeAiText(
+      message,
+    );
+
+  return [
+    "goedkoopste",
+    "goedkoop",
+    "laagste prijs",
+    "goedkoopst",
+    "minimale prijs",
+    "laagste",
+  ].some(
+    (term) =>
+      normalized.includes(
+        term,
+      ),
+  );
+}
+
+function isPriceComparisonIntent(
+  message: string,
+): boolean {
+  const normalized =
+    normalizeAiText(
+      message,
+    );
+
+  return [
+    "prijs",
+    "prijzen",
+    "goedkoop",
+    "goedkoopste",
+    "vergelijken",
+    "vergelijk",
+    "deal",
+    "deals",
+  ].some(
+    (term) =>
+      normalized.includes(
+        term,
+      ),
+  );
+}
+
+function formatProductPrice(
+  price: number,
+  currency: string,
+): string {
+  try {
+    return new Intl.NumberFormat(
+      "nl-NL",
+      {
+        style:
+          "currency",
+        currency:
+          currency || "EUR",
+      },
+    ).format(price);
+  } catch {
+    return `€ ${price
+      .toFixed(2)
+      .replace(
+        ".",
+        ",",
+      )}`;
+  }
+}
+
+async function findAiProducts(
+  env: Env,
+  message: string,
+): Promise<Record<string, unknown>[]> {
+  const category =
+    detectAiCategory(
+      message,
+    );
+
+  const terms =
+    extractAiSearchTerms(
+      message,
+    );
+
+  const conditions: string[] =
+    [
+      "active = 1",
+    ];
+
+  const binds: unknown[] =
+    [];
+
+  if (
+    category
+  ) {
+    const categoryTermsList =
+      categoryTerms(
+        category,
+      );
+
+    const categoryConditions =
+      categoryTermsList.map(
+        () =>
+          `
+          (
+            name LIKE ?
+            OR brand LIKE ?
+            OR category LIKE ?
+            OR description LIKE ?
+          )
+          `,
+      );
+
+    for (
+      const term of
+        categoryTermsList
+    ) {
+      const query =
+        `%${term}%`;
+
+      binds.push(
+        query,
+        query,
+        query,
+        query,
+      );
+    }
+
+    conditions.push(
+      `(${categoryConditions.join(
+        " OR ",
+      )})`,
+    );
+  } else if (
+    terms.length
+  ) {
+    const searchConditions =
+      terms.map(
+        () =>
+          `
+          (
+            name LIKE ?
+            OR brand LIKE ?
+            OR category LIKE ?
+            OR description LIKE ?
+            OR merchant_name LIKE ?
+          )
+          `,
+      );
+
+    for (
+      const term of
+        terms
+    ) {
+      const query =
+        `%${term}%`;
+
+      binds.push(
+        query,
+        query,
+        query,
+        query,
+        query,
+      );
+    }
+
+    conditions.push(
+      `(${searchConditions.join(
+        " OR ",
+      )})`,
+    );
+  }
+
+  const orderBy =
+    isCheapestIntent(
+      message,
+    )
+      ? `
+        in_stock DESC,
+        price ASC,
+        deal_score DESC
+      `
+      : `
+        in_stock DESC,
+        deal_score DESC,
+        price ASC
+      `;
+
+  binds.push(12);
+
+  const result =
+    await env.DB.prepare(
+      `
+      SELECT
+        id,
+        name,
+        brand,
+        category,
+        price,
+        old_price,
+        currency,
+        merchant_name,
+        in_stock,
+        deal_score,
+        discount_percent
+      FROM products
+      WHERE ${conditions.join(
+        " AND ",
+      )}
+      ORDER BY ${orderBy}
+      LIMIT ?
+      `,
+    )
+      .bind(
+        ...binds,
+      )
+      .all();
+
+  return result.results.map(
+    (row) =>
+      asRecord(row),
+  );
+}
+
+function buildAiProductContext(
+  request: Request,
+  products: Record<string, unknown>[],
+): string {
+  if (
+    products.length ===
+    0
+  ) {
+    return [
+      "Er zijn geen passende actieve producten gevonden in de FitDealFinder-database.",
+      "Zeg eerlijk dat je op dit moment geen passend product in de database kunt vinden.",
+      "Verzin geen producten, prijzen of winkels.",
+    ].join(
+      "\n",
+    );
+  }
+
+  const origin =
+    new URL(
+      request.url,
+    ).origin;
+
+  return products
+    .map(
+      (
+        product,
+        index,
+      ) => {
+        const id =
+          String(
+            product.id ??
+              "",
+          );
+
+        const name =
+          String(
+            product.name ??
+              "Onbekend product",
+          );
+
+        const brand =
+          String(
+            product.brand ??
+              "",
+          );
+
+        const merchant =
+          String(
+            product.merchant_name ??
+              "Onbekende winkel",
+          );
+
+        const price =
+          Number(
+            product.price ??
+              0,
+          );
+
+        const oldPrice =
+          Number(
+            product.old_price ??
+              0,
+          );
+
+        const currency =
+          String(
+            product.currency ??
+              "EUR",
+          );
+
+        const stock =
+          Number(
+            product.in_stock ??
+              0,
+          ) === 1
+            ? "Op voorraad"
+            : "Niet op voorraad";
+
+        const discount =
+          Number(
+            product.discount_percent ??
+              0,
+          );
+
+        const dealUrl =
+          id
+            ? `${origin}/go/${encodeURIComponent(
+                id,
+              )}`
+            : "";
+
+        return [
+          `PRODUCT ${index + 1}`,
+          `Naam: ${name}`,
+          brand
+            ? `Merk: ${brand}`
+            : "",
+          `Winkel: ${merchant}`,
+          `Prijs: ${formatProductPrice(
+            price,
+            currency,
+          )}`,
+          oldPrice > price
+            ? `Oude prijs: ${formatProductPrice(
+                oldPrice,
+                currency,
+              )}`
+            : "",
+          discount > 0
+            ? `Korting: ${discount}%`
+            : "",
+          `Voorraad: ${stock}`,
+          dealUrl
+            ? `Deal-link: ${dealUrl}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+      },
+    )
+    .join(
+      "\n\n",
+    );
+}
+
 async function handleAi(
   request: Request,
   env: Env,
@@ -2896,6 +3443,143 @@ async function handleAi(
     DEFAULT_AI_MODEL;
 
   try {
+    /*
+     * Eerst echte producten uit D1 ophalen.
+     */
+    const products =
+      await findAiProducts(
+        env,
+        message,
+      );
+
+    /*
+     * Productgegevens worden expliciet
+     * aan de AI meegegeven.
+     */
+    const productContext =
+      buildAiProductContext(
+        request,
+        products,
+      );
+
+    /*
+     * Bij een expliciete vraag naar de
+     * goedkoopste optie maken we het antwoord
+     * volledig deterministisch.
+     *
+     * Daardoor kan de AI dit nooit verkeerd
+     * interpreteren of een prijs verzinnen.
+     */
+    if (
+      isCheapestIntent(
+        message,
+      ) &&
+      products.length > 0
+    ) {
+      const available =
+        products.filter(
+          (product) =>
+            Number(
+              product.in_stock ??
+                0,
+            ) === 1,
+        );
+
+      const cheapest =
+        (
+          available.length
+            ? available
+            : products
+        ).sort(
+          (a, b) =>
+            Number(
+              a.price ?? 0,
+            ) -
+            Number(
+              b.price ?? 0,
+            ),
+        )[0];
+
+      const id =
+        String(
+          cheapest.id ??
+            "",
+        );
+
+      const name =
+        String(
+          cheapest.name ??
+            "Onbekend product",
+        );
+
+      const merchant =
+        String(
+          cheapest.merchant_name ??
+            "Onbekende winkel",
+        );
+
+      const price =
+        Number(
+          cheapest.price ??
+            0,
+        );
+
+      const currency =
+        String(
+          cheapest.currency ??
+            "EUR",
+        );
+
+      const discount =
+        Number(
+          cheapest.discount_percent ??
+            0,
+        );
+
+      const dealUrl =
+        id
+          ? `${new URL(
+              request.url,
+            ).origin}/go/${encodeURIComponent(
+              id,
+            )}`
+          : "";
+
+      const answerParts = [
+        `De goedkoopste passende optie die ik nu in FitDealFinder vind is **${name}** van **${merchant}** voor **${formatProductPrice(
+          price,
+          currency,
+        )}**.`,
+      ];
+
+      if (
+        discount > 0
+      ) {
+        answerParts.push(
+          `Dit product heeft momenteel ${discount}% korting.`,
+        );
+      }
+
+      if (dealUrl) {
+        answerParts.push(
+          `Bekijk de deal: ${dealUrl}`,
+        );
+      }
+
+      return json({
+        ok: true,
+        answer:
+          answerParts.join(
+            " ",
+          ),
+        products,
+      });
+    }
+
+    /*
+     * Normale AI-vragen krijgen ook echte
+     * productcontext mee.
+     */
     const result =
       await env.AI.run(
         model,
@@ -2908,12 +3592,36 @@ async function handleAi(
               content:
                 [
                   "Je bent de FitDealFinder Supplement Coach.",
-                  "Geef nuchtere, algemene informatie over supplementen, eiwitten, creatine, pre-workout, cut, bulk, lean bulk, herstel en voeding rondom training.",
-                  "Doe geen medische diagnose en geef geen medische behandeling.",
+                  "",
+                  "Je helpt gebruikers met supplementen, fitnessproducten, voeding rondom training, cut, bulk, lean bulk, herstel, whey, proteïne, creatine en pre-workout.",
+                  "",
+                  "BELANGRIJK:",
+                  "Je hebt hieronder actuele productinformatie uit de FitDealFinder-database gekregen.",
+                  "Gebruik deze informatie wanneer de vraag over producten, prijzen, winkels, deals of beschikbaarheid gaat.",
+                  "",
+                  "Verzin NOOIT:",
+                  "- prijzen",
+                  "- kortingen",
+                  "- voorraad",
+                  "- producten",
+                  "- winkels",
+                  "- producteigenschappen",
+                  "- links",
+                  "",
+                  "Als er geen passend product in de database staat, zeg dat eerlijk.",
+                  "",
+                  "Als een gebruiker vraagt naar het goedkoopste product, gebruik uitsluitend de aangeleverde databasegegevens.",
+                  "",
+                  "Als er een Deal-link in de productgegevens staat, mag je die gebruiken.",
+                  "",
+                  "Geef korte, praktische antwoorden in het Nederlands.",
+                  "Doe geen medische diagnose.",
+                  "Geef geen medische behandeling.",
                   "Beloof geen resultaten.",
-                  "Verzin nooit prijzen, kortingen, voorraad, producteigenschappen, winkels of links.",
-                  "Als informatie ontbreekt, zeg dat eerlijk.",
-                  "Bij medische vragen: adviseer contact op te nemen met een arts of apotheker.",
+                  "Bij medische vragen adviseer je contact met een arts of apotheker.",
+                  "",
+                  "ACTUELE FITDEALFINDER PRODUCTGEGEVENS:",
+                  productContext,
                 ].join(
                   "\n",
                 ),
@@ -2943,6 +3651,7 @@ async function handleAi(
     return json({
       ok: true,
       answer,
+      products,
     });
   } catch (
     error
@@ -3145,4 +3854,3 @@ export default {
     }
   },
 };
-        
