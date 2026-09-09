@@ -1918,8 +1918,19 @@ function createPlanner() {
             item.product
           );
 
+      /*
+       * AANGEPAST:
+       * Het opgegeven budget geldt nu voor
+       * de COMPLETE shortlist.
+       *
+       * We houden tegelijk de bestaande
+       * deduplicatie en maximum van 5
+       * producten intact.
+       */
       const seen =
         new Set();
+
+      let shortlistTotal = 0;
 
       const shortlist =
         candidates
@@ -1936,7 +1947,27 @@ function createPlanner() {
               return false;
             }
 
+            const productPrice =
+              price(product);
+
+            /*
+             * Als dit product ervoor zorgt
+             * dat het totaal boven het
+             * opgegeven budget komt,
+             * slaan we het product over.
+             */
+            if (
+              shortlistTotal +
+                productPrice >
+              maxBudget + 0.001
+            ) {
+              return false;
+            }
+
             seen.add(key);
+
+            shortlistTotal +=
+              productPrice;
 
             return true;
           })
@@ -3019,4 +3050,4 @@ if (
   );
 } else {
   init();
-}
+  }
