@@ -18,7 +18,7 @@ const API_AI = "/api/ai/chat";
 
 const PAGE_SIZE = 200;
 const MAX_PRODUCTS = 2000;
-const PRODUCTS_PER_VIEW = 24;
+const PRODUCTS_PER_VIEW =8;
 const CART_KEY = "fitdealfinder_cart";
 
 const state = {
