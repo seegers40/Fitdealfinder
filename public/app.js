@@ -11,6 +11,11 @@
  * - D1 products API
  *
  * Geen externe libraries nodig.
+ *
+ * BELANGRIJK:
+ * FitDealFinder is GEEN webshop.
+ * Er is daarom geen winkelmandfunctionaliteit.
+ * Alle acties leiden naar de betreffende winkel.
  */
 
 const API_PRODUCTS = "/api/products";
@@ -46,7 +51,10 @@ function $all(selector) {
 function first(...selectors) {
   for (const selector of selectors) {
     const element = $(selector);
-    if (element) return element;
+
+    if (element) {
+      return element;
+    }
   }
 
   return null;
@@ -150,9 +158,17 @@ const BAD_WORDS = [
 ];
 
 function isUsableProduct(product) {
-  if (!product) return false;
-  if (!product.id) return false;
-  if (!product.name) return false;
+  if (!product) {
+    return false;
+  }
+
+  if (!product.id) {
+    return false;
+  }
+
+  if (!product.name) {
+    return false;
+  }
 
   if (
     !product.product_url &&
@@ -172,17 +188,6 @@ function isUsableProduct(product) {
 /* =========================================================
    GOAL DEFINITIONS
 ========================================================= */
-
-/*
- * Deze lijsten worden gebruikt voor zowel:
- *
- * - de Cut / Bulk / Lean Bulk filters bovenaan
- * - de Shopping Planner
- *
- * We gebruiken NIET meer de algemene D1 `goals` als
- * automatische match. Dat veld bevat bij veel producten
- * standaard meerdere doelen en veroorzaakte overlap.
- */
 
 const CUT_STRONG_WORDS = [
   "fat burner",
@@ -318,11 +323,9 @@ function goalScore(product, goal) {
   const normalizedGoal =
     normalize(goal);
 
-  /*
-   * -------------------------------------------------------
-   * CUT
-   * -------------------------------------------------------
-   */
+  /* -------------------------------------------------------
+     CUT
+  ------------------------------------------------------- */
 
   if (normalizedGoal === "cut") {
     if (
@@ -343,19 +346,13 @@ function goalScore(product, goal) {
       return 80;
     }
 
-    /*
-     * Gewone protein/whey/creatine producten
-     * worden NIET automatisch Cut.
-     */
     return 0;
   }
 
 
-  /*
-   * -------------------------------------------------------
-   * BULK
-   * -------------------------------------------------------
-   */
+  /* -------------------------------------------------------
+     BULK
+  ------------------------------------------------------- */
 
   if (normalizedGoal === "bulk") {
     if (
@@ -389,15 +386,12 @@ function goalScore(product, goal) {
   }
 
 
-  /*
-   * -------------------------------------------------------
-   * LEAN BULK
-   * -------------------------------------------------------
-   */
+  /* -------------------------------------------------------
+     LEAN BULK
+  ------------------------------------------------------- */
 
   if (
-    normalizedGoal ===
-    "lean-bulk"
+    normalizedGoal === "lean-bulk"
   ) {
     if (
       hasAny(
@@ -442,7 +436,9 @@ function matchesGoal(product, goal) {
 ========================================================= */
 
 function matchesCategory(product, category) {
-  if (!category) return true;
+  if (!category) {
+    return true;
+  }
 
   const normalizedCategory =
     normalize(category);
@@ -511,7 +507,9 @@ function matchesCategory(product, category) {
 ========================================================= */
 
 function matchesSearch(product, query) {
-  if (!query) return true;
+  if (!query) {
+    return true;
+  }
 
   const words =
     normalize(query)
@@ -561,6 +559,7 @@ function applyFilters() {
     /*
      * Bij een doel eerst de doelrelevantie.
      */
+
     if (state.goal) {
       const goalA =
         goalScore(
@@ -587,7 +586,9 @@ function applyFilters() {
     const scoreB =
       Number(b.deal_score) || 0;
 
-    if (scoreA !== scoreB) {
+    if (
+      scoreA !== scoreB
+    ) {
       return scoreB - scoreA;
     }
 
@@ -597,7 +598,9 @@ function applyFilters() {
     const discountB =
       Number(b.discount_percent) || 0;
 
-    if (discountA !== discountB) {
+    if (
+      discountA !== discountB
+    ) {
       return discountB - discountA;
     }
 
@@ -616,7 +619,9 @@ function applyFilters() {
 ========================================================= */
 
 async function loadProducts() {
-  if (state.loading) return;
+  if (state.loading) {
+    return;
+  }
 
   state.loading = true;
 
@@ -781,10 +786,6 @@ function productCard(product) {
           )
         : 0;
 
-  /*
-   * Geen vaste 65px-afmetingen hier.
-   * Dit is de normale productkaart.
-   */
   const image =
     product.image_url
       ? `
@@ -877,14 +878,32 @@ function productCard(product) {
 
         </div>
 
-        <div class="product-actions">
+        <div
+          class="product-actions"
+          style="
+            display:flex;
+            width:100%;
+            margin-top:16px;
+          "
+        >
 
           <a
             class="deal-button"
             href="/go/${encodeURIComponent(
               String(product.id)
             )}"
-            style="width:100%;"
+            style="
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              width:100%;
+              min-height:48px;
+              border-radius:12px;
+              background:#00a83b;
+              color:#fff;
+              font-weight:900;
+              text-decoration:none;
+            "
           >
             Bekijk deal →
           </a>
@@ -906,7 +925,9 @@ function renderProducts() {
   const grid =
     $("#products-grid");
 
-  if (!grid) return;
+  if (!grid) {
+    return;
+  }
 
   const visible =
     state.filtered.slice(
@@ -950,7 +971,9 @@ function updateProductCount(count) {
   const element =
     $("#result-count");
 
-  if (!element) return;
+  if (!element) {
+    return;
+  }
 
   element.textContent =
     `${count} producten`;
@@ -960,7 +983,9 @@ function updateLoadMore() {
   const button =
     $("#load-more");
 
-  if (!button) return;
+  if (!button) {
+    return;
+  }
 
   if (
     state.visibleCount <
@@ -1289,7 +1314,7 @@ function injectPlannerStyles() {
     .planner-result-item {
       display: grid;
       grid-template-columns:
-        65px 1fr auto;
+        65px 1fr;
       align-items: center;
       gap: 16px;
       padding: 22px;
@@ -1310,6 +1335,7 @@ function injectPlannerStyles() {
       justify-content: center;
       overflow: hidden;
       border-radius: 10px;
+      text-decoration: none;
     }
 
     .planner-product-image img {
@@ -1317,7 +1343,10 @@ function injectPlannerStyles() {
       height: 65px !important;
       max-width: 65px !important;
       max-height: 65px !important;
+      min-width: 65px !important;
+      min-height: 65px !important;
       object-fit: contain !important;
+      object-position: center !important;
       display: block !important;
     }
 
@@ -1335,35 +1364,83 @@ function injectPlannerStyles() {
       text-align: center;
     }
 
-    .planner-result-item strong {
+    .planner-product-info {
+      min-width: 0;
+    }
+
+    .planner-product-link {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .planner-product-link:hover {
+      color: #67e5a2;
+    }
+
+    .planner-product-link strong {
       color: #fff;
       font-size: 18px;
       line-height: 1.4;
     }
 
-    .planner-result-item span {
+    .planner-product-price {
+      display: block;
+      margin-top: 6px;
       color: #36c978;
       font-weight: 800;
       font-size: 18px;
-      white-space: nowrap;
+    }
+
+    .planner-deal-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      margin-top: 12px;
+      padding: 0 17px;
+      border-radius: 10px;
+      background: #00a83b;
+      color: #fff !important;
+      font-weight: 900;
+      text-decoration: none;
+      transition: .2s ease;
+    }
+
+    .planner-deal-button:hover {
+      background: #00bd43;
+      transform: translateY(-1px);
     }
 
     @media (max-width: 700px) {
       .planner-result-item {
         grid-template-columns:
           65px 1fr;
+        gap: 14px;
+        padding: 18px;
       }
 
       .planner-product-image {
+        grid-column: 1;
         grid-row: 1;
       }
 
-      .planner-result-item strong {
+      .planner-product-info {
         grid-column: 2;
+        grid-row: 1;
       }
 
-      .planner-result-item span {
-        grid-column: 2;
+      .planner-product-link strong {
+        font-size: 17px;
+      }
+
+      .planner-product-price {
+        font-size: 17px;
+      }
+
+      .planner-deal-button {
+        width: 100%;
+        min-height: 44px;
       }
     }
   `;
@@ -1528,10 +1605,10 @@ function createPlanner() {
        * Het opgegeven budget geldt voor
        * de COMPLETE shortlist.
        *
-       * We houden tegelijk de bestaande
-       * deduplicatie en maximum van 5
-       * producten intact.
+       * Bestaande deduplicatie en maximum
+       * van 5 producten blijven intact.
        */
+
       const seen =
         new Set();
 
@@ -1555,12 +1632,6 @@ function createPlanner() {
             const productPrice =
               price(product);
 
-            /*
-             * Als dit product ervoor zorgt
-             * dat het totaal boven het
-             * opgegeven budget komt,
-             * slaan we het product over.
-             */
             if (
               shortlistTotal +
                 productPrice >
@@ -1596,14 +1667,15 @@ function createPlanner() {
       }
 
       /*
-       * De Shopping Planner toont de
-       * echte productafbeelding.
+       * Plannerresultaat:
+       * echte productafbeelding,
+       * productnaam,
+       * prijs,
+       * directe Bekijk deal-knop.
        *
-       * Er is GEEN winkelmandknop meer.
-       * De planner is informatief:
-       * gebruikers kunnen via de producten
-       * naar de betreffende winkel.
+       * Geen winkelmand.
        */
+
       result.innerHTML = `
         <div class="planner-results">
 
@@ -1621,16 +1693,8 @@ function createPlanner() {
                           product.name
                         )}"
                         loading="lazy"
-                        style="
-                          width:65px !important;
-                          height:65px !important;
-                          max-width:65px !important;
-                          max-height:65px !important;
-                          min-width:65px !important;
-                          min-height:65px !important;
-                          object-fit:contain !important;
-                          display:block !important;
-                        "
+                        width="65"
+                        height="65"
                         onerror="this.style.display='none'"
                       >
                     `
@@ -1642,29 +1706,64 @@ function createPlanner() {
                       </div>
                     `;
 
+                const dealUrl =
+                  `/go/${encodeURIComponent(
+                    String(product.id)
+                  )}`;
+
                 return `
                   <div
                     class="planner-result-item"
                   >
 
-                    <div
+                    <a
+                      href="${dealUrl}"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       class="planner-product-image"
+                      aria-label="Bekijk deal van ${escapeHtml(
+                        product.name
+                      )}"
                     >
                       ${image}
+                    </a>
+
+                    <div
+                      class="planner-product-info"
+                    >
+
+                      <a
+                        href="${dealUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="planner-product-link"
+                      >
+                        <strong>
+                          ${escapeHtml(
+                            product.name
+                          )}
+                        </strong>
+                      </a>
+
+                      <span
+                        class="planner-product-price"
+                      >
+                        ${money(
+                          price(product),
+                          product.currency
+                        )}
+                      </span>
+
+                      <a
+                        href="${dealUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="planner-deal-button"
+                      >
+                        Bekijk deal →
+                      </a>
+
                     </div>
-
-                    <strong>
-                      ${escapeHtml(
-                        product.name
-                      )}
-                    </strong>
-
-                    <span>
-                      ${money(
-                        price(product),
-                        product.currency
-                      )}
-                    </span>
 
                   </div>
                 `;
@@ -1684,39 +1783,59 @@ function createPlanner() {
 ========================================================= */
 
 function setupAI() {
-  const form = $("#ai-form");
-  const input = $("#ai-input");
-  const responseBox = $("#ai-response");
+  const form =
+    $("#ai-form");
 
-  if (!form || !input || !responseBox) {
+  const input =
+    $("#ai-input");
+
+  const responseBox =
+    $("#ai-response");
+
+  if (
+    !form ||
+    !input ||
+    !responseBox
+  ) {
     return;
   }
 
   function extractBudget(message) {
-    const match = String(message || "").match(
-      /(?:€|eur(?:o)?\s*)?(\d+(?:[.,]\d{1,2})?)(?:\s*(?:euro|eur|€))?/i
-    );
+    const match =
+      String(message || "").match(
+        /(?:€|eur(?:o)?\s*)?(\d+(?:[.,]\d{1,2})?)(?:\s*(?:euro|eur|€))?/i
+      );
 
     if (!match) {
       return null;
     }
 
-    const value = Number(
-      String(match[1]).replace(",", ".")
-    );
+    const value =
+      Number(
+        String(
+          match[1]
+        ).replace(
+          ",",
+          "."
+        )
+      );
 
-    return Number.isFinite(value) && value > 0
+    return Number.isFinite(value) &&
+      value > 0
       ? value
       : null;
   }
 
   function detectGoal(message) {
-    const text = normalize(message);
+    const text =
+      normalize(message);
 
     /*
-      Eerst lean bulk controleren.
-      Anders zou "lean bulk" ook als gewone bulk worden gezien.
-    */
+     * Eerst lean bulk controleren.
+     * Anders wordt "lean bulk" ook
+     * als gewone bulk gezien.
+     */
+
     if (
       text.includes("lean bulk") ||
       text.includes("lean-bulk") ||
@@ -1759,21 +1878,36 @@ function setupAI() {
     );
   }
 
-  function hasWord(product, words) {
-    const text = productTextForPackage(product);
+  function hasWord(
+    product,
+    words
+  ) {
+    const text =
+      productTextForPackage(
+        product
+      );
 
     return words.some(word =>
-      text.includes(normalize(word))
+      text.includes(
+        normalize(word)
+      )
     );
   }
 
-  function packageRole(product, goal) {
-    const text = productTextForPackage(product);
+  function packageRole(
+    product,
+    goal
+  ) {
+    const text =
+      productTextForPackage(
+        product
+      );
 
     /*
-      Producten die geen echte pakketfunctie hebben,
-      niet als onderdeel van een pakket gebruiken.
-    */
+     * Producten zonder echte
+     * pakketfunctie niet gebruiken.
+     */
+
     const excluded = [
       "water",
       "kokoswater",
@@ -1795,53 +1929,72 @@ function setupAI() {
       "omega"
     ];
 
-    if (excluded.some(word => text.includes(word))) {
+    if (
+      excluded.some(
+        word =>
+          text.includes(word)
+      )
+    ) {
       return "";
     }
 
     const isProtein =
-      hasWord(product, [
-        "protein",
-        "proteine",
-        "whey",
-        "casein",
-        "caseine",
-        "isolaat",
-        "isolate"
-      ]);
+      hasWord(
+        product,
+        [
+          "protein",
+          "proteine",
+          "whey",
+          "casein",
+          "caseine",
+          "isolaat",
+          "isolate"
+        ]
+      );
 
     const isCreatine =
-      hasWord(product, [
-        "creatine"
-      ]);
+      hasWord(
+        product,
+        [
+          "creatine"
+        ]
+      );
 
     const isCarb =
-      hasWord(product, [
-        "gainer",
-        "mass",
-        "carb",
-        "carbs",
-        "carbohydrate",
-        "havermout",
-        "oats",
-        "oat"
-      ]);
+      hasWord(
+        product,
+        [
+          "gainer",
+          "mass",
+          "carb",
+          "carbs",
+          "carbohydrate",
+          "havermout",
+          "oats",
+          "oat"
+        ]
+      );
 
     const isCutSupport =
-      hasWord(product, [
-        "fat burner",
-        "fatburner",
-        "thermogenic",
-        "caffeine",
-        "cafeine",
-        "carnitine",
-        "l-carnitine",
-        "cla",
-        "shred",
-        "burn"
-      ]);
+      hasWord(
+        product,
+        [
+          "fat burner",
+          "fatburner",
+          "thermogenic",
+          "caffeine",
+          "cafeine",
+          "carnitine",
+          "l-carnitine",
+          "cla",
+          "shred",
+          "burn"
+        ]
+      );
 
-    if (goal === "bulk") {
+    if (
+      goal === "bulk"
+    ) {
       if (isProtein) {
         return "protein";
       }
@@ -1857,7 +2010,9 @@ function setupAI() {
       return "";
     }
 
-    if (goal === "lean-bulk") {
+    if (
+      goal === "lean-bulk"
+    ) {
       if (isProtein) {
         return "protein";
       }
@@ -1873,7 +2028,9 @@ function setupAI() {
       return "";
     }
 
-    if (goal === "cut") {
+    if (
+      goal === "cut"
+    ) {
       if (isProtein) {
         return "protein";
       }
@@ -1890,9 +2047,10 @@ function setupAI() {
     }
 
     /*
-      Geen specifiek doel:
-      alleen algemene supplementrollen.
-    */
+     * Geen specifiek doel:
+     * alleen algemene rollen.
+     */
+
     if (isProtein) {
       return "protein";
     }
@@ -1904,71 +2062,66 @@ function setupAI() {
     return "";
   }
 
-  function sortPackageCandidates(products) {
-    return products.slice().sort((a, b) => {
-      const priceA = price(a);
-      const priceB = price(b);
-
-      if (priceA !== priceB) {
-        return priceA - priceB;
-      }
-
-      const dealA =
-        Number(a.deal_score) || 0;
-
-      const dealB =
-        Number(b.deal_score) || 0;
-
-      return dealB - dealA;
-    });
-  }
-
-  function chooseCheapestRole(
-    products,
-    role,
-    usedIds,
-    remainingBudget
+  function sortPackageCandidates(
+    products
   ) {
-    const candidates =
-      sortPackageCandidates(
-        products.filter(product => {
-          if (!isUsableProduct(product)) {
-            return false;
-          }
+    return products
+      .slice()
+      .sort((a, b) => {
+        const priceA =
+          price(a);
 
-          const id =
-            product.id ||
-            product.external_id ||
-            product.slug ||
-            product.name;
+        const priceB =
+          price(b);
 
-          if (usedIds.has(String(id))) {
-            return false;
-          }
+        if (
+          priceA !==
+          priceB
+        ) {
+          return (
+            priceA -
+            priceB
+          );
+        }
 
-          if (packageRole(product, currentGoal) !== role) {
-            return false;
-          }
+        const dealA =
+          Number(
+            a.deal_score
+          ) || 0;
 
-          return price(product) <= remainingBudget;
-        })
-      );
+        const dealB =
+          Number(
+            b.deal_score
+          ) || 0;
 
-    return candidates[0] || null;
+        return (
+          dealB -
+          dealA
+        );
+      });
   }
 
   let currentGoal = "";
 
-  function buildExactPackage(message) {
+  function buildExactPackage(
+    message
+  ) {
     const budget =
-      extractBudget(message);
+      extractBudget(
+        message
+      );
 
     const goal =
-      detectGoal(message);
+      detectGoal(
+        message
+      );
 
-    currentGoal = goal;
+    currentGoal =
+      goal;
 
-    if (budget === null) {
+    if (
+      budget === null
+    ) {
       return {
         ok: false,
         reason:
@@ -1986,12 +2139,18 @@ function setupAI() {
 
     const products =
       state.products
-        .filter(isUsableProduct)
-        .filter(product =>
-          price(product) <= budget
+        .filter(
+          isUsableProduct
+        )
+        .filter(
+          product =>
+            price(product) <=
+            budget
         );
 
-    if (!products.length) {
+    if (
+      !products.length
+    ) {
       return {
         ok: false,
         reason:
@@ -2000,12 +2159,15 @@ function setupAI() {
     }
 
     /*
-      Voor ieder doel bepalen we welke onderdelen
-      het pakket minimaal moet bevatten.
-    */
-    let requiredRoles = [];
+     * Vereiste onderdelen.
+     */
 
-    if (goal === "bulk") {
+    let requiredRoles =
+      [];
+
+    if (
+      goal === "bulk"
+    ) {
       requiredRoles = [
         "protein",
         "carb",
@@ -2013,7 +2175,9 @@ function setupAI() {
       ];
     }
 
-    if (goal === "lean-bulk") {
+    if (
+      goal === "lean-bulk"
+    ) {
       requiredRoles = [
         "protein",
         "carb",
@@ -2021,7 +2185,9 @@ function setupAI() {
       ];
     }
 
-    if (goal === "cut") {
+    if (
+      goal === "cut"
+    ) {
       requiredRoles = [
         "protein",
         "cut-support",
@@ -2030,19 +2196,23 @@ function setupAI() {
     }
 
     /*
-      We proberen eerst een compleet pakket.
-      Belangrijk: iedere toevoeging wordt direct
-      gecontroleerd tegen het resterende budget.
-    */
+     * We proberen eerst een compleet
+     * pakket binnen het budget.
+     */
+
     const selected = [];
-    const usedIds = new Set();
+    const usedIds =
+      new Set();
 
     function tryBuildPackage(
       roles,
       index,
       remaining
     ) {
-      if (index >= roles.length) {
+      if (
+        index >=
+        roles.length
+      ) {
         return selected.slice();
       }
 
@@ -2051,49 +2221,70 @@ function setupAI() {
 
       const candidates =
         sortPackageCandidates(
-          products.filter(product => {
-            if (!isUsableProduct(product)) {
-              return false;
+          products.filter(
+            product => {
+              if (
+                !isUsableProduct(
+                  product
+                )
+              ) {
+                return false;
+              }
+
+              const id =
+                product.id ||
+                product.external_id ||
+                product.slug ||
+                product.name;
+
+              if (
+                usedIds.has(
+                  String(id)
+                )
+              ) {
+                return false;
+              }
+
+              if (
+                packageRole(
+                  product,
+                  goal
+                ) !== role
+              ) {
+                return false;
+              }
+
+              return (
+                price(product) <=
+                remaining
+              );
             }
-
-            const id =
-              product.id ||
-              product.external_id ||
-              product.slug ||
-              product.name;
-
-            if (usedIds.has(String(id))) {
-              return false;
-            }
-
-            if (
-              packageRole(
-                product,
-                goal
-              ) !== role
-            ) {
-              return false;
-            }
-
-            return price(product) <= remaining;
-          })
+          )
         );
 
-      for (const candidate of candidates) {
+      for (
+        const candidate of candidates
+      ) {
         const id =
           candidate.id ||
           candidate.external_id ||
           candidate.slug ||
           candidate.name;
 
-        usedIds.add(String(id));
-        selected.push(candidate);
+        usedIds.add(
+          String(id)
+        );
+
+        selected.push(
+          candidate
+        );
 
         const result =
           tryBuildPackage(
             roles,
             index + 1,
-            remaining - price(candidate)
+            remaining -
+              price(candidate)
           );
 
         if (result) {
@@ -2101,7 +2292,10 @@ function setupAI() {
         }
 
         selected.pop();
-        usedIds.delete(String(id));
+
+        usedIds.delete(
+          String(id)
+        );
       }
 
       return null;
@@ -2114,7 +2308,9 @@ function setupAI() {
         budget
       );
 
-    if (!completePackage) {
+    if (
+      !completePackage
+    ) {
       return {
         ok: false,
         reason:
@@ -2124,16 +2320,23 @@ function setupAI() {
 
     const total =
       completePackage.reduce(
-        (sum, product) =>
-          sum + price(product),
+        (
+          sum,
+          product
+        ) =>
+          sum +
+          price(product),
         0
       );
 
     /*
-      Harde veiligheidscontrole.
-      Het pakket mag NOOIT boven het budget komen.
-    */
-    if (total > budget + 0.001) {
+     * Harde veiligheidscontrole.
+     */
+
+    if (
+      total >
+      budget + 0.001
+    ) {
       return {
         ok: false,
         reason:
@@ -2151,13 +2354,16 @@ function setupAI() {
     };
   }
 
-  function renderExactPackage(packageData) {
+  function renderExactPackage(
+    packageData
+  ) {
     const {
       goal,
       budget,
       products,
       total
-    } = packageData;
+    } =
+      packageData;
 
     const remaining =
       budget - total;
@@ -2171,76 +2377,103 @@ function setupAI() {
 
     const items =
       products
-        .map(product => {
-          const productPrice =
-            price(product);
+        .map(
+          product => {
+            const productPrice =
+              price(product);
 
-          /*
-           * Alleen AI-pakketafbeeldingen krijgen
-           * hier de vaste afmetingen van 65x65px.
-           */
-          const image = product.image_url
-            ? `
-              <img
-                src="${escapeHtml(product.image_url)}"
-                alt="${escapeHtml(product.name)}"
-                loading="lazy"
-                style="width:65px !important;height:65px !important;max-width:65px !important;max-height:65px !important;min-width:65px !important;min-height:65px !important;object-fit:contain !important;display:block !important;"
-                onerror="this.style.display='none'"
+            const image =
+              product.image_url
+                ? `
+                  <img
+                    src="${escapeHtml(product.image_url)}"
+                    alt="${escapeHtml(product.name)}"
+                    loading="lazy"
+                    width="65"
+                    height="65"
+                    onerror="this.style.display='none'"
+                  >
+                `
+                : `
+                  <div
+                    class="product-image-placeholder"
+                  >
+                    FitDealFinder
+                  </div>
+                `;
+
+            const dealUrl =
+              `/go/${encodeURIComponent(
+                String(product.id)
+              )}`;
+
+            return `
+              <div
+                class="ai-package-item"
               >
-            `
-            : `
-              <div class="product-image-placeholder">
-                FitDealFinder
-              </div>
-            `;
-
-          return `
-            <div class="ai-package-item">
-
-              <a
-                href="/go/${encodeURIComponent(String(product.id))}"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="ai-package-product-image"
-              >
-                ${image}
-              </a>
-
-              <div class="ai-package-product-info">
 
                 <a
-                  href="/go/${encodeURIComponent(String(product.id))}"
+                  href="${dealUrl}"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="ai-package-product-link"
+                  class="ai-package-product-image"
+                  aria-label="Bekijk deal van ${escapeHtml(
+                    product.name
+                  )}"
                 >
-                  <strong>
-                    ${escapeHtml(product.name)}
-                  </strong>
+                  ${image}
                 </a>
 
-                <small>
-                  ${escapeHtml(
-                    product.merchant_name ||
-                    "Winkel onbekend"
-                  )}
-                </small>
+                <div
+                  class="ai-package-product-info"
+                >
 
-                <strong class="ai-package-price">
-                  ${escapeHtml(
-                    money(
-                      productPrice,
-                      product.currency
-                    )
-                  )}
-                </strong>
+                  <a
+                    href="${dealUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ai-package-product-link"
+                  >
+                    <strong>
+                      ${escapeHtml(
+                        product.name
+                      )}
+                    </strong>
+                  </a>
+
+                  <small>
+                    ${escapeHtml(
+                      product.merchant_name ||
+                      "Winkel onbekend"
+                    )}
+                  </small>
+
+                  <strong
+                    class="ai-package-price"
+                  >
+                    ${escapeHtml(
+                      money(
+                        productPrice,
+                        product.currency
+                      )
+                    )}
+                  </strong>
+
+                  <a
+                    href="${dealUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ai-package-deal-button"
+                  >
+                    Bekijk deal →
+                  </a>
+
+                </div>
 
               </div>
-
-            </div>
-          `;
-        })
+            `;
+          }
+        )
         .join("");
 
     responseBox.innerHTML = `
@@ -2261,7 +2494,10 @@ function setupAI() {
         </div>
 
         <div class="ai-package-total">
-          <span>Totaal</span>
+          <span>
+            Totaal
+          </span>
+
           <strong>
             ${escapeHtml(
               money(total)
@@ -2288,6 +2524,100 @@ function setupAI() {
     `;
   }
 
+
+  /* -------------------------------------------------------
+     AI PACKAGE BUTTON STYLES
+  ------------------------------------------------------- */
+
+  function injectAIPackageStyles() {
+    if (
+      $("#ai-package-styles")
+    ) {
+      return;
+    }
+
+    const style =
+      document.createElement(
+        "style"
+      );
+
+    style.id =
+      "ai-package-styles";
+
+    style.textContent = `
+      .ai-package-product-image {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 65px;
+        height: 65px;
+        min-width: 65px;
+        border-radius: 10px;
+        overflow: hidden;
+        text-decoration: none;
+      }
+
+      .ai-package-product-image img {
+        display: block;
+        width: 65px !important;
+        height: 65px !important;
+        min-width: 65px !important;
+        min-height: 65px !important;
+        max-width: 65px !important;
+        max-height: 65px !important;
+        object-fit: contain !important;
+        object-position: center !important;
+      }
+
+      .ai-package-product-link {
+        display: block;
+        color: #fff;
+        text-decoration: none;
+      }
+
+      .ai-package-product-link:hover {
+        color: #67e5a2;
+      }
+
+      .ai-package-deal-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        margin-top: 10px;
+        padding: 0 16px;
+        border-radius: 10px;
+        background: #00a83b;
+        color: #fff !important;
+        font-weight: 900;
+        text-decoration: none;
+        transition: .2s ease;
+      }
+
+      .ai-package-deal-button:hover {
+        background: #00bd43;
+        transform: translateY(-1px);
+      }
+
+      @media (max-width: 700px) {
+        .ai-package-deal-button {
+          width: 100%;
+        }
+      }
+    `;
+
+    document.head.appendChild(
+      style
+    );
+  }
+
+
+  /* -------------------------------------------------------
+     AI FORM
+  ------------------------------------------------------- */
+
+  injectAIPackageStyles();
+
   form.addEventListener(
     "submit",
     async event => {
@@ -2306,11 +2636,16 @@ function setupAI() {
         );
 
       /*
-        Pakketverzoeken worden nu NIET meer aan de AI
-        overgelaten. Eerst maken we het pakket
-        wiskundig correct met echte producten.
-      */
-      if (isPackageRequest) {
+       * Pakketverzoeken worden niet
+       * door AI bepaald.
+       *
+       * Eerst wordt het pakket
+       * wiskundig correct opgebouwd.
+       */
+
+      if (
+        isPackageRequest
+      ) {
         responseBox.innerHTML = `
           <p>
             Ik stel je pakket samen met
@@ -2320,9 +2655,13 @@ function setupAI() {
 
         try {
           const packageData =
-            buildExactPackage(message);
+            buildExactPackage(
+              message
+            );
 
-          if (!packageData.ok) {
+          if (
+            !packageData.ok
+          ) {
             responseBox.innerHTML = `
               <p>
                 ${escapeHtml(
@@ -2330,6 +2669,7 @@ function setupAI() {
                 )}
               </p>
             `;
+
             return;
           }
 
@@ -2338,15 +2678,17 @@ function setupAI() {
           );
 
           /*
-            Daarna vragen we AI alleen om uitleg.
-            De AI mag de producten, prijzen of
-            het totaal NIET bepalen.
-          */
+           * AI geeft alleen uitleg.
+           * AI mag geen producten,
+           * prijzen of totaal aanpassen.
+           */
+
           try {
             const productLines =
               packageData.products
-                .map(product =>
-                  `- ${product.name} | ${money(price(product), product.currency)} | ${product.merchant_name || "onbekende winkel"}`
+                .map(
+                  product =>
+                    `- ${product.name} | ${money(price(product), product.currency)} | ${product.merchant_name || "onbekende winkel"}`
                 )
                 .join("\n");
 
@@ -2388,7 +2730,9 @@ BELANGRIJK:
                 }
               );
 
-            if (response.ok) {
+            if (
+              response.ok
+            ) {
               const data =
                 await response.json();
 
@@ -2398,20 +2742,32 @@ BELANGRIJK:
                 data.message ||
                 "";
 
-              if (answer) {
+              if (
+                answer
+              ) {
                 responseBox.innerHTML += `
-                  <div class="ai-package-explanation">
+                  <div
+                    class="ai-package-explanation"
+                  >
+
                     <strong>
                       Waarom dit pakket?
                     </strong>
+
                     <p>
-                      ${escapeHtml(answer)}
+                      ${escapeHtml(
+                        answer
+                      )}
                     </p>
+
                   </div>
                 `;
               }
             }
-          } catch (aiError) {
+
+          } catch (
+            aiError
+          ) {
             console.warn(
               "AI uitleg niet beschikbaar:",
               aiError
@@ -2419,7 +2775,10 @@ BELANGRIJK:
           }
 
           return;
-        } catch (error) {
+
+        } catch (
+          error
+        ) {
           console.error(
             "FitDealFinder pakket error:",
             error
@@ -2437,10 +2796,12 @@ BELANGRIJK:
         }
       }
 
+
       /*
-        Gewone AI-vragen blijven via de bestaande
-        AI Coach werken.
-      */
+       * Gewone AI-vragen blijven
+       * via de bestaande AI Coach werken.
+       */
+
       responseBox.innerHTML = `
         <p>
           Even nadenken...
@@ -2466,7 +2827,9 @@ BELANGRIJK:
             }
           );
 
-        if (!response.ok) {
+        if (
+          !response.ok
+        ) {
           throw new Error(
             `AI API gaf status ${response.status}`
           );
@@ -2483,10 +2846,15 @@ BELANGRIJK:
 
         responseBox.innerHTML = `
           <p>
-            ${escapeHtml(answer)}
+            ${escapeHtml(
+              answer
+            )}
           </p>
         `;
-      } catch (error) {
+
+      } catch (
+        error
+      ) {
         console.error(
           "FitDealFinder AI error:",
           error
@@ -2547,7 +2915,10 @@ function setupDealTracking() {
           keepalive: true
         }
       ).catch(() => {
-        // Tracking mag de klik niet blokkeren.
+        /*
+         * Tracking mag de klik
+         * niet blokkeren.
+         */
       });
     }
   );
@@ -2586,7 +2957,9 @@ function setupKeyboard() {
   const loadMore =
     $("#load-more");
 
-  if (loadMore) {
+  if (
+    loadMore
+  ) {
     loadMore.addEventListener(
       "click",
       () => {
@@ -2628,4 +3001,4 @@ if (
   );
 } else {
   init();
-              }
+  }
