@@ -211,12 +211,13 @@ function productText(product) {
 }
 
 /*
- * Voor productcategorieën gebruiken we bewust
+ * Voor categorieën gebruiken we bewust
  * NIET de description.
  *
- * Zo kan een shaker met bijvoorbeeld een
- * beschrijving waarin "creatine" voorkomt
- * niet als creatine worden aangemerkt.
+ * Daardoor kan bijvoorbeeld een shaker
+ * niet als creatine worden gezien omdat
+ * het woord creatine toevallig in de
+ * productbeschrijving staat.
  */
 function productIdentityText(product) {
   return normalize([
@@ -539,6 +540,13 @@ function matchesCategory(
   const text =
     productIdentityText(product);
 
+  /*
+   * PROTEÏNE
+   *
+   * Alleen producten waarvan naam,
+   * merk of categorie echt een
+   * proteïne-gerelateerde term bevat.
+   */
   if (
     normalizedCategory ===
     "proteine"
@@ -555,6 +563,11 @@ function matchesCategory(
     ]);
   }
 
+  /*
+   * CREATINE
+   *
+   * Alleen echte creatineproducten.
+   */
   if (
     normalizedCategory ===
     "creatine"
@@ -562,11 +575,13 @@ function matchesCategory(
     return hasAny(text, [
       "creatine",
       "creatine monohydrate",
-      "creatine monohydrate",
       "creatine hcl"
     ]);
   }
 
+  /*
+   * PRE-WORKOUT
+   */
   if (
     normalizedCategory ===
     "pre-workout"
@@ -578,6 +593,9 @@ function matchesCategory(
     ]);
   }
 
+  /*
+   * ALLE SUPPLEMENTEN
+   */
   if (
     normalizedCategory ===
     "supplementen"
@@ -648,6 +666,10 @@ function applyFilters() {
         )
       );
 
+  /*
+   * Normale volgorde:
+   * beste deal eerst.
+   */
   state.filtered.sort((a, b) => {
     if (state.goal) {
       const goalA =
@@ -696,8 +718,23 @@ function applyFilters() {
     return price(a) - price(b);
   });
 
+  /*
+   * =======================================================
+   * BELANGRIJKE FIX
+   * =======================================================
+   *
+   * CATEGORIE = VOLLEDIG ASSORTIMENT
+   *
+   * Homepage / doelen / normale zoekopdracht =
+   * eerste 8 producten.
+   *
+   * Zodra een categorie is geselecteerd:
+   * ALLE gevonden producten tonen.
+   */
   state.visibleCount =
-    PRODUCTS_PER_VIEW;
+    state.category
+      ? state.filtered.length
+      : PRODUCTS_PER_VIEW;
 
   renderProducts();
 }
@@ -724,6 +761,7 @@ async function loadProducts() {
     grid.innerHTML = `
       <div class="empty-state">
         <h3>Deals laden...</h3>
+
         <p>
           We halen de actuele producten op.
         </p>
@@ -1080,11 +1118,23 @@ function updateLoadMore() {
     return;
   }
 
+  /*
+   * Bij categorieën wordt het volledige
+   * assortiment al getoond.
+   */
+  if (
+    state.category
+  ) {
+    button.hidden = true;
+    return;
+  }
+
   if (
     state.visibleCount <
     state.filtered.length
   ) {
     button.hidden = false;
+
     button.textContent =
       "Meer producten laden";
   } else {
@@ -1145,6 +1195,20 @@ function setupSearch() {
     () => {
       state.search =
         input.value || "";
+
+      /*
+       * Handmatig zoeken is geen
+       * categoriepagina.
+       */
+      state.category = "";
+
+      $all(
+        "[data-category]"
+      ).forEach(button =>
+        button.classList.remove(
+          "active"
+        )
+      );
 
       applyFilters();
     }
@@ -1217,6 +1281,9 @@ function setupCategories() {
             button.dataset.category
           );
 
+        /*
+         * Toggle categorie.
+         */
         state.category =
           state.category === category
             ? ""
@@ -1224,6 +1291,9 @@ function setupCategories() {
 
         state.goal = "";
 
+        /*
+         * Categorie actief maken.
+         */
         $all(
           "[data-category]"
         ).forEach(item => {
@@ -1235,6 +1305,9 @@ function setupCategories() {
           );
         });
 
+        /*
+         * Doelen uitschakelen.
+         */
         $all(
           "[data-goal]"
         ).forEach(item =>
@@ -1243,7 +1316,13 @@ function setupCategories() {
           )
         );
 
+        /*
+         * Hier zorgt applyFilters()
+         * ervoor dat bij een categorie
+         * ALLE producten zichtbaar worden.
+         */
         applyFilters();
+
         scrollToDeals();
       }
     );
@@ -1635,8 +1714,8 @@ function createPlanner() {
 
       /*
        * Bestaande budgetlogica behouden:
-       * niet proberen het volledige budget
-       * op te maken.
+       * we proberen NIET het volledige
+       * budget op te maken.
        */
       const seen =
         new Set();
@@ -1799,13 +1878,9 @@ function createPlanner() {
    AI PRODUCT SEARCH
 ========================================================= */
 
-/*
- * Alleen deze productsoorten worden
- * direct herkend door de AI-zoekfunctie.
- */
 const AI_PRODUCT_TERMS = [
   "creatine",
-  "creatine monohydraat",
+  "creatine monohydrate",
   "creatine monohydrate",
   "creatine hcl",
 
@@ -1917,11 +1992,6 @@ function detectProductType(message) {
   const text =
     normalize(message);
 
-  /*
-   * VOLGORDE IS BELANGRIJK.
-   *
-   * Eerst specifieke termen.
-   */
   const sortedTerms =
     AI_PRODUCT_TERMS
       .slice()
@@ -2085,19 +2155,16 @@ function matchesExactProductType(
   }
 
   /*
-   * EXTREEM BELANGRIJK:
-   * alleen naam + merk + categorie.
+   * Alleen naam + merk + categorie.
    *
-   * Niet description.
+   * Description wordt hier bewust niet
+   * gebruikt.
    */
   const text =
     productIdentityText(
       product
     );
 
-  /*
-   * Algemene uitsluitingen.
-   */
   if (
     BAD_WORDS.some(word =>
       text.includes(
@@ -2112,11 +2179,6 @@ function matchesExactProductType(
     productType ===
     "creatine"
   ) {
-    /*
-     * Product MOET daadwerkelijk
-     * "creatine" in naam/categorie/merk
-     * bevatten.
-     */
     return text.includes(
       "creatine"
     );
@@ -2202,9 +2264,6 @@ function findAIProducts(message) {
     best
   } = request;
 
-  /*
-   * Alleen STRIKTE matches.
-   */
   let candidates =
     state.products
       .filter(isUsableProduct)
@@ -2215,10 +2274,6 @@ function findAIProducts(message) {
         )
       );
 
-  /*
-   * Alleen producten met een
-   * geldige positieve prijs.
-   */
   candidates =
     candidates.filter(
       product => {
@@ -2236,10 +2291,6 @@ function findAIProducts(message) {
       }
     );
 
-  /*
-   * Op voorraad eerst wanneer
-   * voorraadinformatie beschikbaar is.
-   */
   candidates.sort(
     (a, b) => {
       const stockA =
@@ -2260,8 +2311,7 @@ function findAIProducts(message) {
       }
 
       /*
-       * GOEDKOOPSTE:
-       * prijs is leidend.
+       * Goedkoopste = prijs leidend.
        */
       if (
         cheapest
@@ -2277,10 +2327,6 @@ function findAIProducts(message) {
           return priceDifference;
         }
 
-        /*
-         * Bij exact gelijke prijs:
-         * hogere deal score eerst.
-         */
         return (
           (Number(
             b.deal_score
@@ -2292,8 +2338,7 @@ function findAIProducts(message) {
       }
 
       /*
-       * BESTE DEAL:
-       * deal score eerst.
+       * Beste deal.
        */
       const scoreA =
         Number(
@@ -2369,14 +2414,9 @@ function renderAIProductResults(
   }
 
   /*
-   * -------------------------------------------------------
-   * HIER ZIT DE BELANGRIJKSTE FIX.
-   *
-   * Bij "goedkoopste" tonen we ALLEEN
-   * het eerste product.
-   * -------------------------------------------------------
+   * Bij goedkoopste:
+   * EXACT 1 PRODUCT.
    */
-
   const productsToShow =
     result.cheapest
       ? [result.products[0]]
@@ -3784,8 +3824,8 @@ function setupAI() {
 
           /*
            * Alleen uitleg van AI.
-           * Productkeuze en totaal zijn
-           * al door de frontend bepaald.
+           * Productkeuze, prijzen en totaal
+           * zijn al door de frontend bepaald.
            */
 
           try {
@@ -3986,9 +4026,7 @@ function setupDealTracking() {
   /*
    * /go/:id wordt server-side afgehandeld.
    *
-   * Geen preventDefault:
-   * de gebruiker wordt altijd normaal
-   * naar de deal doorgestuurd.
+   * We blokkeren de navigatie NIET.
    */
   document.addEventListener(
     "click",
@@ -4013,10 +4051,9 @@ function setupDealTracking() {
       }
 
       /*
-       * Bewust leeg.
-       *
-       * De klik mag nooit worden
-       * geblokkeerd.
+       * Bewust niets blokkeren.
+       * De bezoeker gaat altijd naar
+       * de betreffende winkel/deal.
        */
     }
   );
@@ -4061,6 +4098,16 @@ function setupKeyboard() {
     loadMore.addEventListener(
       "click",
       () => {
+        /*
+         * Bij categorieën is deze knop
+         * normaal verborgen.
+         */
+        if (
+          state.category
+        ) {
+          return;
+        }
+
         state.visibleCount +=
           PRODUCTS_PER_VIEW;
 
@@ -4099,4 +4146,4 @@ if (
   );
 } else {
   init();
-}
+    }
