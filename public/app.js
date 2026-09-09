@@ -172,12 +172,21 @@ function isUsableProduct(product) {
 
 
 /* =========================================================
-   GOALS
+   GOAL DEFINITIONS
 ========================================================= */
 
-const CUT_WORDS = [
-  "cut",
-  "cutting",
+/*
+ * Deze lijsten worden gebruikt voor zowel:
+ *
+ * - de Cut / Bulk / Lean Bulk filters bovenaan
+ * - de Shopping Planner
+ *
+ * We gebruiken NIET meer de algemene D1 `goals` als
+ * automatische match. Dat veld bevat bij veel producten
+ * standaard meerdere doelen en veroorzaakte overlap.
+ */
+
+const CUT_STRONG_WORDS = [
   "fat burner",
   "fatburner",
   "thermogenic",
@@ -185,42 +194,69 @@ const CUT_WORDS = [
   "gewichtsverlies",
   "afvallen",
   "l-carnitine",
-  "carnitine",
-  "cla",
-  "caffeine",
-  "cafeine"
+  "carnitine"
 ];
 
-const BULK_WORDS = [
+const CUT_MEDIUM_WORDS = [
+  "caffeine",
+  "cafeine",
+  "cla",
+  "cut",
+  "cutting",
+  "shred",
+  "burn"
+];
+
+
+const BULK_STRONG_WORDS = [
+  "mass gainer",
+  "mass-gainer",
+  "weight gainer",
+  "weight-gainer",
+  "gainer"
+];
+
+const BULK_MEDIUM_WORDS = [
+  "mass",
   "bulk",
   "bulking",
-  "mass",
-  "mass gainer",
-  "gainer",
-  "weight gainer",
-  "calorie",
-  "calorien",
-  "muscle gain",
-  "weight gain"
+  "carb",
+  "carbs",
+  "carbohydrate",
+  "carbohydrates",
+  "havermout",
+  "oats"
 ];
 
-const LEAN_BULK_WORDS = [
-  "lean bulk",
-  "lean-bulk",
-  "lean mass",
-  "muscle",
-  "muscle gain",
+const BULK_SUPPORT_WORDS = [
   "protein",
   "proteine",
   "whey",
+  "creatine"
+];
+
+
+const LEAN_BULK_STRONG_WORDS = [
+  "whey isolate",
+  "whey-isolate",
+  "isolate",
+  "isolaat",
   "casein",
-  "caseine",
+  "caseine"
+];
+
+const LEAN_BULK_MEDIUM_WORDS = [
+  "protein",
+  "proteine",
+  "whey",
   "creatine",
   "amino",
   "bcaa",
-  "pre workout",
-  "pre-workout"
+  "lean bulk",
+  "lean-bulk",
+  "lean mass"
 ];
+
 
 const GENERAL_SUPPLEMENT_WORDS = [
   "protein",
@@ -258,78 +294,148 @@ const GENERAL_SUPPLEMENT_WORDS = [
   "pump"
 ];
 
+
+/* =========================================================
+   GOAL MATCHING
+========================================================= */
+
 function hasAny(text, words) {
   return words.some(word =>
     text.includes(normalize(word))
   );
 }
 
-function productGoals(product) {
-  const raw = product?.goals;
-
-  if (Array.isArray(raw)) {
-    return raw.map(normalize);
+function goalScore(product, goal) {
+  if (!isUsableProduct(product)) {
+    return 0;
   }
 
-  if (typeof raw === "string") {
-    try {
-      const parsed = JSON.parse(raw);
+  const text =
+    normalize([
+      product?.name,
+      product?.brand,
+      product?.category
+    ].join(" "));
 
-      if (Array.isArray(parsed)) {
-        return parsed.map(normalize);
-      }
-    } catch {
-      // Gewone tekst hieronder afhandelen.
+  const normalizedGoal =
+    normalize(goal);
+
+  /*
+   * -------------------------------------------------------
+   * CUT
+   * -------------------------------------------------------
+   */
+
+  if (normalizedGoal === "cut") {
+    if (
+      hasAny(
+        text,
+        CUT_STRONG_WORDS
+      )
+    ) {
+      return 100;
     }
 
-    return raw
-      .split(/[;,|]/)
-      .map(normalize)
-      .filter(Boolean);
+    if (
+      hasAny(
+        text,
+        CUT_MEDIUM_WORDS
+      )
+    ) {
+      return 80;
+    }
+
+    /*
+     * Gewone protein/whey/creatine producten
+     * worden NIET automatisch Cut.
+     */
+    return 0;
   }
 
-  return [];
+
+  /*
+   * -------------------------------------------------------
+   * BULK
+   * -------------------------------------------------------
+   */
+
+  if (normalizedGoal === "bulk") {
+    if (
+      hasAny(
+        text,
+        BULK_STRONG_WORDS
+      )
+    ) {
+      return 120;
+    }
+
+    if (
+      hasAny(
+        text,
+        BULK_MEDIUM_WORDS
+      )
+    ) {
+      return 90;
+    }
+
+    if (
+      hasAny(
+        text,
+        BULK_SUPPORT_WORDS
+      )
+    ) {
+      return 40;
+    }
+
+    return 0;
+  }
+
+
+  /*
+   * -------------------------------------------------------
+   * LEAN BULK
+   * -------------------------------------------------------
+   */
+
+  if (
+    normalizedGoal ===
+    "lean-bulk"
+  ) {
+    if (
+      hasAny(
+        text,
+        LEAN_BULK_STRONG_WORDS
+      )
+    ) {
+      return 110;
+    }
+
+    if (
+      hasAny(
+        text,
+        LEAN_BULK_MEDIUM_WORDS
+      )
+    ) {
+      return 80;
+    }
+
+    return 0;
+  }
+
+  return 0;
 }
 
 function matchesGoal(product, goal) {
-  if (!goal) return true;
-
-  const normalizedGoal = normalize(goal);
-  const text = productText(product);
-  const goals = productGoals(product);
-
-  if (goals.includes(normalizedGoal)) {
+  if (!goal) {
     return true;
   }
 
-  const generalSupplement =
-    hasAny(
-      text,
-      GENERAL_SUPPLEMENT_WORDS
-    );
-
-  if (normalizedGoal === "cut") {
-    return (
-      hasAny(text, CUT_WORDS) ||
-      generalSupplement
-    );
-  }
-
-  if (normalizedGoal === "bulk") {
-    return (
-      hasAny(text, BULK_WORDS) ||
-      generalSupplement
-    );
-  }
-
-  if (normalizedGoal === "lean-bulk") {
-    return (
-      hasAny(text, LEAN_BULK_WORDS) ||
-      generalSupplement
-    );
-  }
-
-  return true;
+  return (
+    goalScore(
+      product,
+      goal
+    ) > 0
+  );
 }
 
 
@@ -454,6 +560,29 @@ function applyFilters() {
       );
 
   state.filtered.sort((a, b) => {
+    /*
+     * Bij een doel eerst de doelrelevantie.
+     */
+    if (state.goal) {
+      const goalA =
+        goalScore(
+          a,
+          state.goal
+        );
+
+      const goalB =
+        goalScore(
+          b,
+          state.goal
+        );
+
+      if (
+        goalA !== goalB
+      ) {
+        return goalB - goalA;
+      }
+    }
+
     const scoreA =
       Number(a.deal_score) || 0;
 
@@ -1378,19 +1507,6 @@ function setupCartTrigger() {
    SHOPPING PLANNER
 ========================================================= */
 
-/*
- * DEFINITIEVE PLANNERLOGICA
- *
- * De planner gebruikt bewust NIET matchesGoal().
- *
- * Elk doel krijgt een eigen score.
- * Een product moet minimaal relevant zijn
- * voor het gekozen doel.
- *
- * Specifieke producten krijgen meer punten
- * dan algemene producten.
- */
-
 const PLANNER_EXCLUDED_WORDS = [
   "kokoswater",
   "water",
@@ -1414,95 +1530,6 @@ const PLANNER_EXCLUDED_WORDS = [
   "zinc",
   "omega"
 ];
-
-
-/* ---------------------------------------------------------
-   CUT
---------------------------------------------------------- */
-
-const PLANNER_CUT_STRONG = [
-  "fat burner",
-  "fatburner",
-  "thermogenic",
-  "weight loss",
-  "gewichtsverlies",
-  "afvallen",
-  "l-carnitine",
-  "carnitine"
-];
-
-const PLANNER_CUT_MEDIUM = [
-  "caffeine",
-  "cafeine",
-  "cla",
-  "cut",
-  "cutting",
-  "shred",
-  "burn"
-];
-
-
-/* ---------------------------------------------------------
-   BULK
---------------------------------------------------------- */
-
-const PLANNER_BULK_STRONG = [
-  "mass gainer",
-  "mass-gainer",
-  "weight gainer",
-  "weight-gainer",
-  "gainer"
-];
-
-const PLANNER_BULK_MEDIUM = [
-  "mass",
-  "bulk",
-  "bulking",
-  "carb",
-  "carbs",
-  "carbohydrate",
-  "carbohydrates",
-  "havermout",
-  "oats"
-];
-
-const PLANNER_BULK_SUPPORT = [
-  "protein",
-  "proteine",
-  "whey",
-  "creatine"
-];
-
-
-/* ---------------------------------------------------------
-   LEAN BULK
---------------------------------------------------------- */
-
-const PLANNER_LEAN_STRONG = [
-  "whey isolate",
-  "whey-isolate",
-  "isolate",
-  "isolaat",
-  "casein",
-  "caseine"
-];
-
-const PLANNER_LEAN_MEDIUM = [
-  "protein",
-  "proteine",
-  "whey",
-  "creatine",
-  "amino",
-  "bcaa",
-  "lean bulk",
-  "lean-bulk",
-  "lean mass"
-];
-
-
-/* ---------------------------------------------------------
-   PLANNER ELEMENTS
---------------------------------------------------------- */
 
 function getPlannerElements() {
   return {
@@ -1531,12 +1558,7 @@ function plannerText(product) {
   ].join(" "));
 }
 
-
-/* ---------------------------------------------------------
-   PLANNER SCORE
---------------------------------------------------------- */
-
-function plannerGoalScore(
+function plannerProductScore(
   product,
   goal
 ) {
@@ -1549,10 +1571,6 @@ function plannerGoalScore(
   const text =
     plannerText(product);
 
-  /*
-   * Eerst producten uitsluiten die
-   * duidelijk geen planner-product zijn.
-   */
   if (
     PLANNER_EXCLUDED_WORDS.some(
       word =>
@@ -1564,119 +1582,11 @@ function plannerGoalScore(
     return 0;
   }
 
-  const normalizedGoal =
-    normalize(goal);
-
-  let score = 0;
-
-  if (
-    normalizedGoal === "cut"
-  ) {
-    if (
-      hasAny(
-        text,
-        PLANNER_CUT_STRONG
-      )
-    ) {
-      score += 100;
-    }
-
-    if (
-      hasAny(
-        text,
-        PLANNER_CUT_MEDIUM
-      )
-    ) {
-      score += 60;
-    }
-
-    /*
-     * Caffeine/carnitine-achtige cut-producten
-     * mogen meetellen, maar gewone whey niet
-     * automatisch als Cut-product.
-     */
-    return score;
-  }
-
-
-  if (
-    normalizedGoal === "bulk"
-  ) {
-    if (
-      hasAny(
-        text,
-        PLANNER_BULK_STRONG
-      )
-    ) {
-      score += 120;
-    }
-
-    if (
-      hasAny(
-        text,
-        PLANNER_BULK_MEDIUM
-      )
-    ) {
-      score += 80;
-    }
-
-    if (
-      hasAny(
-        text,
-        PLANNER_BULK_SUPPORT
-      )
-    ) {
-      score += 25;
-    }
-
-    return score;
-  }
-
-
-  if (
-    normalizedGoal ===
-    "lean-bulk"
-  ) {
-    if (
-      hasAny(
-        text,
-        PLANNER_LEAN_STRONG
-      )
-    ) {
-      score += 100;
-    }
-
-    if (
-      hasAny(
-        text,
-        PLANNER_LEAN_MEDIUM
-      )
-    ) {
-      score += 60;
-    }
-
-    return score;
-  }
-
-  return 0;
-}
-
-function isPlannerProductForGoal(
-  product,
-  goal
-) {
-  return (
-    plannerGoalScore(
-      product,
-      goal
-    ) > 0
+  return goalScore(
+    product,
+    goal
   );
 }
-
-
-/* ---------------------------------------------------------
-   DEDUPE
---------------------------------------------------------- */
 
 function plannerProductKey(
   product
@@ -1715,11 +1625,6 @@ function plannerProductKey(
 
   return name;
 }
-
-
-/* ---------------------------------------------------------
-   PLANNER STYLES
---------------------------------------------------------- */
 
 function injectPlannerStyles() {
   if (
@@ -1812,11 +1717,6 @@ function injectPlannerStyles() {
   );
 }
 
-
-/* ---------------------------------------------------------
-   CREATE PLANNER
---------------------------------------------------------- */
-
 function createPlanner() {
   const {
     container,
@@ -1884,23 +1784,12 @@ function createPlanner() {
         return;
       }
 
-
-      /*
-       * BELANGRIJK:
-       *
-       * De planner kijkt uitsluitend
-       * naar de eigen score van het gekozen doel.
-       *
-       * De algemene sitefilter
-       * matchesGoal() wordt hier NIET gebruikt.
-       */
-
       const candidates =
         state.products
           .map(product => ({
             product,
             score:
-              plannerGoalScore(
+              plannerProductScore(
                 product,
                 selectedGoal
               )
@@ -1913,9 +1802,6 @@ function createPlanner() {
             maxBudget
           )
           .sort((a, b) => {
-            /*
-             * Eerst relevantie voor het doel.
-             */
             if (
               b.score !==
               a.score
@@ -1926,19 +1812,14 @@ function createPlanner() {
               );
             }
 
-            /*
-             * Daarna echte dealkwaliteit.
-             */
             const dealA =
               Number(
-                a.product
-                  .deal_score
+                a.product.deal_score
               ) || 0;
 
             const dealB =
               Number(
-                b.product
-                  .deal_score
+                b.product.deal_score
               ) || 0;
 
             if (
@@ -1951,9 +1832,6 @@ function createPlanner() {
               );
             }
 
-            /*
-             * Daarna korting.
-             */
             const discountA =
               Number(
                 a.product
@@ -1976,9 +1854,6 @@ function createPlanner() {
               );
             }
 
-            /*
-             * Tenslotte prijs.
-             */
             return (
               price(a.product) -
               price(b.product)
@@ -1988,11 +1863,6 @@ function createPlanner() {
             item.product
           );
 
-
-      /*
-       * Zelfde product niet meerdere keren
-       * in dezelfde planner tonen.
-       */
       const seen =
         new Set();
 
@@ -2017,7 +1887,6 @@ function createPlanner() {
           })
           .slice(0, 5);
 
-
       if (
         !shortlist.length
       ) {
@@ -2034,7 +1903,6 @@ function createPlanner() {
 
         return;
       }
-
 
       result.innerHTML = `
         <div class="planner-results">
@@ -2309,4 +2177,4 @@ if (
   );
 } else {
   init();
-  }
+        }
