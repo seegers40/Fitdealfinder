@@ -787,15 +787,21 @@ function productCard(product) {
     product.image_url
       ? `
         <img
-          src="${escapeHtml(
-            product.image_url
-          )}"
-          alt="${escapeHtml(
-            product.name
-          )}"
-          loading="lazy"
-          onerror="this.style.display='none'"
-        >
+  src="${escapeHtml(product.image_url)}"
+  alt="${escapeHtml(product.name)}"
+  loading="lazy"
+  style="
+    width: 65px !important;
+    height: 65px !important;
+    max-width: 65px !important;
+    max-height: 65px !important;
+    min-width: 65px !important;
+    min-height: 65px !important;
+    object-fit: contain !important;
+    display: block !important;
+  "
+  onerror="this.style.display='none'"
+>
       `
       : `
         <div class="product-image-placeholder">
