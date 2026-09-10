@@ -1856,13 +1856,21 @@ function createPlanner() {
 ========================================================= */
 
 const AI_PRODUCT_TERMS = [
+  "protein bar",
+  "proteinbar",
+  "protein reep",
+  "proteine reep",
+  "proteinebar",
+
   "creatine monohydrate",
   "creatine hcl",
   "creatine",
 
-  "whey protein",
   "whey isolate",
+  "whey-isolate",
+  "whey protein",
   "whey",
+
   "protein",
   "proteine",
   "isolaat",
@@ -1990,109 +1998,77 @@ function detectProductType(message) {
   const text =
     normalize(message);
 
-  const sortedTerms =
-    AI_PRODUCT_TERMS
-      .slice()
-      .sort(
-        (a, b) =>
-          normalize(b).length -
-          normalize(a).length
-      );
+  /*
+   * Eerst specifieke producttypes.
+   * Dit voorkomt dat "whey protein bar"
+   * als gewone whey wordt gezien.
+   */
 
-  for (
-    const term of sortedTerms
+  if (
+    hasAny(text, [
+      "protein bar",
+      "proteinbar",
+      "protein reep",
+      "proteine reep",
+      "proteinebar"
+    ])
   ) {
-    const normalizedTerm =
-      normalize(term);
+    return "protein-bar";
+  }
 
-    if (
-      !text.includes(
-        normalizedTerm
-      )
-    ) {
-      continue;
-    }
+  if (
+    text.includes("whey isolate") ||
+    text.includes("whey-isolate") ||
+    text.includes("whey")
+  ) {
+    return "whey";
+  }
 
-    if (
-      normalizedTerm.includes(
-        "creatine"
-      )
-    ) {
-      return "creatine";
-    }
+  if (
+    text.includes("creatine")
+  ) {
+    return "creatine";
+  }
 
-    if (
-      normalizedTerm.includes(
-        "pre workout"
-      ) ||
-      normalizedTerm.includes(
-        "pre-workout"
-      ) ||
-      normalizedTerm.includes(
-        "preworkout"
-      )
-    ) {
-      return "pre-workout";
-    }
+  if (
+    text.includes("pre workout") ||
+    text.includes("pre-workout") ||
+    text.includes("preworkout")
+  ) {
+    return "pre-workout";
+  }
 
-    if (
-      normalizedTerm.includes(
-        "whey"
-      ) ||
-      normalizedTerm.includes(
-        "protein"
-      ) ||
-      normalizedTerm.includes(
-        "proteine"
-      ) ||
-      normalizedTerm.includes(
-        "casein"
-      ) ||
-      normalizedTerm.includes(
-        "caseine"
-      ) ||
-      normalizedTerm.includes(
-        "isolate"
-      ) ||
-      normalizedTerm.includes(
-        "isolaat"
-      )
-    ) {
-      return "proteine";
-    }
+  if (
+    text.includes("mass gainer") ||
+    text.includes("gainer")
+  ) {
+    return "gainer";
+  }
 
-    if (
-      normalizedTerm.includes(
-        "gainer"
-      ) ||
-      normalizedTerm.includes(
-        "mass"
-      )
-    ) {
-      return "gainer";
-    }
+  if (
+    text.includes("casein") ||
+    text.includes("caseine")
+  ) {
+    return "casein";
+  }
 
-    if (
-      normalizedTerm.includes(
-        "carnitine"
-      ) ||
-      normalizedTerm.includes(
-        "caffeine"
-      ) ||
-      normalizedTerm.includes(
-        "cafeine"
-      ) ||
-      normalizedTerm.includes(
-        "fat burner"
-      ) ||
-      normalizedTerm.includes(
-        "fatburner"
-      )
-    ) {
-      return "cut-support";
-    }
+  if (
+    text.includes("protein") ||
+    text.includes("proteine") ||
+    text.includes("isolaat") ||
+    text.includes("isolate")
+  ) {
+    return "proteine";
+  }
 
-    return normalizedTerm;
+  if (
+    text.includes("carnitine") ||
+    text.includes("caffeine") ||
+    text.includes("cafeine") ||
+    text.includes("fat burner") ||
+    text.includes("fatburner")
+  ) {
+    return "cut-support";
   }
 
   return "";
@@ -2167,6 +2143,30 @@ function detectAIProductQuery(
    STRICT PRODUCT MATCHING
 ========================================================= */
 
+/*
+ * Whey-specifieke uitsluitingen.
+ *
+ * Een product kan "whey" in de naam hebben,
+ * maar toch een reep, cookie of snack zijn.
+ * Die mogen niet als whey-poeder worden
+ * teruggegeven bij een whey-vraag.
+ */
+const WHEY_EXCLUDED_WORDS = [
+  "bar",
+  "reep",
+  "protein bar",
+  "proteinbar",
+  "proteine reep",
+  "proteinebar",
+  "snack",
+  "cookie",
+  "koek",
+  "brownie",
+  "chips",
+  "pudding",
+  "dessert"
+];
+
 function matchesExactProductType(
   product,
   productType
@@ -2192,15 +2192,121 @@ function matchesExactProductType(
     return false;
   }
 
+  /*
+   * =====================================================
+   * WHEY
+   * =====================================================
+   *
+   * "Welke whey?"
+   * => alleen echte whey-producten.
+   *
+   * Een whey protein bar, reep, cookie,
+   * brownie enz. wordt bewust uitgesloten.
+   */
+  if (
+    productType === "whey"
+  ) {
+    if (
+      !text.includes("whey")
+    ) {
+      return false;
+    }
+
+    if (
+      WHEY_EXCLUDED_WORDS.some(
+        word =>
+          text.includes(
+            normalize(word)
+          )
+      )
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /*
+   * =====================================================
+   * PROTEIN BAR
+   * =====================================================
+   */
   if (
     productType ===
-    "creatine"
+    "protein-bar"
+  ) {
+    return hasAny(text, [
+      "protein bar",
+      "proteinbar",
+      "protein reep",
+      "proteine reep",
+      "proteinebar"
+    ]);
+  }
+
+  /*
+   * =====================================================
+   * CREATINE
+   * =====================================================
+   */
+  if (
+    productType === "creatine"
   ) {
     return text.includes(
       "creatine"
     );
   }
 
+  /*
+   * =====================================================
+   * PRE-WORKOUT
+   * =====================================================
+   */
+  if (
+    productType ===
+    "pre-workout"
+  ) {
+    return hasAny(text, [
+      "pre workout",
+      "pre-workout",
+      "preworkout"
+    ]);
+  }
+
+  /*
+   * =====================================================
+   * GAINER
+   * =====================================================
+   */
+  if (
+    productType === "gainer"
+  ) {
+    return hasAny(text, [
+      "gainer",
+      "mass gainer",
+      "mass-gainer"
+    ]);
+  }
+
+  /*
+   * =====================================================
+   * CASEIN
+   * =====================================================
+   */
+  if (
+    productType === "casein"
+  ) {
+    return hasAny(text, [
+      "casein",
+      "caseine"
+    ]);
+  }
+
+  /*
+   * =====================================================
+   * ALGEMENE PROTEÏNE
+   * =====================================================
+   */
   if (
     productType ===
     "proteine"
@@ -2216,28 +2322,11 @@ function matchesExactProductType(
     ]);
   }
 
-  if (
-    productType ===
-    "pre-workout"
-  ) {
-    return hasAny(text, [
-      "pre workout",
-      "pre-workout",
-      "preworkout"
-    ]);
-  }
-
-  if (
-    productType ===
-    "gainer"
-  ) {
-    return hasAny(text, [
-      "gainer",
-      "mass gainer",
-      "mass-gainer"
-    ]);
-  }
-
+  /*
+   * =====================================================
+   * CUT SUPPORT
+   * =====================================================
+   */
   if (
     productType ===
     "cut-support"
@@ -4064,4 +4153,4 @@ if (
   );
 } else {
   init();
-  }
+}
