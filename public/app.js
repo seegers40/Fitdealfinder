@@ -541,10 +541,22 @@ function goalScore(product, goal) {
  * GOAL FILTER
  * =========================================================
  *
- * De geselecteerde goal wordt uitsluitend
+ * De geselecteerde goal wordt UITSLUITEND
  * vergeleken met product.goals.
  *
- * Voorbeelden:
+ * Dus:
+ *
+ * product.goals = ["bulk"]
+ * goal = "bulk"
+ * => true
+ *
+ * product.goals = ["cut"]
+ * goal = "bulk"
+ * => false
+ *
+ * product.goals = ["lean-bulk"]
+ * goal = "bulk"
+ * => false
  *
  * product.goals = ["bulk", "lean-bulk"]
  * goal = "bulk"
@@ -553,10 +565,6 @@ function goalScore(product, goal) {
  * product.goals = "bulk|lean-bulk"
  * goal = "lean-bulk"
  * => true
- *
- * product.goals = ["cut"]
- * goal = "bulk"
- * => false
  *
  * Als er geen goal geselecteerd is,
  * wordt ieder product toegelaten.
@@ -4191,4 +4199,4 @@ if (
   );
 } else {
   init();
-    }
+}
