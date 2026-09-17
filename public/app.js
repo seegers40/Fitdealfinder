@@ -1,3 +1,4 @@
+
 "use strict";
 
 /*
@@ -329,77 +330,79 @@ function isUsableProduct(product) {
 
 
 /* =========================================================
-   GOALS
+   GOAL FILTER
 ========================================================= */
 
-const CUT_STRONG_WORDS = [
-  "fat burner",
-  "fatburner",
-  "thermogenic",
-  "weight loss",
-  "gewichtsverlies",
-  "afvallen",
-  "l-carnitine",
-  "carnitine"
-];
+/*
+ * BELANGRIJK:
+ *
+ * De goal van een product wordt UITSLUITEND
+ * bepaald door product.goals.
+ *
+ * Voorbeeld:
+ *
+ * product.goals = ["bulk"]
+ * goal = "bulk"
+ * => true
+ *
+ * product.goals = ["cut"]
+ * goal = "bulk"
+ * => false
+ *
+ * product.goals = ["lean-bulk"]
+ * goal = "bulk"
+ * => false
+ *
+ * product.goals = ["bulk", "lean-bulk"]
+ * goal = "bulk"
+ * => true
+ *
+ * product.goals = ["bulk", "lean-bulk"]
+ * goal = "lean-bulk"
+ * => true
+ *
+ * Ook strings zoals:
+ *
+ * "bulk|lean-bulk"
+ *
+ * worden ondersteund.
+ *
+ * Er wordt dus NIET meer gekeken naar
+ * productnaam, categorie of omschrijving
+ * om het hoofddoel te bepalen.
+ */
+function matchesGoal(
+  product,
+  goal
+) {
+  if (!goal) {
+    return true;
+  }
 
-const CUT_MEDIUM_WORDS = [
-  "caffeine",
-  "cafeine",
-  "cla",
-  "cut",
-  "cutting",
-  "shred",
-  "burn"
-];
+  const normalizedGoal =
+    normalize(goal);
 
-const BULK_STRONG_WORDS = [
-  "mass gainer",
-  "mass-gainer",
-  "weight gainer",
-  "weight-gainer",
-  "gainer"
-];
+  const productGoals =
+    Array.isArray(product?.goals)
+      ? product.goals
+          .map(normalize)
+          .filter(Boolean)
+      : String(
+          product?.goals || ""
+        )
+          .split(/[|,;]/)
+          .map(normalize)
+          .filter(Boolean);
 
-const BULK_MEDIUM_WORDS = [
-  "mass",
-  "bulk",
-  "bulking",
-  "carb",
-  "carbs",
-  "carbohydrate",
-  "carbohydrates",
-  "havermout",
-  "oats"
-];
+  return productGoals.includes(
+    normalizedGoal
+  );
+}
 
-const BULK_SUPPORT_WORDS = [
-  "protein",
-  "proteine",
-  "whey",
-  "creatine"
-];
 
-const LEAN_BULK_STRONG_WORDS = [
-  "whey isolate",
-  "whey-isolate",
-  "isolate",
-  "isolaat",
-  "casein",
-  "caseine"
-];
-
-const LEAN_BULK_MEDIUM_WORDS = [
-  "protein",
-  "proteine",
-  "whey",
-  "creatine",
-  "amino",
-  "bcaa",
-  "lean bulk",
-  "lean-bulk",
-  "lean mass"
-];
+/* =========================================================
+   CATEGORIES
+========================================================= */
 
 const GENERAL_SUPPLEMENT_WORDS = [
   "protein",
@@ -442,165 +445,6 @@ function hasAny(text, words) {
     text.includes(normalize(word))
   );
 }
-
-function goalScore(product, goal) {
-  if (!isUsableProduct(product)) {
-    return 0;
-  }
-
-  const text =
-    productIdentityText(product);
-
-  const normalizedGoal =
-    normalize(goal);
-
-  if (normalizedGoal === "cut") {
-    if (
-      hasAny(
-        text,
-        CUT_STRONG_WORDS
-      )
-    ) {
-      return 100;
-    }
-
-    if (
-      hasAny(
-        text,
-        CUT_MEDIUM_WORDS
-      )
-    ) {
-      return 80;
-    }
-
-    return 0;
-  }
-
-  if (normalizedGoal === "bulk") {
-    if (
-      hasAny(
-        text,
-        BULK_STRONG_WORDS
-      )
-    ) {
-      return 120;
-    }
-
-    if (
-      hasAny(
-        text,
-        BULK_MEDIUM_WORDS
-      )
-    ) {
-      return 90;
-    }
-
-    if (
-      hasAny(
-        text,
-        BULK_SUPPORT_WORDS
-      )
-    ) {
-      return 40;
-    }
-
-    return 0;
-  }
-
-  if (
-    normalizedGoal ===
-    "lean-bulk"
-  ) {
-    if (
-      hasAny(
-        text,
-        LEAN_BULK_STRONG_WORDS
-      )
-    ) {
-      return 110;
-    }
-
-    if (
-      hasAny(
-        text,
-        LEAN_BULK_MEDIUM_WORDS
-      )
-    ) {
-      return 80;
-    }
-
-    return 0;
-  }
-
-  return 0;
-}
-
-
-/*
- * =========================================================
- * GOAL FILTER
- * =========================================================
- *
- * De geselecteerde goal wordt UITSLUITEND
- * vergeleken met product.goals.
- *
- * Dus:
- *
- * product.goals = ["bulk"]
- * goal = "bulk"
- * => true
- *
- * product.goals = ["cut"]
- * goal = "bulk"
- * => false
- *
- * product.goals = ["lean-bulk"]
- * goal = "bulk"
- * => false
- *
- * product.goals = ["bulk", "lean-bulk"]
- * goal = "bulk"
- * => true
- *
- * product.goals = "bulk|lean-bulk"
- * goal = "lean-bulk"
- * => true
- *
- * Als er geen goal geselecteerd is,
- * wordt ieder product toegelaten.
- */
-function matchesGoal(
-  product,
-  goal
-) {
-  if (!goal) {
-    return true;
-  }
-
-  const normalizedGoal =
-    normalize(goal);
-
-  const productGoals =
-    Array.isArray(product?.goals)
-      ? product.goals
-          .map(normalize)
-          .filter(Boolean)
-      : String(
-          product?.goals || ""
-        )
-          .split(/[|,;]/)
-          .map(normalize)
-          .filter(Boolean);
-
-  return productGoals.includes(
-    normalizedGoal
-  );
-}
-
-
-/* =========================================================
-   CATEGORIES
-========================================================= */
 
 function matchesCategory(
   product,
@@ -724,27 +568,14 @@ function applyFilters() {
         )
       );
 
+  /*
+   * Sortering gebeurt NIET meer op goalScore.
+   *
+   * Alleen deal_score, korting en prijs
+   * bepalen de volgorde van de producten
+   * die al door matchesGoal() zijn toegelaten.
+   */
   state.filtered.sort((a, b) => {
-    if (state.goal) {
-      const goalA =
-        goalScore(
-          a,
-          state.goal
-        );
-
-      const goalB =
-        goalScore(
-          b,
-          state.goal
-        );
-
-      if (
-        goalA !== goalB
-      ) {
-        return goalB - goalA;
-      }
-    }
-
     const scoreA =
       Number(a.deal_score) || 0;
 
@@ -1410,12 +1241,29 @@ function plannerText(product) {
   ].join(" "));
 }
 
+
+/*
+ * Planner gebruikt product.goals voor
+ * het hoofddoel.
+ *
+ * Keywordmatching wordt hier alleen gebruikt
+ * om ongewenste producten uit te sluiten.
+ */
 function plannerProductScore(
   product,
   goal
 ) {
   if (
     !isUsableProduct(product)
+  ) {
+    return 0;
+  }
+
+  if (
+    !matchesGoal(
+      product,
+      goal
+    )
   ) {
     return 0;
   }
@@ -1434,10 +1282,7 @@ function plannerProductScore(
     return 0;
   }
 
-  return goalScore(
-    product,
-    goal
-  );
+  return 1;
 }
 
 function plannerProductKey(
@@ -1698,16 +1543,6 @@ function createPlanner() {
             maxBudget
           )
           .sort((a, b) => {
-            if (
-              b.score !==
-              a.score
-            ) {
-              return (
-                b.score -
-                a.score
-              );
-            }
-
             const dealA =
               Number(
                 a.product.deal_score
@@ -1901,54 +1736,20 @@ function createPlanner() {
    AI PRODUCT SEARCH
 ========================================================= */
 
-const AI_PRODUCT_TERMS = [
+const WHEY_EXCLUDED_WORDS = [
+  "bar",
+  "reep",
   "protein bar",
   "proteinbar",
-  "protein reep",
   "proteine reep",
   "proteinebar",
-
-  "creatine monohydrate",
-  "creatine hcl",
-  "creatine",
-
-  "whey isolate",
-  "whey-isolate",
-  "whey protein",
-  "whey",
-
-  "protein",
-  "proteine",
-  "isolaat",
-  "isolate",
-
-  "casein",
-  "caseine",
-
-  "pre workout",
-  "pre-workout",
-  "preworkout",
-
-  "mass gainer",
-  "gainer",
-
-  "bcaa",
-  "amino",
-
-  "l-carnitine",
-  "carnitine",
-
-  "fat burner",
-  "fatburner",
-
-  "caffeine",
-  "cafeine",
-
-  "magnesium",
-  "omega",
-
-  "electrolyte",
-  "electrolytes"
+  "snack",
+  "cookie",
+  "koek",
+  "brownie",
+  "chips",
+  "pudding",
+  "dessert"
 ];
 
 const AI_INFORMATION_PATTERNS = [
@@ -2188,30 +1989,6 @@ function detectAIProductQuery(
 /* =========================================================
    STRICT PRODUCT MATCHING
 ========================================================= */
-
-/*
- * Whey-specifieke uitsluitingen.
- *
- * Een product kan "whey" in de naam hebben,
- * maar toch een reep, cookie of snack zijn.
- * Die mogen niet als whey-poeder worden
- * teruggegeven bij een whey-vraag.
- */
-const WHEY_EXCLUDED_WORDS = [
-  "bar",
-  "reep",
-  "protein bar",
-  "proteinbar",
-  "proteine reep",
-  "proteinebar",
-  "snack",
-  "cookie",
-  "koek",
-  "brownie",
-  "chips",
-  "pudding",
-  "dessert"
-];
 
 function matchesExactProductType(
   product,
@@ -3330,10 +3107,25 @@ function setupAI() {
       };
     }
 
+    /*
+     * BELANGRIJK:
+     *
+     * Eerst uitsluitend filteren op product.goals.
+     *
+     * Een product moet expliciet het gekozen
+     * doel hebben om überhaupt kandidaat te zijn.
+     */
     const products =
       state.products
         .filter(
           isUsableProduct
+        )
+        .filter(
+          product =>
+            matchesGoal(
+              product,
+              goal
+            )
         )
         .filter(
           product =>
@@ -3373,6 +3165,7 @@ function setupAI() {
     }
 
     const selected = [];
+
     const usedIds =
       new Set();
 
@@ -3412,6 +3205,20 @@ function setupAI() {
               if (
                 usedIds.has(
                   String(id)
+                )
+              ) {
+                return false;
+              }
+
+              /*
+               * Extra veiligheidscontrole:
+               * het product moet expliciet
+               * bij het geselecteerde doel horen.
+               */
+              if (
+                !matchesGoal(
+                  product,
+                  goal
                 )
               ) {
                 return false;
