@@ -185,10 +185,10 @@ function renderAIText(value) {
     }
   );
 
-  /*
-   * Nieuwe regels behouden.
-   */
-  text = text.replace(/\n/g, "<br>");
+  text = text.replace(
+    /\n/g,
+    "<br>"
+  );
 
   /*
    * Placeholders terugplaatsen.
@@ -248,8 +248,12 @@ function productText(product) {
 }
 
 /*
- * Voor categorieën en producttypes gebruiken we bewust
- * NIET de volledige description.
+ * Productidentiteit voor specifieke matching.
+ *
+ * Deze wordt gebruikt voor bijvoorbeeld:
+ * - ongewenste producttypes
+ * - AI product matching
+ * - Shopping Planner
  */
 function productIdentityText(product) {
   return normalize(
@@ -283,6 +287,7 @@ const BAD_WORDS = [
   "waterfles",
   "water bottle",
   "bidon",
+
   "kleding",
   "shirt",
   "t-shirt",
@@ -291,14 +296,33 @@ const BAD_WORDS = [
   "legging",
   "hoodie",
   "pet",
+
   "accessoire",
+  "accessoires",
   "accessories",
+
   "voedingsschema",
   "voedingsplan",
   "meal plan",
+  "mealplan",
   "dieetplan",
+  "diet plan",
+
+  "trainingsschema",
+  "trainingsplan",
+  "training schema",
+  "training plan",
+  "workout plan",
+  "workoutplan",
+  "workout schema",
+  "workoutschema",
+  "personal training",
+  "persoonlijk trainingsschema",
+  "persoonlijk trainingsplan",
+
   "ebook",
   "e-book",
+  "e book",
   "receptenboek",
 ];
 
@@ -325,9 +349,9 @@ function isUsableProduct(product) {
   /*
    * Alleen naam, merk en categorie gebruiken.
    *
-   * Hierdoor wordt een normaal supplement niet verwijderd
-   * wanneer bijvoorbeeld de description het woord "shaker"
-   * noemt.
+   * Hierdoor wordt een echt supplement niet verwijderd
+   * omdat bijvoorbeeld de omschrijving het woord
+   * "shaker" noemt.
    */
   const text =
     productIdentityText(product);
@@ -554,10 +578,10 @@ function goalScore(product, goal) {
 }
 
 /*
- * Deze functie blijft bestaan voor de Shopping Planner.
+ * Blijft beschikbaar voor de Shopping Planner.
  *
- * De normale productlijst gebruikt deze functie NIET meer,
- * omdat de drie doelrubrieken van de homepage zijn verwijderd.
+ * De normale productlijst gebruikt matchesGoal()
+ * niet meer.
  */
 function matchesGoal(
   product,
@@ -579,6 +603,23 @@ function matchesGoal(
    CATEGORIES
 ========================================================= */
 
+/*
+ * CATEGORIE-FIX
+ *
+ * We gebruiken hier productText() in plaats van
+ * productIdentityText().
+ *
+ * Daardoor worden categorieën ook gevonden wanneer
+ * de relevante productterm in bijvoorbeeld:
+ * - naam
+ * - merk
+ * - merchant
+ * - category
+ * - description
+ * - goals
+ *
+ * staat.
+ */
 function matchesCategory(
   product,
   category
@@ -591,7 +632,7 @@ function matchesCategory(
     normalize(category);
 
   const text =
-    productIdentityText(product);
+    productText(product);
 
   if (
     normalizedCategory ===
@@ -602,6 +643,8 @@ function matchesCategory(
       "proteine",
       "whey",
       "whey protein",
+      "whey isolate",
+      "whey-isolate",
       "casein",
       "caseine",
       "isolate",
@@ -622,7 +665,9 @@ function matchesCategory(
 
   if (
     normalizedCategory ===
-    "pre-workout"
+      "pre-workout" ||
+    normalizedCategory ===
+      "preworkout"
   ) {
     return hasAny(text, [
       "pre workout",
@@ -679,12 +724,11 @@ function applyFilters() {
     normalize(state.search);
 
   /*
-   * BELANGRIJK:
-   *
-   * De normale productlijst wordt NIET meer op
+   * De normale productlijst wordt NIET op
    * Cut / Bulk / Lean Bulk gefilterd.
    *
-   * Die doelen zijn alleen nog voor de Shopping Planner.
+   * Doelen worden alleen gebruikt door de
+   * Shopping Planner.
    */
   state.filtered =
     state.products
@@ -705,10 +749,9 @@ function applyFilters() {
       );
 
   /*
-   * Normale productlijst:
-   * eerst deal score,
-   * daarna korting,
-   * daarna prijs.
+   * Eerst beste deal score.
+   * Daarna hoogste korting.
+   * Daarna laagste prijs.
    */
   state.filtered.sort(
     (a, b) => {
@@ -1251,10 +1294,10 @@ function setupSearch() {
 ========================================================= */
 
 /*
- * De homepage-doelknoppen zijn verwijderd.
+ * De huidige homepage gebruikt geen doelknoppen meer.
  *
- * Deze functie blijft veilig aanwezig voor het geval
- * er later opnieuw data-goal elementen worden toegevoegd.
+ * De functie blijft veilig aanwezig voor het geval
+ * er later opnieuw data-goal elementen worden gebruikt.
  */
 function setupGoals() {
   $all(
@@ -1297,10 +1340,6 @@ function setupGoals() {
               )
           );
 
-          /*
-           * Alleen relevant als er later opnieuw
-           * doelknoppen aan de UI worden toegevoegd.
-           */
           applyFilters();
           scrollToDeals();
         }
@@ -1846,9 +1885,7 @@ function createPlanner() {
                       >
                     `
                     : `
-                      <div
-                        class="planner-product-image-placeholder"
-                      >
+                      <div class="planner-product-image-placeholder">
                         FitDealFinder
                       </div>
                     `;
@@ -2040,8 +2077,7 @@ function isAIInformationQuestion(
   }
 
   /*
-   * Als commerciële/product-intentie aanwezig is,
-   * behandelen we de vraag als productvraag.
+   * Product-/commerciële intentie heeft voorrang.
    */
   if (
     containsSearchIntent(text)
@@ -2060,8 +2096,6 @@ function detectProductType(
 
   /*
    * Eerst specifieke producttypes.
-   * Dit voorkomt dat "whey protein bar"
-   * als gewone whey wordt gezien.
    */
 
   if (
@@ -2161,9 +2195,6 @@ function detectAIProductQuery(
     return null;
   }
 
-  /*
-   * Alleen echte uitlegvragen gaan naar gewone AI.
-   */
   if (
     isAIInformationQuestion(
       text
@@ -2172,9 +2203,6 @@ function detectAIProductQuery(
     return null;
   }
 
-  /*
-   * Producttermen alleen kunnen voldoende zijn.
-   */
   const hasProductIntent =
     containsSearchIntent(text) ||
     text.includes(
@@ -2222,12 +2250,6 @@ function detectAIProductQuery(
    STRICT PRODUCT MATCHING
 ========================================================= */
 
-/*
- * Whey-specifieke uitsluitingen.
- *
- * Een product kan "whey" in de naam hebben,
- * maar toch een reep, cookie of snack zijn.
- */
 const WHEY_EXCLUDED_WORDS = [
   "bar",
   "reep",
@@ -2598,7 +2620,7 @@ function renderAIProductResults(
   }
 
   /*
-   * ALTIJD MAAR 1 PRODUCT
+   * Bewust maar één product tonen.
    */
   const product =
     result.products[0];
@@ -3252,9 +3274,7 @@ function setupAI() {
       goal === "lean-bulk"
     ) {
       /*
-       * Gainers/mass/carb-producten eerst.
-       * Hierdoor wordt een mass gainer met "protein"
-       * niet automatisch als gewone protein gekozen.
+       * Gainer/mass/carb eerst.
        */
       if (isCarb) {
         return "carb";
@@ -4237,8 +4257,7 @@ function init() {
 
   /*
    * Veilig aanwezig voor eventueel toekomstige
-   * data-goal elementen. De huidige homepage
-   * gebruikt deze niet meer.
+   * data-goal elementen.
    */
   setupGoals();
 
@@ -4263,4 +4282,4 @@ if (
   );
 } else {
   init();
-      }
+}
