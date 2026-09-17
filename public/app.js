@@ -1,8 +1,14 @@
 "use strict";
 
-/* =========================================================
-   FitDealFinder - frontend application
-   ========================================================= */
+/*
+ * FitDealFinder.nl
+ * Frontend application
+ *
+ * BELANGRIJK:
+ * FitDealFinder is GEEN webshop.
+ * Er is daarom geen winkelmandfunctionaliteit.
+ * Alle acties leiden naar de betreffende winkel.
+ */
 
 const API_PRODUCTS = "/api/products";
 const API_AI = "/api/ai/chat";
@@ -23,133 +29,40 @@ const state = {
 
 /* =========================================================
    DOM HELPERS
-   ========================================================= */
+========================================================= */
 
-function $(selector, root = document) {
-  return root.querySelector(selector);
+function $(selector) {
+  return document.querySelector(selector);
 }
 
-function $all(selector, root = document) {
-  return Array.from(root.querySelectorAll(selector));
+function $all(selector) {
+  return [...document.querySelectorAll(selector)];
 }
 
 function first(...selectors) {
   for (const selector of selectors) {
     const element = $(selector);
-    if (element) return element;
+
+    if (element) {
+      return element;
+    }
   }
+
   return null;
 }
 
 /* =========================================================
-   TEXT / VALUE HELPERS
-   ========================================================= */
+   GENERAL HELPERS
+========================================================= */
 
 function normalize(value) {
-  return String(value ?? "")
+  return String(value || "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[–—]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function normalizeCategory(value) {
-  const v = normalize(value)
-    .replace(/_/g, "-")
-    .replace(/\s+/g, "-");
-
-  if (
-    [
-      "protein",
-      "proteine",
-      "proteins",
-      "whey",
-      "whey-protein",
-    ].includes(v)
-  ) {
-    return "proteine";
-  }
-
-  if (
-    [
-      "creatine",
-      "creatine-monohydraat",
-      "creatine-monohydrate",
-    ].includes(v)
-  ) {
-    return "creatine";
-  }
-
-  if (
-    [
-      "pre-workout",
-      "preworkout",
-      "pre-work-out",
-      "pre",
-    ].includes(v)
-  ) {
-    return "pre-workout";
-  }
-
-  if (
-    [
-      "supplement",
-      "supplements",
-      "supplementen",
-    ].includes(v)
-  ) {
-    return "supplementen";
-  }
-
-  return v;
-}
-
-function normalizeGoal(value) {
-  const v = normalize(value)
-    .replace(/_/g, "-")
-    .replace(/\s+/g, "-");
-
-  if (
-    [
-      "cut",
-      "cutten",
-      "afvallen",
-      "droogtrainen",
-      "droog-trainen",
-      "fat-loss",
-      "weight-loss",
-    ].includes(v)
-  ) {
-    return "cut";
-  }
-
-  if (
-    [
-      "bulk",
-      "bulken",
-      "spiermassa",
-      "massa",
-      "mass",
-    ].includes(v)
-  ) {
-    return "bulk";
-  }
-
-  if (
-    [
-      "lean-bulk",
-      "leanbulk",
-      "lean-bulken",
-      "lean-mass",
-      "lean-massa",
-    ].includes(v)
-  ) {
-    return "lean-bulk";
-  }
-
-  return "";
 }
 
 function escapeHtml(value) {
@@ -181,105 +94,183 @@ function safeHttpUrl(value) {
   }
 }
 
-function price(product) {
-  const candidates = [
-    product?.price,
-    product?.sale_price,
-    product?.current_price,
-    product?.amount,
-    product?.price_value,
-  ];
+/*
+ * AI-tekst veilig weergeven.
+ *
+ * Markdown-links worden eerst vervangen door placeholders.
+ * Daardoor wordt een URL binnen een gemaakte <a>-tag
+ * niet nogmaals als losse URL verwerkt.
+ */
+function renderAIText(value) {
+  let text = String(value ?? "");
 
-  for (const value of candidates) {
-    const number = Number(
-      String(value ?? "")
-        .replace(",", ".")
-        .replace(/[^\d.-]/g, "")
-    );
+  text = escapeHtml(text);
 
-    if (
-      Number.isFinite(number) &&
-      number >= 0
-    ) {
-      return number;
+  const links = [];
+
+  /*
+   * Markdown links:
+   * [tekst](https://voorbeeld.nl)
+   */
+  text = text.replace(
+    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/gi,
+    (match, label, url) => {
+      const safeUrl = safeHttpUrl(url);
+
+      if (!safeUrl) {
+        return label;
+      }
+
+      const index = links.length;
+
+      links.push(`
+        <a
+          href="${escapeHtml(safeUrl)}"
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          class="ai-inline-link"
+        >${label}</a>
+      `);
+
+      return `___FITDEAL_LINK_${index}___`;
     }
+  );
+
+  /*
+   * Markdown bold.
+   */
+  text = text.replace(
+    /\*\*([^*]+)\*\*/g,
+    "<strong>$1</strong>"
+  );
+
+  /*
+   * Losse URL's klikbaar maken.
+   *
+   * Markdown-links zijn al vervangen door placeholders
+   * en worden daardoor niet dubbel verwerkt.
+   */
+  text = text.replace(
+    /(^|[\s>])(https?:\/\/[^\s<]+)/gi,
+    (match, prefix, url) => {
+      const cleanUrl = url.replace(
+        /[.,!?;:]+$/,
+        ""
+      );
+
+      const trailing =
+        url.slice(cleanUrl.length);
+
+      const safeUrl =
+        safeHttpUrl(cleanUrl);
+
+      if (!safeUrl) {
+        return match;
+      }
+
+      const index = links.length;
+
+      links.push(`
+        <a
+          href="${escapeHtml(safeUrl)}"
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          class="ai-inline-link"
+        >${escapeHtml(cleanUrl)}</a>
+      `);
+
+      return (
+        `${prefix}` +
+        `___FITDEAL_LINK_${index}___` +
+        `${escapeHtml(trailing)}`
+      );
+    }
+  );
+
+  /*
+   * Nieuwe regels behouden.
+   */
+  text = text.replace(/\n/g, "<br>");
+
+  /*
+   * Placeholders terugplaatsen.
+   */
+  links.forEach((html, index) => {
+    text = text.replace(
+      `___FITDEAL_LINK_${index}___`,
+      html
+    );
+  });
+
+  return text;
+}
+
+function price(product) {
+  const value = Number(product?.price);
+
+  return Number.isFinite(value)
+    ? value
+    : 0;
+}
+
+function money(
+  value,
+  currency = "EUR"
+) {
+  try {
+    return new Intl.NumberFormat(
+      "nl-NL",
+      {
+        style: "currency",
+        currency: currency || "EUR",
+      }
+    ).format(
+      Number(value) || 0
+    );
+  } catch {
+    return `€ ${Number(value || 0)
+      .toFixed(2)
+      .replace(".", ",")}`;
   }
-
-  return 0;
 }
 
-function money(value) {
-  return new Intl.NumberFormat("nl-NL", {
-    style: "currency",
-    currency: "EUR",
-  }).format(Number(value) || 0);
-}
-
-function productName(product) {
-  return String(
-    product?.name ||
-      product?.title ||
-      product?.product_name ||
-      "Product"
-  ).trim();
-}
-
-function productBrand(product) {
-  return String(
-    product?.brand ||
-      product?.brand_name ||
-      ""
-  ).trim();
-}
-
-function productMerchant(product) {
-  return String(
-    product?.merchant_name ||
-      product?.merchant ||
-      product?.store ||
-      product?.shop ||
-      ""
-  ).trim();
-}
-
-function productUrl(product) {
-  return safeHttpUrl(
-    product?.url ||
-      product?.product_url ||
-      product?.link ||
-      product?.affiliate_url ||
-      product?.merchant_url ||
-      ""
-  );
-}
-
-function productImage(product) {
-  return safeHttpUrl(
-    product?.image_url ||
-      product?.image ||
-      product?.thumbnail ||
-      product?.imageUrl ||
-      ""
-  );
-}
-
-/* =========================================================
-   PRODUCT TEXT
-   ========================================================= */
-
-function productSearchText(product) {
+function productText(product) {
   return normalize(
     [
-      productName(product),
-      productBrand(product),
-      productMerchant(product),
+      product?.name,
+      product?.brand,
+      product?.merchant_name,
       product?.category,
       product?.product_category,
       product?.product_type,
       product?.type,
-      product?.tags,
       product?.description,
-      product?.short_description,
+      Array.isArray(product?.goals)
+        ? product.goals.join(" ")
+        : product?.goals,
+    ].join(" ")
+  );
+}
+
+/*
+ * Voor categorieën en producttypes gebruiken we bewust
+ * GEEN description en GEEN merchant.
+ *
+ * Een merchantnaam mag nooit bepalen of een product
+ * proteïne, creatine of supplementen is.
+ */
+function productIdentityText(product) {
+  return normalize(
+    [
+      product?.name,
+      product?.brand,
+      product?.category,
+      product?.product_category,
+      product?.product_type,
+      product?.type,
+      Array.isArray(product?.tags)
+        ? product.tags.join(" ")
+        : product?.tags,
     ]
       .filter(Boolean)
       .join(" ")
@@ -287,151 +278,178 @@ function productSearchText(product) {
 }
 
 /*
- * Core text wordt gebruikt voor categorieën en planner.
+ * Nog strikter:
  *
- * De omschrijving wordt hier bewust niet meegenomen.
- * Zo zorgt een beschrijving waarin bijvoorbeeld "creatine"
- * staat er niet voor dat een whey-product automatisch
- * als creatine wordt ingedeeld.
+ * Voor de productcategorie gebruiken we primair
+ * de productnaam en de gestructureerde categorievelden.
+ *
+ * Hierdoor kan een toevallig woord in bijvoorbeeld
+ * merchant/description de categorie niet veranderen.
  */
-
-function productCoreText(product) {
+function productClassificationText(product) {
   return normalize(
     [
-      productName(product),
-      productBrand(product),
-      productMerchant(product),
+      product?.name,
       product?.category,
       product?.product_category,
       product?.product_type,
       product?.type,
-      product?.tags,
+      Array.isArray(product?.tags)
+        ? product.tags.join(" ")
+        : product?.tags,
     ]
       .filter(Boolean)
       .join(" ")
   );
 }
 
+function scrollToDeals() {
+  const deals = $("#deals");
+
+  if (deals) {
+    deals.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+}
+
+/* =========================================================
+   WORD HELPERS
+========================================================= */
+
 function hasAny(text, words) {
-  const value = normalize(text);
+  const normalizedText =
+    normalize(text);
 
-  return words.some((word) => {
-    const needle = normalize(word);
+  return words.some(
+    (word) => {
+      const normalizedWord =
+        normalize(word);
 
-    if (!needle) {
-      return false;
+      if (!normalizedWord) {
+        return false;
+      }
+
+      /*
+       * Voor meerdere woorden gebruiken we
+       * een normale substring-check.
+       */
+      if (
+        normalizedWord.includes(" ")
+      ) {
+        return normalizedText.includes(
+          normalizedWord
+        );
+      }
+
+      /*
+       * Voor losse woorden gebruiken we
+       * woordgrenzen.
+       */
+      const escaped =
+        normalizedWord.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        );
+
+      const regex =
+        new RegExp(
+          `(^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`,
+          "i"
+        );
+
+      return regex.test(
+        normalizedText
+      );
     }
-
-    if (needle.includes(" ")) {
-      return value.includes(needle);
-    }
-
-    const escaped = needle.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      "\\$&"
-    );
-
-    return new RegExp(
-      `(^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`,
-      "i"
-    ).test(value);
-  });
+  );
 }
 
 /* =========================================================
    PRODUCT VALIDATION
-   ========================================================= */
+========================================================= */
 
 const BAD_WORDS = [
-  "legging",
-  "leggings",
-  "t-shirt",
-  "shirt",
-  "hoodie",
-  "shorts",
-  "sokken",
-  "socks",
-  "schoenen",
-  "shoes",
-  "sportschoen",
-  "sporttas",
-  "tas",
-  "gym bag",
-  "waterfles",
-  "bidon",
+  "drinkbeker",
   "shaker",
-  "beker",
-  "handschoen",
-  "handschoenen",
-  "wrist wrap",
-  "wrist wraps",
-  "knee sleeve",
-  "knee sleeves",
-  "riem",
-  "belt",
+  "shaker cup",
+  "waterfles",
+  "water bottle",
+  "bidon",
+  "kleding",
+  "shirt",
+  "t-shirt",
+  "broek",
+  "shorts",
+  "legging",
+  "hoodie",
+  "pet",
   "accessoire",
-  "accessoires",
-  "accessory",
   "accessories",
-  "mat",
-  "yogamat",
-  "fitnessmat",
+  "voedingsschema",
+  "voedingsplan",
+  "meal plan",
+  "dieetplan",
+  "ebook",
+  "e-book",
+  "receptenboek",
 ];
 
 function isUsableProduct(product) {
+  if (!product) {
+    return false;
+  }
+
+  if (!product.id) {
+    return false;
+  }
+
+  if (!product.name) {
+    return false;
+  }
+
   if (
-    !product ||
-    typeof product !== "object"
+    !product.product_url &&
+    !product.affiliate_url
   ) {
     return false;
   }
 
-  const name =
-    productName(product);
-
-  if (
-    !name ||
-    name.length < 2
-  ) {
-    return false;
-  }
-
-  const url =
-    productUrl(product);
-
-  if (!url) {
-    return false;
-  }
-
-  const p =
-    price(product);
-
-  if (
-    !Number.isFinite(p) ||
-    p <= 0
-  ) {
-    return false;
-  }
-
+  /*
+   * Alleen naam, merk en categorie gebruiken.
+   *
+   * Hierdoor wordt een normaal supplement niet verwijderd
+   * wanneer bijvoorbeeld de description het woord "shaker"
+   * noemt.
+   */
   const text =
-    productSearchText(product);
+    productIdentityText(product);
 
-  if (
-    BAD_WORDS.some((word) =>
+  return !BAD_WORDS.some(
+    (word) =>
       text.includes(
         normalize(word)
       )
-    )
-  ) {
-    return false;
-  }
-
-  return true;
+  );
 }
 
 /* =========================================================
-   EXCLUSIVE CATEGORY CLASSIFICATION
-   ========================================================= */
+   CATEGORY DEFINITIONS
+========================================================= */
+
+/*
+ * VOLGORDE IS BEWUST:
+ *
+ * 1. Pre-workout
+ * 2. Creatine
+ * 3. Proteïne
+ * 4. Supplementen
+ * 5. Overig
+ *
+ * Een product krijgt hierdoor altijd maximaal
+ * één categorie.
+ */
 
 const PRE_WORKOUT_WORDS = [
   "pre workout",
@@ -440,8 +458,6 @@ const PRE_WORKOUT_WORDS = [
   "pre workout powder",
   "pre-workout powder",
   "preworkout powder",
-  "pre workout drink",
-  "pre-workout drink",
 ];
 
 const CREATINE_WORDS = [
@@ -454,45 +470,26 @@ const CREATINE_WORDS = [
 ];
 
 const PROTEIN_WORDS = [
-  "whey",
   "whey protein",
   "whey-protein",
+  "whey",
   "protein powder",
   "proteine poeder",
   "protein",
   "proteine",
-  "casein",
-  "caseine",
   "casein protein",
   "caseine protein",
-  "isolate",
-  "isolaat",
+  "casein",
+  "caseine",
   "whey isolate",
-  "whey isolaat",
+  "whey-isolate",
   "clear whey",
   "clear protein",
   "hydro whey",
   "hydrolyzed whey",
   "hydrolysate whey",
-];
-
-const PROTEIN_EXCLUSIONS = [
-  "protein bar",
-  "proteinbar",
-  "proteine reep",
-  "protein reep",
-  "protein cookie",
-  "protein koek",
-  "protein snack",
-  "protein brownie",
-  "protein chips",
-  "protein chips",
-  "mass gainer",
-  "mass-gainer",
-  "weight gainer",
-  "weight-gainer",
-  "mega gainer",
-  "gainer",
+  "isolate",
+  "isolaat",
 ];
 
 const GENERAL_SUPPLEMENT_WORDS = [
@@ -516,6 +513,7 @@ const GENERAL_SUPPLEMENT_WORDS = [
   "adaptogen",
   "electrolyte",
   "electrolytes",
+  "elektrolyten",
   "electrolyten",
   "collagen",
   "collageen",
@@ -571,14 +569,38 @@ const GENERAL_SUPPLEMENT_WORDS = [
   "fat burner",
   "fatburner",
   "thermogenic",
-  "thermogenic fat burner",
 ];
 
-function isPreWorkoutProduct(productOrText) {
+/*
+ * Producten die expliciet als supplementcategorie
+ * zijn aangeleverd door de feed.
+ */
+const SUPPLEMENT_CATEGORY_WORDS = [
+  "supplement",
+  "supplements",
+  "supplementen",
+  "voedingssupplement",
+  "voedingssupplementen",
+  "food supplement",
+  "food supplements",
+  "nutrition supplement",
+];
+
+/*
+ * Protein bars blijven onder Proteïne vallen.
+ * Dat is bewust: het zijn nog steeds proteïneproducten.
+ */
+const PROTEIN_EXCLUSIONS = [];
+
+/* =========================================================
+   CATEGORY CLASSIFICATION
+========================================================= */
+
+function isPreWorkoutProduct(product) {
   const text =
-    typeof productOrText === "string"
-      ? normalize(productOrText)
-      : productCoreText(productOrText);
+    productClassificationText(
+      product
+    );
 
   return hasAny(
     text,
@@ -586,11 +608,11 @@ function isPreWorkoutProduct(productOrText) {
   );
 }
 
-function isCreatineProduct(productOrText) {
+function isCreatineProduct(product) {
   const text =
-    typeof productOrText === "string"
-      ? normalize(productOrText)
-      : productCoreText(productOrText);
+    productClassificationText(
+      product
+    );
 
   return hasAny(
     text,
@@ -598,11 +620,11 @@ function isCreatineProduct(productOrText) {
   );
 }
 
-function isProteinProduct(productOrText) {
+function isProteinProduct(product) {
   const text =
-    typeof productOrText === "string"
-      ? normalize(productOrText)
-      : productCoreText(productOrText);
+    productClassificationText(
+      product
+    );
 
   if (
     hasAny(
@@ -620,10 +642,12 @@ function isProteinProduct(productOrText) {
 }
 
 function isGeneralSupplementProduct(product) {
-  const core =
-    productCoreText(product);
+  const text =
+    productClassificationText(
+      product
+    );
 
-  const feedCategory =
+  const structuredCategory =
     normalize(
       [
         product?.category,
@@ -635,40 +659,33 @@ function isGeneralSupplementProduct(product) {
         .join(" ")
     );
 
+  /*
+   * Een expliciete supplementcategorie telt,
+   * maar alleen nadat de specifieke categorieën
+   * hierboven zijn gecontroleerd.
+   */
   if (
     hasAny(
-      feedCategory,
-      [
-        "supplement",
-        "supplements",
-        "supplementen",
-        "voedingssupplement",
-        "voedingssupplementen",
-        "nutrition supplement",
-      ]
+      structuredCategory,
+      SUPPLEMENT_CATEGORY_WORDS
     )
   ) {
     return true;
   }
 
   return hasAny(
-    core,
+    text,
     GENERAL_SUPPLEMENT_WORDS
   );
 }
 
 /*
- * BELANGRIJK:
+ * DE ENIGE FUNCTIE DIE DE NORMALE PRODUCTCATEGORIE
+ * BEPAALT.
  *
- * Een product krijgt exact één categorie.
- *
- * 1. Pre-workout
- * 2. Creatine
- * 3. Proteïne
- * 4. Supplementen
- * 5. Overig
+ * Hierdoor kan hetzelfde product niet tegelijk
+ * in meerdere categorieën terechtkomen.
  */
-
 function getProductCategory(product) {
   if (
     isPreWorkoutProduct(product)
@@ -689,7 +706,9 @@ function getProductCategory(product) {
   }
 
   if (
-    isGeneralSupplementProduct(product)
+    isGeneralSupplementProduct(
+      product
+    )
   ) {
     return "supplementen";
   }
@@ -701,13 +720,23 @@ function matchesCategory(
   product,
   category
 ) {
-  const wanted =
-    normalizeCategory(category);
-
-  if (!wanted) {
+  if (!category) {
     return true;
   }
 
+  const wanted =
+    normalize(category);
+
+  /*
+   * ALLEEN de uiteindelijke categorie
+   * vergelijken.
+   *
+   * Niet meer:
+   * "heeft het woord protein?"
+   *
+   * maar:
+   * "is de officiële interne categorie protein?"
+   */
   return (
     getProductCategory(product) ===
     wanted
@@ -715,101 +744,101 @@ function matchesCategory(
 }
 
 /* =========================================================
-   SEARCH
-   ========================================================= */
+   GOALS
+========================================================= */
 
-function matchesSearch(
-  product,
-  query
-) {
-  const q =
-    normalize(query);
-
-  if (!q) {
-    return true;
-  }
-
-  const text =
-    productSearchText(product);
-
-  return q
-    .split(" ")
-    .filter(Boolean)
-    .every((part) =>
-      text.includes(part)
-    );
-}
-
-/* =========================================================
-   GOAL SCORING
-   ========================================================= */
-
-const CUT_WORDS = [
-  "cut",
-  "cutting",
-  "fat loss",
-  "fat-loss",
-  "weight loss",
-  "weight-loss",
-  "shred",
-  "shredding",
-  "burn",
+const CUT_STRONG_WORDS = [
   "fat burner",
   "fatburner",
   "thermogenic",
-  "carnitine",
+  "weight loss",
+  "weight-loss",
+  "gewichtsverlies",
+  "afvallen",
   "l-carnitine",
-  "cla",
+  "carnitine",
 ];
 
-const BULK_WORDS = [
-  "bulk",
-  "bulking",
-  "mass",
+const CUT_MEDIUM_WORDS = [
+  "caffeine",
+  "cafeine",
+  "cla",
+  "cut",
+  "cutting",
+  "shred",
+];
+
+const BULK_STRONG_WORDS = [
   "mass gainer",
   "mass-gainer",
   "weight gainer",
   "weight-gainer",
   "gainer",
+];
+
+const BULK_MEDIUM_WORDS = [
+  "mass",
+  "bulk",
+  "bulking",
   "carb",
   "carbs",
   "carbohydrate",
   "carbohydrates",
-  "maltodextrin",
-  "dextrose",
-  "oats",
-  "oat",
   "havermout",
+  "oats",
 ];
 
-const LEAN_BULK_WORDS = [
+const BULK_SUPPORT_WORDS = [
+  "protein",
+  "proteine",
+  "whey",
+  "creatine",
+];
+
+const LEAN_BULK_STRONG_WORDS = [
+  "whey isolate",
+  "whey-isolate",
+  "isolate",
+  "isolaat",
+  "casein",
+  "caseine",
+];
+
+const LEAN_BULK_MEDIUM_WORDS = [
+  "protein",
+  "proteine",
+  "whey",
+  "creatine",
+  "amino",
+  "bcaa",
   "lean bulk",
   "lean-bulk",
   "lean mass",
-  "lean-mass",
-  "muscle",
-  "muscle growth",
-  "spiergroei",
-  "spiermassa",
 ];
 
 function goalScore(
   product,
   goal
 ) {
-  const normalizedGoal =
-    normalizeGoal(goal);
-
-  if (!normalizedGoal) {
+  if (!isUsableProduct(product)) {
     return 0;
   }
 
   const text =
-    productSearchText(product);
+    productClassificationText(
+      product
+    );
+
+  const normalizedGoal =
+    normalize(goal);
 
   if (
     normalizedGoal === "cut"
   ) {
+    /*
+     * Cut mag nooit een gainer of
+     * zware carb/mass-product pakken.
+     */
     if (
       hasAny(
         text,
@@ -828,24 +857,30 @@ function goalScore(
     if (
       hasAny(
         text,
-        [
-          "maltodextrin",
-          "dextrose",
-          "carbohydrate",
-          "carbohydrates",
-        ]
+        CUT_STRONG_WORDS
       )
     ) {
-      return 0;
+      return 100;
     }
 
     if (
       hasAny(
         text,
-        CUT_WORDS
+        CUT_MEDIUM_WORDS
       )
     ) {
-      return 10;
+      return 80;
+    }
+
+    /*
+     * Proteïne en creatine kunnen ook
+     * binnen een cut passen.
+     */
+    if (
+      isProteinProduct(product) ||
+      isCreatineProduct(product)
+    ) {
+      return 50;
     }
 
     return 0;
@@ -854,6 +889,10 @@ function goalScore(
   if (
     normalizedGoal === "bulk"
   ) {
+    /*
+     * Cut-specifieke producten worden
+     * niet als bulkproduct gezien.
+     */
     if (
       hasAny(
         text,
@@ -871,10 +910,28 @@ function goalScore(
     if (
       hasAny(
         text,
-        BULK_WORDS
+        BULK_STRONG_WORDS
       )
     ) {
-      return 10;
+      return 120;
+    }
+
+    if (
+      hasAny(
+        text,
+        BULK_MEDIUM_WORDS
+      )
+    ) {
+      return 90;
+    }
+
+    if (
+      hasAny(
+        text,
+        BULK_SUPPORT_WORDS
+      )
+    ) {
+      return 40;
     }
 
     return 0;
@@ -883,6 +940,9 @@ function goalScore(
   if (
     normalizedGoal === "lean-bulk"
   ) {
+    /*
+     * Geen mass gainers bij lean bulk.
+     */
     if (
       hasAny(
         text,
@@ -891,6 +951,7 @@ function goalScore(
           "mass-gainer",
           "weight gainer",
           "weight-gainer",
+          "gainer",
           "fat burner",
           "fatburner",
           "thermogenic",
@@ -903,10 +964,19 @@ function goalScore(
     if (
       hasAny(
         text,
-        LEAN_BULK_WORDS
+        LEAN_BULK_STRONG_WORDS
       )
     ) {
-      return 10;
+      return 110;
+    }
+
+    if (
+      hasAny(
+        text,
+        LEAN_BULK_MEDIUM_WORDS
+      )
+    ) {
+      return 80;
     }
 
     return 0;
@@ -915,11 +985,791 @@ function goalScore(
   return 0;
 }
 
-/* =========================================================
-   STRICT PLANNER CLASSIFICATION
-   ========================================================= */
+/*
+ * De normale productlijst gebruikt deze functie NIET.
+ *
+ * De doelen zijn uitsluitend bedoeld voor
+ * Shopping Planner / AI-pakketten.
+ */
+function matchesGoal(
+  product,
+  goal
+) {
+  if (!goal) {
+    return true;
+  }
 
-const GAINER_WORDS = [
+  return (
+    goalScore(
+      product,
+      goal
+    ) > 0
+  );
+}
+
+/* =========================================================
+   NORMAL SEARCH
+========================================================= */
+
+function matchesSearch(
+  product,
+  query
+) {
+  if (!query) {
+    return true;
+  }
+
+  const words =
+    normalize(query)
+      .split(/\s+/)
+      .filter(Boolean);
+
+  const text =
+    productText(product);
+
+  return words.every(
+    (word) =>
+      text.includes(word)
+  );
+}
+
+/* =========================================================
+   NORMAL PRODUCT FILTER
+========================================================= */
+
+function applyFilters() {
+  const query =
+    normalize(state.search);
+
+  /*
+   * BELANGRIJK:
+   *
+   * De normale productlijst wordt NIET op
+   * Cut / Bulk / Lean Bulk gefilterd.
+   *
+   * Alleen:
+   * - bruikbaar product
+   * - zoekopdracht
+   * - gekozen categorie
+   */
+  state.filtered =
+    state.products
+      .filter(
+        isUsableProduct
+      )
+      .filter(
+        (product) =>
+          matchesSearch(
+            product,
+            query
+          )
+      )
+      .filter(
+        (product) =>
+          matchesCategory(
+            product,
+            state.category
+          )
+      );
+
+  /*
+   * Sortering:
+   * deal score
+   * daarna korting
+   * daarna prijs
+   */
+  state.filtered.sort(
+    (a, b) => {
+      const scoreA =
+        Number(
+          a.deal_score
+        ) || 0;
+
+      const scoreB =
+        Number(
+          b.deal_score
+        ) || 0;
+
+      if (
+        scoreA !==
+        scoreB
+      ) {
+        return (
+          scoreB -
+          scoreA
+        );
+      }
+
+      const discountA =
+        Number(
+          a.discount_percent
+        ) || 0;
+
+      const discountB =
+        Number(
+          b.discount_percent
+        ) || 0;
+
+      if (
+        discountA !==
+        discountB
+      ) {
+        return (
+          discountB -
+          discountA
+        );
+      }
+
+      return (
+        price(a) -
+        price(b)
+      );
+    }
+  );
+
+  /*
+   * Op een categoriepagina willen we
+   * het volledige assortiment tonen.
+   *
+   * Op de normale homepage tonen we
+   * eerst 8 producten.
+   */
+  state.visibleCount =
+    state.category
+      ? state.filtered.length
+      : PRODUCTS_PER_VIEW;
+
+  renderProducts();
+}
+
+/* =========================================================
+   LOAD PRODUCTS
+========================================================= */
+
+async function loadProducts() {
+  if (state.loading) {
+    return;
+  }
+
+  state.loading = true;
+
+  const grid =
+    $("#products-grid");
+
+  if (
+    grid &&
+    !state.products.length
+  ) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <h3>Deals laden...</h3>
+        <p>
+          We halen de actuele producten op.
+        </p>
+      </div>
+    `;
+  }
+
+  const products = [];
+
+  try {
+    for (
+      let offset = 0;
+      offset < MAX_PRODUCTS;
+      offset += PAGE_SIZE
+    ) {
+      const url =
+        `${API_PRODUCTS}?limit=${PAGE_SIZE}&offset=${offset}`;
+
+      const response =
+        await fetch(
+          url,
+          {
+            headers: {
+              Accept:
+                "application/json",
+            },
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          `Product API gaf status ${response.status}`
+        );
+      }
+
+      const data =
+        await response.json();
+
+      const batch =
+        Array.isArray(data)
+          ? data
+          : Array.isArray(
+              data.products
+            )
+            ? data.products
+            : Array.isArray(
+                data.data
+              )
+              ? data.data
+              : [];
+
+      products.push(
+        ...batch
+      );
+
+      if (
+        batch.length <
+        PAGE_SIZE
+      ) {
+        break;
+      }
+
+      if (
+        products.length >=
+        MAX_PRODUCTS
+      ) {
+        break;
+      }
+    }
+
+    const unique =
+      new Map();
+
+    for (
+      const product of products
+    ) {
+      if (!product?.id) {
+        continue;
+      }
+
+      unique.set(
+        String(product.id),
+        product
+      );
+    }
+
+    state.products =
+      [...unique.values()];
+
+    console.log(
+      `FitDealFinder: ${state.products.length} producten geladen.`
+    );
+
+    applyFilters();
+  } catch (error) {
+    console.error(
+      "FitDealFinder product loading error:",
+      error
+    );
+
+    if (grid) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          <h3>
+            Deals konden niet worden geladen
+          </h3>
+
+          <p>
+            Er ging iets mis met het
+            ophalen van de producten.
+            Probeer de pagina opnieuw
+            te laden.
+          </p>
+        </div>
+      `;
+    }
+
+    updateProductCount(0);
+  } finally {
+    state.loading = false;
+  }
+}
+
+/* =========================================================
+   PRODUCT CARD
+========================================================= */
+
+function productCard(product) {
+  const currentPrice =
+    price(product);
+
+  const oldPriceValue =
+    Number(
+      product.old_price
+    ) || 0;
+
+  const hasDiscount =
+    oldPriceValue >
+    currentPrice;
+
+  const discount =
+    Number(
+      product.discount_percent
+    ) > 0
+      ? Math.round(
+          Number(
+            product.discount_percent
+          )
+        )
+      : hasDiscount
+        ? Math.round(
+            (
+              (
+                oldPriceValue -
+                currentPrice
+              ) /
+              oldPriceValue
+            ) *
+            100
+          )
+        : 0;
+
+  const image =
+    product.image_url
+      ? `
+        <img
+          src="${escapeHtml(
+            product.image_url
+          )}"
+          alt="${escapeHtml(
+            product.name
+          )}"
+          loading="lazy"
+          onerror="this.style.display='none'"
+        >
+      `
+      : `
+        <div class="product-image-placeholder">
+          FitDealFinder
+        </div>
+      `;
+
+  const stock =
+    Number(
+      product.in_stock
+    ) === 1
+      ? `<span class="stock">Op voorraad</span>`
+      : `<span class="stock out">Niet op voorraad</span>`;
+
+  const brand =
+    product.brand ||
+    product.merchant_name ||
+    "Fitness";
+
+  const dealUrl =
+    `/go/${encodeURIComponent(
+      String(product.id)
+    )}`;
+
+  return `
+    <article class="product-card">
+
+      <div class="product-image">
+        ${image}
+      </div>
+
+      <div class="product-content">
+
+        <div class="product-brand">
+          ${escapeHtml(brand)}
+        </div>
+
+        <h3>
+          ${escapeHtml(
+            product.name
+          )}
+        </h3>
+
+        <div class="product-price">
+
+          <strong>
+            ${money(
+              currentPrice,
+              product.currency
+            )}
+          </strong>
+
+          ${
+            hasDiscount
+              ? `
+                <span class="old-price">
+                  ${money(
+                    oldPriceValue,
+                    product.currency
+                  )}
+                </span>
+              `
+              : ""
+          }
+
+          ${
+            discount > 0
+              ? `
+                <span class="discount">
+                  -${discount}%
+                </span>
+              `
+              : ""
+          }
+
+        </div>
+
+        <div class="product-meta">
+
+          ${stock}
+
+          <span>
+            ${escapeHtml(
+              product.merchant_name ||
+              ""
+            )}
+          </span>
+
+        </div>
+
+        <div
+          class="product-actions"
+          style="
+            display:flex;
+            width:100%;
+            margin-top:16px;
+          "
+        >
+
+          <a
+            class="deal-button"
+            href="${dealUrl}"
+            style="
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              width:100%;
+              min-height:48px;
+              border-radius:12px;
+              background:#00a83b;
+              color:#fff;
+              font-weight:900;
+              text-decoration:none;
+            "
+          >
+            Bekijk deal →
+          </a>
+
+        </div>
+
+      </div>
+
+    </article>
+  `;
+}
+
+/* =========================================================
+   RENDER PRODUCTS
+========================================================= */
+
+function renderProducts() {
+  const grid =
+    $("#products-grid");
+
+  if (!grid) {
+    return;
+  }
+
+  const visible =
+    state.filtered.slice(
+      0,
+      state.visibleCount
+    );
+
+  if (!visible.length) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <h3>
+          Geen passende producten
+        </h3>
+
+        <p>
+          Pas je zoekopdracht of categorie aan.
+        </p>
+      </div>
+    `;
+
+    updateProductCount(0);
+    updateLoadMore();
+
+    return;
+  }
+
+  grid.innerHTML =
+    visible
+      .map(
+        productCard
+      )
+      .join("");
+
+  updateProductCount(
+    state.filtered.length
+  );
+
+  updateLoadMore();
+}
+
+function updateProductCount(
+  count
+) {
+  const element =
+    $("#result-count");
+
+  if (!element) {
+    return;
+  }
+
+  element.textContent =
+    `${count} producten`;
+}
+
+function updateLoadMore() {
+  const button =
+    $("#load-more");
+
+  if (!button) {
+    return;
+  }
+
+  /*
+   * Categoriepagina toont volledig assortiment.
+   */
+  if (
+    state.category
+  ) {
+    button.hidden = true;
+    return;
+  }
+
+  if (
+    state.visibleCount <
+    state.filtered.length
+  ) {
+    button.hidden = false;
+
+    button.textContent =
+      "Meer producten laden";
+  } else {
+    button.hidden = true;
+  }
+}
+
+/* =========================================================
+   SEARCH FORM
+========================================================= */
+
+function setupSearch() {
+  const form =
+    $("#search-form");
+
+  const input =
+    $("#search-input");
+
+  if (!form || !input) {
+    return;
+  }
+
+  form.addEventListener(
+    "submit",
+    (event) => {
+      event.preventDefault();
+
+      state.search =
+        input.value || "";
+
+      state.goal = "";
+      state.category = "";
+
+      $all(
+        "[data-goal]"
+      ).forEach(
+        (button) =>
+          button.classList.remove(
+            "active"
+          )
+      );
+
+      $all(
+        "[data-category]"
+      ).forEach(
+        (button) =>
+          button.classList.remove(
+            "active"
+          )
+      );
+
+      applyFilters();
+      scrollToDeals();
+    }
+  );
+
+  input.addEventListener(
+    "input",
+    () => {
+      state.search =
+        input.value || "";
+
+      /*
+       * Zoeken is een algemene cataloguszoekactie.
+       */
+      state.category = "";
+
+      $all(
+        "[data-category]"
+      ).forEach(
+        (button) =>
+          button.classList.remove(
+            "active"
+          )
+      );
+
+      applyFilters();
+    }
+  );
+}
+
+/* =========================================================
+   GOALS
+========================================================= */
+
+/*
+ * De oude homepage-doelrubrieken zijn verwijderd.
+ *
+ * Deze functie blijft aanwezig zodat bestaande HTML
+ * met data-goal niet voor een JavaScript-fout zorgt.
+ *
+ * De normale productlijst wordt NIET door het doel
+ * gefilterd.
+ */
+function setupGoals() {
+  $all(
+    "[data-goal]"
+  ).forEach(
+    (button) => {
+      button.addEventListener(
+        "click",
+        () => {
+          const goal =
+            normalize(
+              button.dataset.goal
+            );
+
+          state.goal =
+            state.goal === goal
+              ? ""
+              : goal;
+
+          /*
+           * Doel is alleen voor planner-context.
+           */
+          $all(
+            "[data-goal]"
+          ).forEach(
+            (item) => {
+              item.classList.toggle(
+                "active",
+                item === button &&
+                  state.goal === goal
+              );
+            }
+          );
+        }
+      );
+    }
+  );
+}
+
+/* =========================================================
+   CATEGORIES
+========================================================= */
+
+function setupCategories() {
+  $all(
+    "[data-category]"
+  ).forEach(
+    (button) => {
+      button.addEventListener(
+        "click",
+        () => {
+          const category =
+            normalize(
+              button.dataset.category
+            );
+
+          /*
+           * Klik op actieve categorie:
+           * terug naar alle producten.
+           */
+          state.category =
+            state.category ===
+            category
+              ? ""
+              : category;
+
+          state.goal = "";
+
+          /*
+           * Zoekveld leegmaken.
+           */
+          state.search = "";
+
+          const searchInput =
+            $("#search-input");
+
+          if (searchInput) {
+            searchInput.value = "";
+          }
+
+          $all(
+            "[data-category]"
+          ).forEach(
+            (item) => {
+              item.classList.toggle(
+                "active",
+                item === button &&
+                  state.category ===
+                    category
+              );
+            }
+          );
+
+          $all(
+            "[data-goal]"
+          ).forEach(
+            (item) =>
+              item.classList.remove(
+                "active"
+              )
+          );
+
+          applyFilters();
+          scrollToDeals();
+        }
+      );
+    }
+  );
+}
+
+/* =========================================================
+   SHOPPING PLANNER
+========================================================= */
+
+/*
+ * De planner gebruikt dezelfde basisclassificatie
+ * als de normale categorieën.
+ *
+ * Daardoor kan een product niet bij de categorie
+ * "Proteïne" staan en vervolgens als iets totaal
+ * anders in de boodschappenlijst worden gezien.
+ */
+
+const PLANNER_Gainer_WORDS = [
   "mass gainer",
   "mass-gainer",
   "weight gainer",
@@ -928,7 +1778,7 @@ const GAINER_WORDS = [
   "gainer",
 ];
 
-const CARB_WORDS = [
+const PLANNER_CARB_WORDS = [
   "carb",
   "carbs",
   "carbohydrate",
@@ -940,47 +1790,66 @@ const CARB_WORDS = [
   "havermout",
 ];
 
-const CUT_SUPPORT_WORDS = [
+const PLANNER_CUT_WORDS = [
   "fat burner",
   "fatburner",
   "thermogenic",
-  "carnitine",
   "l-carnitine",
+  "carnitine",
   "cla",
   "shred",
-  "burn",
+  "caffeine",
+  "cafeine",
 ];
 
 const PLANNER_EXCLUDED_WORDS = [
-  "collagen",
-  "collageen",
-  "vitamin",
-  "vitamine",
-  "multivitamin",
-  "multivitamine",
-  "omega",
-  "fish oil",
-  "visolie",
-  "joint support",
-  "probiotic",
-  "melatonin",
-  "melatonine",
+  "shaker",
+  "shaker cup",
+  "waterfles",
+  "water bottle",
+  "bidon",
+  "drinkbeker",
+  "kleding",
+  "shirt",
+  "t-shirt",
+  "broek",
+  "shorts",
+  "legging",
+  "hoodie",
+  "ebook",
+  "e-book",
+  "voedingsplan",
+  "voedingsschema",
 ];
 
-function plannerCoreText(product) {
-  return productCoreText(product);
+function plannerText(product) {
+  return productClassificationText(
+    product
+  );
+}
+
+function isPlannerExcluded(product) {
+  const text =
+    plannerText(product);
+
+  return PLANNER_EXCLUDED_WORDS.some(
+    (word) =>
+      text.includes(
+        normalize(word)
+      )
+  );
 }
 
 function isGainerProduct(product) {
   return hasAny(
-    plannerCoreText(product),
-    GAINER_WORDS
+    plannerText(product),
+    PLANNER_Gainer_WORDS
   );
 }
 
 function isCarbProduct(product) {
   const text =
-    plannerCoreText(product);
+    plannerText(product);
 
   if (
     isGainerProduct(product)
@@ -990,35 +1859,39 @@ function isCarbProduct(product) {
 
   return hasAny(
     text,
-    CARB_WORDS
+    PLANNER_CARB_WORDS
   );
 }
 
 function isCutSupportProduct(product) {
   return hasAny(
-    plannerCoreText(product),
-    CUT_SUPPORT_WORDS
+    plannerText(product),
+    PLANNER_CUT_WORDS
   );
 }
 
 function isPlannerProtein(product) {
-  return isProteinProduct(product);
+  /*
+   * Dezelfde proteïne-classificatie
+   * als de normale categorie.
+   */
+  return (
+    getProductCategory(product) ===
+      "proteine" ||
+    isProteinProduct(product)
+  );
 }
 
 function isPlannerCreatine(product) {
-  return isCreatineProduct(product);
-}
-
-function isPlannerExcluded(product) {
-  return hasAny(
-    plannerCoreText(product),
-    PLANNER_EXCLUDED_WORDS
+  return (
+    getProductCategory(product) ===
+      "creatine" ||
+    isCreatineProduct(product)
   );
 }
 
 /*
- * Bepaalt welke rol een product binnen het
- * geselecteerde doel mag hebben.
+ * De plannerrol is doelgebonden.
  *
  * CUT:
  *   protein
@@ -1027,25 +1900,26 @@ function isPlannerExcluded(product) {
  *
  * BULK:
  *   protein
- *   carb
+ *   carb/gainer
  *   creatine
  *
  * LEAN BULK:
  *   protein
- *   carb
+ *   normale carbs
  *   creatine
+ *
+ * Pre-workout krijgt geen plannerrol.
  */
-
 function packageRole(
   product,
   goal
 ) {
   const normalizedGoal =
-    normalizeGoal(goal);
+    normalize(goal);
 
   if (
     !normalizedGoal ||
-    !product
+    !isUsableProduct(product)
   ) {
     return "";
   }
@@ -1057,112 +1931,133 @@ function packageRole(
   }
 
   /*
-   * Pre-workout krijgt geen plannerrol.
+   * Pre-workout wordt niet als bulk/cut/
+   * lean-bulk voedingsproduct gebruikt.
    */
   if (
-    isPreWorkoutProduct(product)
+    getProductCategory(product) ===
+    "pre-workout"
   ) {
     return "";
   }
 
-  /*
-   * Een gainer wordt ALTIJD als gainer
-   * behandeld, ook wanneer het woord protein
-   * in de productnaam staat.
-   */
+  const gainer =
+    isGainerProduct(product);
 
-  if (
-    isGainerProduct(product)
-  ) {
-    if (
-      normalizedGoal === "bulk"
-    ) {
-      return "carb";
-    }
+  const carb =
+    isCarbProduct(product);
 
-    return "";
-  }
+  const protein =
+    isPlannerProtein(product);
 
-  /* =========================
+  const creatine =
+    isPlannerCreatine(product);
+
+  const cutSupport =
+    isCutSupportProduct(product);
+
+  /* =====================================================
      CUT
-     ========================= */
+  ===================================================== */
 
   if (
     normalizedGoal === "cut"
   ) {
-    if (
-      isCutSupportProduct(product)
-    ) {
+    /*
+     * Gainer/carb mag nooit in Cut.
+     */
+    if (gainer) {
+      return "";
+    }
+
+    /*
+     * Echte cut-support eerst.
+     */
+    if (cutSupport) {
       return "cut-support";
     }
 
-    if (
-      isPlannerProtein(product)
-    ) {
+    /*
+     * Proteïne is geschikt voor cut.
+     */
+    if (protein) {
       return "protein";
     }
 
-    if (
-      isPlannerCreatine(product)
-    ) {
+    /*
+     * Creatine kan ook in cut.
+     */
+    if (creatine) {
       return "creatine";
     }
 
     return "";
   }
 
-  /* =========================
+  /* =====================================================
      BULK
-     ========================= */
+  ===================================================== */
 
   if (
     normalizedGoal === "bulk"
   ) {
-    if (
-      isPlannerProtein(product)
-    ) {
-      return "protein";
-    }
-
-    if (
-      isCarbProduct(product)
-    ) {
+    /*
+     * Gainer/carb eerst.
+     *
+     * Zo wordt een "Protein Mass Gainer"
+     * niet verkeerd als gewone whey behandeld.
+     */
+    if (gainer || carb) {
       return "carb";
     }
 
-    if (
-      isPlannerCreatine(product)
-    ) {
+    if (protein) {
+      return "protein";
+    }
+
+    if (creatine) {
       return "creatine";
     }
 
     return "";
   }
 
-  /* =========================
+  /* =====================================================
      LEAN BULK
-     ========================= */
+  ===================================================== */
 
   if (
     normalizedGoal === "lean-bulk"
   ) {
-    if (
-      isPlannerProtein(product)
-    ) {
+    /*
+     * Mass gainers zijn expliciet uitgesloten.
+     */
+    if (gainer) {
+      return "";
+    }
+
+    /*
+     * Proteïne.
+     */
+    if (protein) {
       return "protein";
     }
 
-    if (
-      isCarbProduct(product) &&
-      !isGainerProduct(product)
-    ) {
-      return "carb";
+    /*
+     * Creatine.
+     */
+    if (creatine) {
+      return "creatine";
     }
 
+    /*
+     * Alleen normale carbs, geen gainer.
+     */
     if (
-      isPlannerCreatine(product)
+      carb &&
+      !gainer
     ) {
-      return "creatine";
+      return "carb";
     }
 
     return "";
@@ -1171,21 +2066,11 @@ function packageRole(
   return "";
 }
 
-/*
- * Strikte planner-score.
- *
- * Een product zonder geldige rol krijgt ALTIJD 0.
- */
-
 function plannerProductScore(
   product,
   goal
 ) {
-  const normalizedGoal =
-    normalizeGoal(goal);
-
   if (
-    !normalizedGoal ||
     !isUsableProduct(product)
   ) {
     return 0;
@@ -1194,7 +2079,7 @@ function plannerProductScore(
   const role =
     packageRole(
       product,
-      normalizedGoal
+      goal
     );
 
   if (!role) {
@@ -1210,15 +2095,15 @@ function plannerProductScore(
   }
 
   if (
-    role === "creatine"
-  ) {
-    score += 80;
-  }
-
-  if (
     role === "carb"
   ) {
     score += 90;
+  }
+
+  if (
+    role === "creatine"
+  ) {
+    score += 80;
   }
 
   if (
@@ -1227,28 +2112,16 @@ function plannerProductScore(
     score += 90;
   }
 
-  const p =
-    price(product);
-
   /*
-   * Kleine prijsvoorkeur.
-   * Dit is GEEN budgetoptimalisatie.
+   * Deal score blijft een secundaire voorkeur.
    */
-
-  if (
-    p > 0 &&
-    p <= 15
-  ) {
-    score += 8;
-  } else if (
-    p <= 25
-  ) {
-    score += 5;
-  } else if (
-    p <= 40
-  ) {
-    score += 2;
-  }
+  score +=
+    Math.min(
+      30,
+      Number(
+        product.deal_score
+      ) || 0
+    );
 
   return score;
 }
@@ -1257,982 +2130,2104 @@ function plannerProductKey(
   product
 ) {
   const id =
-    product?.id ??
-    product?.product_id ??
-    product?.sku ??
+    product?.id ||
+    product?.external_id ||
+    product?.sku ||
+    product?.slug ||
+    product?.name ||
     "";
 
-  if (
-    String(id).trim()
-  ) {
-    return `id:${String(id).trim()}`;
-  }
-
-  return [
-    productMerchant(product),
-    productBrand(product),
-    productName(product),
-  ]
-    .map(normalize)
-    .join("|");
+  return normalize(
+    String(id)
+  );
 }
 
 /* =========================================================
-   FILTERING
-   ========================================================= */
+   PLANNER ELEMENTS
+========================================================= */
 
-function applyFilters() {
-  const query =
-    state.search;
-
-  state.filtered =
-    state.products
-      .filter(
-        isUsableProduct
-      )
-      .filter(
-        product =>
-          matchesSearch(
-            product,
-            query
-          )
-      )
-      .filter(
-        product =>
-          matchesCategory(
-            product,
-            state.category
-          )
-      );
-
-  state.visibleCount =
-    PRODUCTS_PER_VIEW;
-
-  renderProducts();
-  updateProductCount();
-  updateLoadMore();
-}
-
-/* =========================================================
-   PRODUCT LOADING
-   ========================================================= */
-
-async function fetchProductPage(
-  offset = 0
-) {
-  const url =
-    `${API_PRODUCTS}?limit=${PAGE_SIZE}` +
-    `&offset=${offset}`;
-
-  const response =
-    await fetch(
-      url,
-      {
-        method: "GET",
-        headers: {
-          Accept:
-            "application/json",
-        },
-        credentials:
-          "same-origin",
-      }
-    );
-
-  if (!response.ok) {
-    throw new Error(
-      `Product API returned ${response.status}`
-    );
-  }
-
-  const data =
-    await response.json();
-
-  if (
-    Array.isArray(data)
-  ) {
-    return data;
-  }
-
-  if (
-    Array.isArray(
-      data.products
-    )
-  ) {
-    return data.products;
-  }
-
-  if (
-    Array.isArray(
-      data.items
-    )
-  ) {
-    return data.items;
-  }
-
-  return [];
-}
-
-async function loadProducts() {
-  if (state.loading) {
-    return;
-  }
-
-  state.loading = true;
-
-  try {
-    const allProducts = [];
-    const seen = new Set();
-
-    for (
-      let offset = 0;
-      offset < MAX_PRODUCTS;
-      offset += PAGE_SIZE
-    ) {
-      const page =
-        await fetchProductPage(
-          offset
-        );
-
-      if (
-        !page.length
-      ) {
-        break;
-      }
-
-      for (
-        const product of page
-      ) {
-        if (!product) {
-          continue;
-        }
-
-        const key =
-          plannerProductKey(
-            product
-          );
-
-        if (
-          key &&
-          seen.has(key)
-        ) {
-          continue;
-        }
-
-        if (key) {
-          seen.add(key);
-        }
-
-        allProducts.push(
-          product
-        );
-      }
-
-      if (
-        page.length <
-        PAGE_SIZE
-      ) {
-        break;
-      }
-    }
-
-    state.products =
-      allProducts;
-
-    applyFilters();
-  } catch (error) {
-    console.error(
-      "FitDealFinder product loading failed:",
-      error
-    );
-
-    state.products = [];
-    state.filtered = [];
-
-    renderProducts();
-
-    const container =
+function getPlannerElements() {
+  return {
+    container:
       first(
-        "#products",
-        "#product-grid",
-        ".product-grid",
-        "[data-products]"
-      );
+        "#shopping-planner",
+        "#planner"
+      ),
 
-    if (container) {
-      container.innerHTML = `
-        <div class="error-message">
-          Producten konden niet worden geladen.
-          Probeer de pagina opnieuw te openen.
-        </div>
-      `;
-    }
-  } finally {
-    state.loading =
-      false;
-  }
-}
+    goal:
+      $("#planner-goal"),
 
-/* =========================================================
-   PRODUCT CARD
-   ========================================================= */
+    budget:
+      $("#planner-budget"),
 
-function productCard(product) {
-  const name =
-    escapeHtml(
-      productName(product)
-    );
-
-  const brand =
-    escapeHtml(
-      productBrand(product)
-    );
-
-  const merchant =
-    escapeHtml(
-      productMerchant(product)
-    );
-
-  const url =
-    productUrl(product);
-
-  const image =
-    productImage(product);
-
-  const productPrice =
-    price(product);
-
-  const category =
-    getProductCategory(
-      product
-    );
-
-  const categoryLabel =
-    category === "proteine"
-      ? "Proteïne"
-      : category === "creatine"
-      ? "Creatine"
-      : category === "pre-workout"
-      ? "Pre-workout"
-      : category === "supplementen"
-      ? "Supplementen"
-      : "";
-
-  const imageHtml =
-    image
-      ? `
-        <div class="product-card__image-wrap">
-          <img
-            class="product-card__image"
-            src="${escapeHtml(image)}"
-            alt="${name}"
-            loading="lazy"
-            decoding="async"
-          >
-        </div>
-      `
-      : `
-        <div class="product-card__image-wrap product-card__image-wrap--empty">
-          <span>Geen afbeelding</span>
-        </div>
-      `;
-
-  const brandHtml =
-    brand
-      ? `
-        <div class="product-card__brand">
-          ${brand}
-        </div>
-      `
-      : "";
-
-  const merchantHtml =
-    merchant
-      ? `
-        <div class="product-card__merchant">
-          ${merchant}
-        </div>
-      `
-      : "";
-
-  const categoryHtml =
-    categoryLabel
-      ? `
-        <span class="product-card__category">
-          ${categoryLabel}
-        </span>
-      `
-      : "";
-
-  const buttonHtml =
-    url
-      ? `
-        <a
-          class="product-card__button"
-          href="${escapeHtml(url)}"
-          target="_blank"
-          rel="noopener noreferrer nofollow"
-        >
-          Bekijk bij winkel
-        </a>
-      `
-      : "";
-
-  return `
-    <article
-      class="product-card"
-      data-product-id="${escapeHtml(
-        product?.id ??
-          product?.product_id ??
-          product?.sku ??
-          ""
-      )}"
-    >
-      ${imageHtml}
-
-      <div class="product-card__body">
-        ${categoryHtml}
-
-        ${brandHtml}
-
-        <h3 class="product-card__title">
-          ${name}
-        </h3>
-
-        ${merchantHtml}
-
-        <div class="product-card__bottom">
-          <strong class="product-card__price">
-            ${money(productPrice)}
-          </strong>
-
-          ${buttonHtml}
-        </div>
-      </div>
-    </article>
-  `;
-}
-
-function renderProducts() {
-  const container =
-    first(
-      "#products",
-      "#product-grid",
-      ".product-grid",
-      "[data-products]"
-    );
-
-  if (!container) {
-    return;
-  }
-
-  const products =
-    state.filtered.slice(
-      0,
-      state.visibleCount
-    );
-
-  if (
-    !products.length
-  ) {
-    container.innerHTML = `
-      <div class="empty-message">
-        Geen producten gevonden.
-      </div>
-    `;
-
-    return;
-  }
-
-  container.innerHTML =
-    products
-      .map(productCard)
-      .join("");
-}
-
-function updateProductCount() {
-  const elements =
-    $all(
-      "[data-product-count], #product-count, .product-count"
-    );
-
-  for (
-    const element of elements
-  ) {
-    element.textContent =
-      String(
-        state.filtered.length
-      );
-  }
-}
-
-function updateLoadMore() {
-  const button =
-    first(
-      "#load-more",
-      "[data-load-more]",
-      ".load-more"
-    );
-
-  if (!button) {
-    return;
-  }
-
-  if (
-    state.visibleCount >=
-    state.filtered.length
-  ) {
-    button.hidden = true;
-    return;
-  }
-
-  button.hidden = false;
-}
-
-function loadMoreProducts() {
-  state.visibleCount +=
-    PRODUCTS_PER_VIEW;
-
-  renderProducts();
-  updateLoadMore();
-}
-
-/* =========================================================
-   SEARCH SETUP
-   ========================================================= */
-
-function setupSearch() {
-  const form =
-    first(
-      "#search-form",
-      "[data-search-form]",
-      "form.search-form"
-    );
-
-  const input =
-    first(
-      "#search",
-      "#search-input",
-      "[data-search-input]",
-      'input[type="search"]'
-    );
-
-  if (!input) {
-    return;
-  }
-
-  const runSearch = () => {
-    state.search =
-      input.value.trim();
-
-    /*
-     * Een zoekopdracht zoekt altijd
-     * door de volledige catalogus.
-     */
-
-    state.category = "";
-
-    $all(
-      "[data-category]"
-    ).forEach(
-      button => {
-        button.classList.remove(
-          "active"
-        );
-
-        button.setAttribute(
-          "aria-pressed",
-          "false"
-        );
-      }
-    );
-
-    applyFilters();
-
-    scrollToDeals();
+    result:
+      $("#planner-result"),
   };
-
-  if (form) {
-    form.addEventListener(
-      "submit",
-      event => {
-        event.preventDefault();
-        runSearch();
-      }
-    );
-  }
-
-  input.addEventListener(
-    "keydown",
-    event => {
-      if (
-        event.key === "Enter"
-      ) {
-        event.preventDefault();
-        runSearch();
-      }
-    }
-  );
-
-  input.addEventListener(
-    "input",
-    () => {
-      state.search =
-        input.value.trim();
-
-      if (
-        state.search
-      ) {
-        state.category = "";
-
-        $all(
-          "[data-category]"
-        ).forEach(
-          button => {
-            button.classList.remove(
-              "active"
-            );
-
-            button.setAttribute(
-              "aria-pressed",
-              "false"
-            );
-          }
-        );
-      }
-
-      applyFilters();
-    }
-  );
 }
 
-/* =========================================================
-   CATEGORY SETUP
-   ========================================================= */
-
-function setupCategories() {
-  const buttons =
-    $all(
-      "[data-category]"
-    );
-
-  for (
-    const button of buttons
+function injectPlannerStyles() {
+  if (
+    $("#planner-styles")
   ) {
-    button.addEventListener(
-      "click",
-      () => {
-        const category =
-          normalizeCategory(
-            button.dataset.category
-          );
-
-        state.search = "";
-        state.category =
-          category;
-
-        const input =
-          first(
-            "#search",
-            "#search-input",
-            "[data-search-input]",
-            'input[type="search"]'
-          );
-
-        if (input) {
-          input.value = "";
-        }
-
-        buttons.forEach(
-          item => {
-            const active =
-              normalizeCategory(
-                item.dataset.category
-              ) === category;
-
-            item.classList.toggle(
-              "active",
-              active
-            );
-
-            item.setAttribute(
-              "aria-pressed",
-              active
-                ? "true"
-                : "false"
-            );
-          }
-        );
-
-        applyFilters();
-
-        scrollToDeals();
-      }
-    );
-  }
-}
-
-/* =========================================================
-   GOAL BUTTONS
-   ========================================================= */
-
-function setupGoals() {
-  const buttons =
-    $all(
-      "[data-goal]"
-    );
-
-  for (
-    const button of buttons
-  ) {
-    button.addEventListener(
-      "click",
-      () => {
-        const goal =
-          normalizeGoal(
-            button.dataset.goal
-          );
-
-        state.goal =
-          goal;
-
-        buttons.forEach(
-          item => {
-            const active =
-              normalizeGoal(
-                item.dataset.goal
-              ) === goal;
-
-            item.classList.toggle(
-              "active",
-              active
-            );
-
-            item.setAttribute(
-              "aria-pressed",
-              active
-                ? "true"
-                : "false"
-            );
-          }
-        );
-
-        /*
-         * Doel verandert NIET de normale
-         * productcategorieën.
-         *
-         * Het doel wordt alleen gebruikt
-         * door de planner.
-         */
-      }
-    );
-  }
-}
-
-/* =========================================================
-   SCROLL
-   ========================================================= */
-
-function scrollToDeals() {
-  const target =
-    first(
-      "#deals",
-      "#products",
-      "#product-grid",
-      ".products",
-      "[data-products]"
-    );
-
-  if (!target) {
     return;
   }
 
-  target.scrollIntoView({
-    behavior: "smooth",
-    block: "start",
-  });
+  const style =
+    document.createElement(
+      "style"
+    );
+
+  style.id =
+    "planner-styles";
+
+  style.textContent = `
+    #planner-result {
+      margin-top: 24px;
+    }
+
+    .planner-results {
+      display: grid;
+      gap: 16px;
+    }
+
+    .planner-result-item {
+      display: grid;
+      grid-template-columns: 65px 1fr;
+      align-items: center;
+      gap: 16px;
+      padding: 22px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      background: rgba(3,7,18,.55);
+    }
+
+    .planner-product-image {
+      width: 65px;
+      height: 65px;
+      min-width: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 10px;
+      text-decoration: none;
+    }
+
+    .planner-product-image img {
+      width: 65px !important;
+      height: 65px !important;
+      max-width: 65px !important;
+      max-height: 65px !important;
+      min-width: 65px !important;
+      min-height: 65px !important;
+      object-fit: contain !important;
+      object-position: center !important;
+      display: block !important;
+    }
+
+    .planner-product-image-placeholder {
+      width: 65px;
+      height: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(255,255,255,.05);
+      color: #9eacbd;
+      font-size: 10px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .planner-product-info {
+      min-width: 0;
+    }
+
+    .planner-product-link {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .planner-product-link:hover {
+      color: #67e5a2;
+    }
+
+    .planner-product-link strong {
+      color: #fff;
+      font-size: 18px;
+      line-height: 1.4;
+    }
+
+    .planner-product-price {
+      display: block;
+      margin-top: 6px;
+      color: #36c978;
+      font-weight: 800;
+      font-size: 18px;
+    }
+
+    .planner-deal-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      margin-top: 12px;
+      padding: 0 17px;
+      border-radius: 10px;
+      background: #00a83b;
+      color: #fff !important;
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .planner-deal-button:hover {
+      background: #00bd43;
+    }
+
+    @media (max-width: 700px) {
+      .planner-result-item {
+        grid-template-columns: 65px 1fr;
+        gap: 14px;
+        padding: 18px;
+      }
+
+      .planner-deal-button {
+        width: 100%;
+        min-height: 44px;
+      }
+    }
+  `;
+
+  document.head.appendChild(
+    style
+  );
 }
 
-/* =========================================================
-   SHOPPING PLANNER
-   ========================================================= */
+function plannerProductReason(
+  product,
+  goal
+) {
+  const role =
+    packageRole(
+      product,
+      goal
+    );
+
+  if (
+    role === "protein"
+  ) {
+    return "Proteïne voor je doel.";
+  }
+
+  if (
+    role === "creatine"
+  ) {
+    return "Creatine als ondersteuning.";
+  }
+
+  if (
+    role === "carb"
+  ) {
+    return "Koolhydraten voor energie en massa.";
+  }
+
+  if (
+    role === "cut-support"
+  ) {
+    return "Product gericht op ondersteuning tijdens een cut.";
+  }
+
+  return "";
+}
 
 function createPlanner() {
+  const {
+    container,
+    goal,
+    budget,
+    result,
+  } =
+    getPlannerElements();
+
+  if (
+    !container ||
+    !goal ||
+    !budget ||
+    !result
+  ) {
+    return;
+  }
+
+  injectPlannerStyles();
+
   const form =
-    first(
-      "#shopping-planner",
-      "#planner",
-      "[data-shopping-planner]",
-      "[data-planner]"
+    goal.closest("form") ||
+    container.querySelector(
+      "form"
     );
 
   if (!form) {
     return;
   }
 
-  const goalInput =
-    first(
-      "#planner-goal",
-      "[name='goal']",
-      "[data-planner-goal]",
-      "select"
+  form.addEventListener(
+    "submit",
+    (event) => {
+      event.preventDefault();
+
+      const selectedGoal =
+        normalize(
+          goal.value
+        );
+
+      const maxBudget =
+        Number(
+          String(
+            budget.value || ""
+          ).replace(
+            ",",
+            "."
+          )
+        );
+
+      if (
+        !selectedGoal ||
+        !Number.isFinite(
+          maxBudget
+        ) ||
+        maxBudget <= 0
+      ) {
+        result.innerHTML = `
+          <p>
+            Kies een doel en vul
+            een geldig budget in.
+          </p>
+        `;
+
+        return;
+      }
+
+      /*
+       * Alleen producten met een geldige rol
+       * voor het gekozen doel.
+       */
+      const candidates =
+        state.products
+          .map(
+            (product) => ({
+              product,
+              role:
+                packageRole(
+                  product,
+                  selectedGoal
+                ),
+              score:
+                plannerProductScore(
+                  product,
+                  selectedGoal
+                ),
+            })
+          )
+          .filter(
+            (item) =>
+              item.role &&
+              item.score > 0
+          )
+          .filter(
+            (item) =>
+              price(
+                item.product
+              ) <=
+              maxBudget
+          )
+          .sort(
+            (a, b) => {
+              if (
+                b.score !==
+                a.score
+              ) {
+                return (
+                  b.score -
+                  a.score
+                );
+              }
+
+              return (
+                price(
+                  a.product
+                ) -
+                price(
+                  b.product
+                )
+              );
+            }
+          )
+          .map(
+            (item) =>
+              item.product
+          );
+
+      /*
+       * Bestaande budgetlogica:
+       *
+       * - geen knapzak-optimalisatie
+       * - geen verplicht budget opmaken
+       * - maximaal 5 producten
+       * - totaal blijft binnen budget
+       */
+      const seen =
+        new Set();
+
+      let shortlistTotal = 0;
+
+      const shortlist =
+        candidates
+          .filter(
+            (product) => {
+              const key =
+                plannerProductKey(
+                  product
+                );
+
+              if (
+                !key ||
+                seen.has(key)
+              ) {
+                return false;
+              }
+
+              const productPrice =
+                price(product);
+
+              if (
+                shortlistTotal +
+                  productPrice >
+                maxBudget +
+                  0.001
+              ) {
+                return false;
+              }
+
+              seen.add(key);
+
+              shortlistTotal +=
+                productPrice;
+
+              return true;
+            }
+          )
+          .slice(
+            0,
+            5
+          );
+
+      if (
+        !shortlist.length
+      ) {
+        result.innerHTML = `
+          <p>
+            Binnen dit budget vonden
+            we nu geen passende
+            producten voor
+            ${escapeHtml(
+              selectedGoal
+            )}.
+          </p>
+        `;
+
+        return;
+      }
+
+      result.innerHTML = `
+        <div class="planner-results">
+
+          ${shortlist
+            .map(
+              (product) => {
+                const image =
+                  product.image_url
+                    ? `
+                      <img
+                        src="${escapeHtml(
+                          product.image_url
+                        )}"
+                        alt="${escapeHtml(
+                          product.name
+                        )}"
+                        loading="lazy"
+                        width="65"
+                        height="65"
+                        onerror="this.style.display='none'"
+                      >
+                    `
+                    : `
+                      <div
+                        class="planner-product-image-placeholder"
+                      >
+                        FitDealFinder
+                      </div>
+                    `;
+
+                const dealUrl =
+                  `/go/${encodeURIComponent(
+                    String(
+                      product.id
+                    )
+                  )}`;
+
+                const reason =
+                  plannerProductReason(
+                    product,
+                    selectedGoal
+                  );
+
+                return `
+                  <div
+                    class="planner-result-item"
+                  >
+
+                    <a
+                      href="${dealUrl}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="planner-product-image"
+                      aria-label="Bekijk deal van ${escapeHtml(
+                        product.name
+                      )}"
+                    >
+                      ${image}
+                    </a>
+
+                    <div
+                      class="planner-product-info"
+                    >
+
+                      <a
+                        href="${dealUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="planner-product-link"
+                      >
+                        <strong>
+                          ${escapeHtml(
+                            product.name
+                          )}
+                        </strong>
+                      </a>
+
+                      <small>
+                        ${escapeHtml(
+                          product.merchant_name ||
+                          "Winkel onbekend"
+                        )}
+                      </small>
+
+                      ${
+                        reason
+                          ? `
+                            <small>
+                              ${escapeHtml(
+                                reason
+                              )}
+                            </small>
+                          `
+                          : ""
+                      }
+
+                      <span
+                        class="planner-product-price"
+                      >
+                        ${money(
+                          price(product),
+                          product.currency
+                        )}
+                      </span>
+
+                      <a
+                        href="${dealUrl}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="planner-deal-button"
+                      >
+                        Bekijk deal →
+                      </a>
+
+                    </div>
+
+                  </div>
+                `;
+              }
+            )
+            .join("")}
+
+        </div>
+      `;
+    }
+  );
+}
+
+/* =========================================================
+   AI PRODUCT SEARCH
+========================================================= */
+
+const AI_PRODUCT_TERMS = [
+  "protein bar",
+  "proteinbar",
+  "protein reep",
+  "proteine reep",
+  "proteinebar",
+  "creatine monohydrate",
+  "creatine hcl",
+  "creatine",
+  "whey isolate",
+  "whey-isolate",
+  "whey protein",
+  "whey",
+  "protein",
+  "proteine",
+  "isolaat",
+  "isolate",
+  "casein",
+  "caseine",
+  "pre workout",
+  "pre-workout",
+  "preworkout",
+  "mass gainer",
+  "gainer",
+  "bcaa",
+  "amino",
+  "l-carnitine",
+  "carnitine",
+  "fat burner",
+  "fatburner",
+  "caffeine",
+  "cafeine",
+  "magnesium",
+  "omega",
+  "electrolyte",
+  "electrolytes",
+];
+
+const AI_INFORMATION_PATTERNS = [
+  "wat is ",
+  "wat zijn ",
+  "wat betekent ",
+  "waarom ",
+  "hoe werkt ",
+  "hoe werken ",
+  "wat doet ",
+  "wat doen ",
+  "verschil tussen ",
+  "wat is het verschil",
+  "waarvoor is ",
+  "waarvoor dient ",
+];
+
+function containsSearchIntent(text) {
+  const intents = [
+    "zoek",
+    "vind",
+    "gevonden",
+    "geef",
+    "geeft",
+    "laat",
+    "beste",
+    "goedkoopste",
+    "goedkoop",
+    "deal",
+    "deals",
+    "prijs",
+    "prijzen",
+    "producten",
+    "product",
+    "welke",
+    "waar",
+    "opties",
+    "optie",
+  ];
+
+  return intents.some(
+    (word) =>
+      text.includes(word)
+  );
+}
+
+function isAIInformationQuestion(
+  text
+) {
+  const isInformation =
+    AI_INFORMATION_PATTERNS.some(
+      (pattern) =>
+        text.includes(
+          normalize(pattern)
+        )
     );
 
-  const budgetInput =
-    first(
-      "#planner-budget",
-      "[name='budget']",
-      "[data-planner-budget]"
+  if (!isInformation) {
+    return false;
+  }
+
+  if (
+    containsSearchIntent(text)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function detectProductType(
+  message
+) {
+  const text =
+    normalize(message);
+
+  if (
+    hasAny(text, [
+      "protein bar",
+      "proteinbar",
+      "protein reep",
+      "proteine reep",
+      "proteinebar",
+    ])
+  ) {
+    return "protein-bar";
+  }
+
+  if (
+    text.includes(
+      "whey isolate"
+    ) ||
+    text.includes(
+      "whey-isolate"
+    ) ||
+    text.includes(
+      "whey"
+    )
+  ) {
+    return "whey";
+  }
+
+  if (
+    text.includes(
+      "creatine"
+    )
+  ) {
+    return "creatine";
+  }
+
+  if (
+    text.includes(
+      "pre workout"
+    ) ||
+    text.includes(
+      "pre-workout"
+    ) ||
+    text.includes(
+      "preworkout"
+    )
+  ) {
+    return "pre-workout";
+  }
+
+  if (
+    text.includes(
+      "mass gainer"
+    ) ||
+    text.includes(
+      "gainer"
+    )
+  ) {
+    return "gainer";
+  }
+
+  if (
+    text.includes(
+      "casein"
+    ) ||
+    text.includes(
+      "caseine"
+    )
+  ) {
+    return "casein";
+  }
+
+  if (
+    text.includes(
+      "protein"
+    ) ||
+    text.includes(
+      "proteine"
+    ) ||
+    text.includes(
+      "isolaat"
+    ) ||
+    text.includes(
+      "isolate"
+    )
+  ) {
+    return "proteine";
+  }
+
+  if (
+    text.includes(
+      "carnitine"
+    ) ||
+    text.includes(
+      "caffeine"
+    ) ||
+    text.includes(
+      "cafeine"
+    ) ||
+    text.includes(
+      "fat burner"
+    ) ||
+    text.includes(
+      "fatburner"
+    )
+  ) {
+    return "cut-support";
+  }
+
+  return "";
+}
+
+function detectAIProductQuery(
+  message
+) {
+  const text =
+    normalize(message);
+
+  const productType =
+    detectProductType(
+      message
     );
 
-  const result =
-    first(
-      "#planner-results",
-      "[data-planner-results]"
+  if (!productType) {
+    return null;
+  }
+
+  if (
+    isAIInformationQuestion(
+      text
+    )
+  ) {
+    return null;
+  }
+
+  const hasProductIntent =
+    containsSearchIntent(text) ||
+    text.includes(
+      "producten"
+    ) ||
+    text.includes(
+      "product"
+    ) ||
+    text.includes(
+      "opties"
+    ) ||
+    text.includes(
+      "optie"
+    ) ||
+    text.endsWith(
+      productType
     );
 
-  if (!result) {
+  if (!hasProductIntent) {
+    return null;
+  }
+
+  return {
+    productType,
+
+    cheapest:
+      text.includes(
+        "goedkoopste"
+      ) ||
+      text.includes(
+        "goedkoop"
+      ),
+
+    best:
+      text.includes(
+        "beste"
+      ) ||
+      text.includes(
+        "deal"
+      ),
+  };
+}
+
+/* =========================================================
+   STRICT AI PRODUCT MATCHING
+========================================================= */
+
+const WHEY_EXCLUDED_WORDS = [
+  "bar",
+  "reep",
+  "protein bar",
+  "proteinbar",
+  "proteine reep",
+  "proteinebar",
+  "snack",
+  "cookie",
+  "koek",
+  "brownie",
+  "chips",
+  "pudding",
+  "dessert",
+];
+
+function matchesExactProductType(
+  product,
+  productType
+) {
+  if (
+    !isUsableProduct(product)
+  ) {
+    return false;
+  }
+
+  const text =
+    productClassificationText(
+      product
+    );
+
+  /*
+   * WHEY
+   */
+  if (
+    productType === "whey"
+  ) {
+    if (
+      !text.includes(
+        "whey"
+      )
+    ) {
+      return false;
+    }
+
+    if (
+      WHEY_EXCLUDED_WORDS.some(
+        (word) =>
+          text.includes(
+            normalize(word)
+          )
+      )
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /*
+   * PROTEIN BAR
+   */
+  if (
+    productType ===
+    "protein-bar"
+  ) {
+    return hasAny(
+      text,
+      [
+        "protein bar",
+        "proteinbar",
+        "protein reep",
+        "proteine reep",
+        "proteinebar",
+      ]
+    );
+  }
+
+  /*
+   * CREATINE
+   */
+  if (
+    productType ===
+    "creatine"
+  ) {
+    return hasAny(
+      text,
+      CREATINE_WORDS
+    );
+  }
+
+  /*
+   * PRE-WORKOUT
+   */
+  if (
+    productType ===
+    "pre-workout"
+  ) {
+    return hasAny(
+      text,
+      PRE_WORKOUT_WORDS
+    );
+  }
+
+  /*
+   * GAINER
+   */
+  if (
+    productType ===
+    "gainer"
+  ) {
+    return hasAny(
+      text,
+      PLANNER_Gainer_WORDS
+    );
+  }
+
+  /*
+   * CASEIN
+   */
+  if (
+    productType ===
+    "casein"
+  ) {
+    return hasAny(
+      text,
+      [
+        "casein",
+        "caseine",
+      ]
+    );
+  }
+
+  /*
+   * ALGEMENE PROTEÏNE
+   */
+  if (
+    productType ===
+    "proteine"
+  ) {
+    return (
+      isProteinProduct(
+        product
+      ) &&
+      !WHEY_EXCLUDED_WORDS.some(
+        (word) =>
+          text.includes(
+            normalize(word)
+          )
+      )
+    );
+  }
+
+  /*
+   * CUT SUPPORT
+   */
+  if (
+    productType ===
+    "cut-support"
+  ) {
+    return hasAny(
+      text,
+      PLANNER_CUT_WORDS
+    );
+  }
+
+  return false;
+}
+
+/* =========================================================
+   FIND AI PRODUCTS
+========================================================= */
+
+function findAIProducts(
+  message
+) {
+  const request =
+    detectAIProductQuery(
+      message
+    );
+
+  if (!request) {
+    return null;
+  }
+
+  const {
+    productType,
+    cheapest,
+  } = request;
+
+  let candidates =
+    state.products
+      .filter(
+        isUsableProduct
+      )
+      .filter(
+        (product) =>
+          matchesExactProductType(
+            product,
+            productType
+          )
+      )
+      .filter(
+        (product) => {
+          const value =
+            Number(
+              product.price
+            );
+
+          return (
+            Number.isFinite(
+              value
+            ) &&
+            value > 0
+          );
+        }
+      );
+
+  candidates.sort(
+    (a, b) => {
+      const stockA =
+        Number(a.in_stock);
+
+      const stockB =
+        Number(b.in_stock);
+
+      /*
+       * Voorraad eerst.
+       */
+      if (
+        (stockA === 1) !==
+        (stockB === 1)
+      ) {
+        return (
+          stockB === 1
+            ? 1
+            : -1
+        );
+      }
+
+      /*
+       * Goedkoopste.
+       */
+      if (cheapest) {
+        const priceDifference =
+          price(a) -
+          price(b);
+
+        if (
+          priceDifference !==
+          0
+        ) {
+          return priceDifference;
+        }
+
+        return (
+          (Number(
+            b.deal_score
+          ) || 0) -
+          (Number(
+            a.deal_score
+          ) || 0)
+        );
+      }
+
+      /*
+       * Beste deal.
+       */
+      const scoreA =
+        Number(
+          a.deal_score
+        ) || 0;
+
+      const scoreB =
+        Number(
+          b.deal_score
+        ) || 0;
+
+      if (
+        scoreA !== scoreB
+      ) {
+        return (
+          scoreB -
+          scoreA
+        );
+      }
+
+      const discountA =
+        Number(
+          a.discount_percent
+        ) || 0;
+
+      const discountB =
+        Number(
+          b.discount_percent
+        ) || 0;
+
+      if (
+        discountA !==
+        discountB
+      ) {
+        return (
+          discountB -
+          discountA
+        );
+      }
+
+      return (
+        price(a) -
+        price(b)
+      );
+    }
+  );
+
+  return {
+    productType,
+    cheapest,
+    best:
+      !cheapest,
+    products:
+      candidates,
+  };
+}
+
+/* =========================================================
+   AI PRODUCT RESULT
+========================================================= */
+
+function renderAIProductResults(
+  result
+) {
+  if (
+    !result ||
+    !Array.isArray(
+      result.products
+    ) ||
+    !result.products.length
+  ) {
+    return false;
+  }
+
+  /*
+   * ALTIJD MAAR ÉÉN PRODUCT
+   */
+  const product =
+    result.products[0];
+
+  const title =
+    result.cheapest
+      ? "Goedkoopste match"
+      : "Beste deal";
+
+  const intro =
+    result.cheapest
+      ? "Ik heb de actuele producten van FitDealFinder gecontroleerd en de goedkoopste passende deal gekozen."
+      : "Ik heb de actuele producten van FitDealFinder gecontroleerd en de beste passende deal gekozen.";
+
+  const productName =
+    product.name ||
+    "Product";
+
+  const merchant =
+    product.merchant_name ||
+    "Winkel onbekend";
+
+  const productPrice =
+    money(
+      price(product),
+      product.currency
+    );
+
+  const dealUrl =
+    `/go/${encodeURIComponent(
+      String(product.id)
+    )}`;
+
+  const oldPrice =
+    Number(
+      product.old_price
+    ) || 0;
+
+  const discount =
+    Number(
+      product.discount_percent
+    ) || 0;
+
+  const image =
+    product.image_url
+      ? `
+        <img
+          src="${escapeHtml(
+            product.image_url
+          )}"
+          alt="${escapeHtml(
+            product.name
+          )}"
+          loading="lazy"
+          width="65"
+          height="65"
+          onerror="this.style.display='none'"
+        >
+      `
+      : `
+        <div
+          class="ai-product-placeholder"
+        >
+          FitDealFinder
+        </div>
+      `;
+
+  const responseBox =
+    $("#ai-response");
+
+  if (!responseBox) {
+    return false;
+  }
+
+  responseBox.innerHTML = `
+    <h3>
+      ${escapeHtml(title)}
+    </h3>
+
+    <p>
+      ${escapeHtml(intro)}
+    </p>
+
+    <div
+      class="ai-product-result-list"
+    >
+
+      <div
+        class="ai-product-result-item"
+      >
+
+        <a
+          href="${dealUrl}"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="ai-product-result-image"
+          aria-label="Bekijk deal van ${escapeHtml(
+            productName
+          )}"
+        >
+          ${image}
+        </a>
+
+        <div
+          class="ai-product-result-info"
+        >
+
+          <span
+            class="ai-product-result-badge"
+          >
+            ${
+              result.cheapest
+                ? "Goedkoopste"
+                : "Top deal"
+            }
+          </span>
+
+          <a
+            href="${dealUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="ai-product-result-name"
+          >
+            ${escapeHtml(
+              productName
+            )}
+          </a>
+
+          <span
+            class="ai-product-result-merchant"
+          >
+            ${escapeHtml(
+              merchant
+            )}
+          </span>
+
+          <div
+            class="ai-product-result-price"
+          >
+
+            <strong>
+              ${escapeHtml(
+                productPrice
+              )}
+            </strong>
+
+            ${
+              oldPrice >
+              price(product)
+                ? `
+                  <span
+                    class="old-price"
+                  >
+                    ${escapeHtml(
+                      money(
+                        oldPrice,
+                        product.currency
+                      )
+                    )}
+                  </span>
+                `
+                : ""
+            }
+
+            ${
+              discount > 0
+                ? `
+                  <span
+                    class="discount"
+                  >
+                    -${discount}%
+                  </span>
+                `
+                : ""
+            }
+
+          </div>
+
+          <a
+            href="${dealUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="ai-product-result-button"
+          >
+            Bekijk deal →
+          </a>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <p
+      class="ai-product-search-note"
+    >
+      Prijzen en voorraad kunnen door
+      de betreffende winkel worden gewijzigd.
+    </p>
+  `;
+
+  return true;
+}
+
+/* =========================================================
+   AI PRODUCT STYLES
+========================================================= */
+
+function injectAIProductStyles() {
+  if (
+    $("#ai-product-styles")
+  ) {
     return;
   }
 
-  const submit =
-    first(
-      "#planner-submit",
-      "[data-planner-submit]"
-    ) ||
-    (
-      form.tagName === "FORM"
-        ? $(
-            "button[type='submit']",
-            form
-          )
-        : null
+  const style =
+    document.createElement(
+      "style"
     );
 
-  const run = () => {
-    const selectedGoal =
-      normalizeGoal(
-        goalInput?.value ||
-          state.goal ||
-          ""
+  style.id =
+    "ai-product-styles";
+
+  style.textContent = `
+    .ai-inline-link {
+      color: #36c978;
+      font-weight: 800;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .ai-inline-link:hover {
+      color: #67e5a2;
+    }
+
+    .ai-product-search {
+      display: grid;
+      gap: 14px;
+    }
+
+    .ai-product-search h3 {
+      margin: 0;
+      color: #fff;
+    }
+
+    .ai-product-search p {
+      margin: 0;
+      line-height: 1.65;
+    }
+
+    .ai-product-result-list {
+      display: grid;
+      gap: 14px;
+      margin-top: 4px;
+    }
+
+    .ai-product-result-item {
+      display: grid;
+      grid-template-columns: 65px 1fr;
+      gap: 14px;
+      align-items: center;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      background: rgba(3,7,18,.55);
+    }
+
+    .ai-product-result-image {
+      width: 65px;
+      height: 65px;
+      min-width: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 10px;
+      text-decoration: none;
+      background: rgba(255,255,255,.03);
+    }
+
+    .ai-product-result-image img {
+      display: block !important;
+      width: 65px !important;
+      height: 65px !important;
+      min-width: 65px !important;
+      min-height: 65px !important;
+      max-width: 65px !important;
+      max-height: 65px !important;
+      object-fit: contain !important;
+      object-position: center !important;
+    }
+
+    .ai-product-placeholder {
+      width: 65px;
+      height: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(255,255,255,.05);
+      color: #9eacbd;
+      font-size: 9px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .ai-product-result-info {
+      min-width: 0;
+    }
+
+    .ai-product-result-badge {
+      display: inline-flex;
+      margin-bottom: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(54,201,120,.14);
+      color: #67e5a2;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .ai-product-result-name {
+      display: block;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1.4;
+      text-decoration: none;
+    }
+
+    .ai-product-result-name:hover {
+      color: #67e5a2;
+    }
+
+    .ai-product-result-merchant {
+      display: block;
+      margin-top: 3px;
+      color: #9eacbd;
+      font-size: 13px;
+    }
+
+    .ai-product-result-price {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-top: 7px;
+    }
+
+    .ai-product-result-price strong {
+      color: #36c978;
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .ai-product-result-price .old-price {
+      color: #8d99aa;
+      font-size: 13px;
+      text-decoration: line-through;
+    }
+
+    .ai-product-result-price .discount {
+      color: #67e5a2;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .ai-product-result-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 46px;
+      margin-top: 12px;
+      padding: 0 14px;
+      border-radius: 10px;
+      background: #00a83b;
+      color: #fff !important;
+      font-weight: 900;
+      text-decoration: none;
+      transition:
+        background .2s ease,
+        transform .2s ease;
+    }
+
+    .ai-product-result-button:hover {
+      background: #00bd43;
+      transform: translateY(-1px);
+    }
+
+    .ai-product-search-note {
+      color: #8d99aa;
+      font-size: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .ai-product-result-item {
+        grid-template-columns: 65px 1fr;
+        padding: 14px;
+      }
+
+      .ai-product-result-name {
+        font-size: 15px;
+      }
+
+      .ai-product-result-price strong {
+        font-size: 17px;
+      }
+
+      .ai-product-result-button {
+        min-height: 46px;
+      }
+    }
+  `;
+
+  document.head.appendChild(
+    style
+  );
+}
+
+/* =========================================================
+   AI SUPPLEMENT COACH
+========================================================= */
+
+function setupAI() {
+  const form =
+    $("#ai-form");
+
+  const input =
+    $("#ai-input");
+
+  const responseBox =
+    $("#ai-response");
+
+  if (
+    !form ||
+    !input ||
+    !responseBox
+  ) {
+    return;
+  }
+
+  injectAIProductStyles();
+
+  function extractBudget(
+    message
+  ) {
+    const match =
+      String(
+        message || ""
+      ).match(
+        /(?:€|eur(?:o)?\s*)?(\d+(?:[.,]\d{1,2})?)(?:\s*(?:euro|eur|€))?/i
       );
 
-    const maxBudget =
+    if (!match) {
+      return null;
+    }
+
+    const value =
       Number(
         String(
-          budgetInput?.value ??
-            ""
-        ).replace(",", ".")
+          match[1]
+        ).replace(
+          ",",
+          "."
+        )
       );
 
+    return (
+      Number.isFinite(value) &&
+      value > 0
+    )
+      ? value
+      : null;
+  }
+
+  function detectGoal(
+    message
+  ) {
+    const text =
+      normalize(message);
+
     if (
-      !selectedGoal
+      text.includes(
+        "lean bulk"
+      ) ||
+      text.includes(
+        "lean-bulk"
+      ) ||
+      text.includes(
+        "leanbulk"
+      )
     ) {
-      result.innerHTML = `
-        <div class="planner-message">
-          Kies eerst een doel.
-        </div>
-      `;
-      return;
+      return "lean-bulk";
     }
 
     if (
-      !Number.isFinite(
-        maxBudget
-      ) ||
-      maxBudget <= 0
+      text.includes("bulk") ||
+      text.includes("bulken") ||
+      text.includes("massa") ||
+      text.includes("aankomen") ||
+      text.includes(
+        "spiermassa"
+      )
     ) {
-      result.innerHTML = `
-        <div class="planner-message">
-          Vul een geldig budget in.
-        </div>
-      `;
-      return;
+      return "bulk";
+    }
+
+    if (
+      text.includes("cut") ||
+      text.includes("afvallen") ||
+      text.includes("droger") ||
+      text.includes(
+        "vet verliezen"
+      )
+    ) {
+      return "cut";
+    }
+
+    return "";
+  }
+
+  function buildExactPackage(
+    message
+  ) {
+    const budget =
+      extractBudget(
+        message
+      );
+
+    const goal =
+      detectGoal(
+        message
+      );
+
+    if (
+      budget === null
+    ) {
+      return {
+        ok: false,
+        reason:
+          "Geef een budget op, bijvoorbeeld €75.",
+      };
+    }
+
+    if (!goal) {
+      return {
+        ok: false,
+        reason:
+          "Geef ook een doel op: cut, bulk of lean bulk.",
+      };
     }
 
     /*
-     * Alleen producten met een rol voor
-     * het gekozen doel worden kandidaten.
-     *
-     * Dit is de belangrijkste bescherming
-     * tegen bulkproducten in een Cut-lijst.
+     * Alle bruikbare producten binnen budget.
      */
-
-    const candidates =
+    const products =
       state.products
         .filter(
           isUsableProduct
         )
-        .map(
-          product => ({
-            product,
-            role:
-              packageRole(
-                product,
-                selectedGoal
-              ),
-            score:
-              plannerProductScore(
-                product,
-                selectedGoal
-              ),
-          })
-        )
         .filter(
-          item =>
-            item.role &&
-            item.score > 0
-        )
-        .sort(
-          (a, b) => {
-            if (
-              b.score !==
-              a.score
-            ) {
-              return (
-                b.score -
-                a.score
-              );
-            }
-
-            return (
-              price(a.product) -
-              price(b.product)
-            );
-          }
+          (product) =>
+            price(product) <=
+            budget
         );
+
+    if (
+      !products.length
+    ) {
+      return {
+        ok: false,
+        reason:
+          "Er zijn geen geschikte producten binnen dit budget gevonden.",
+      };
+    }
 
     /*
-     * Geen knapzak-/combinatie-optimalisatie.
+     * Voor elk doel gebruiken we vaste rollen.
      *
-     * We nemen gewoon de hoogst scorende
-     * passende producten die nog binnen
-     * het budget passen.
+     * We proberen eerst een compleet pakket te bouwen.
      */
+    let requiredRoles = [];
 
-    const seen =
-      new Set();
-
-    let shortlistTotal =
-      0;
-
-    const shortlist =
-      [];
-
-    for (
-      const candidate of candidates
+    if (
+      goal === "bulk"
     ) {
-      const product =
-        candidate.product;
-
-      const key =
-        plannerProductKey(
-          product
-        );
-
-      if (
-        !key ||
-        seen.has(key)
-      ) {
-        continue;
-      }
-
-      const productPrice =
-        price(product);
-
-      if (
-        shortlistTotal +
-          productPrice >
-        maxBudget +
-          0.001
-      ) {
-        continue;
-      }
-
-      seen.add(key);
-
-      shortlistTotal +=
-        productPrice;
-
-      shortlist.push(
-        candidate
-      );
-
-      if (
-        shortlist.length >=
-        5
-      ) {
-        break;
-      }
+      requiredRoles = [
+        "protein",
+        "carb",
+        "creatine",
+      ];
     }
 
     if (
-      !shortlist.length
+      goal === "lean-bulk"
     ) {
-      result.innerHTML = `
-        <div class="planner-message">
-          Geen passende producten gevonden
-          binnen dit budget voor
-          <strong>${escapeHtml(
-            selectedGoal
-          )}</strong>.
-        </div>
-      `;
-
-      return;
+      requiredRoles = [
+        "protein",
+        "creatine",
+        "carb",
+      ];
     }
 
-    const cards =
-      shortlist
+    if (
+      goal === "cut"
+    ) {
+      requiredRoles = [
+        "protein",
+        "cut-support",
+        "creatine",
+      ];
+    }
+
+    /*
+     * Kandidaten per rol.
+     */
+    const roleCandidates =
+      new Map();
+
+    for (
+      const role of requiredRoles
+    ) {
+      const candidates =
+        products
+          .filter(
+            (product) =>
+              packageRole(
+                product,
+                goal
+              ) === role
+          )
+          .sort(
+            (a, b) => {
+              const scoreA =
+                plannerProductScore(
+                  a,
+                  goal
+                );
+
+              const scoreB =
+                plannerProductScore(
+                  b,
+                  goal
+                );
+
+              if (
+                scoreB !==
+                scoreA
+              ) {
+                return (
+                  scoreB -
+                  scoreA
+                );
+              }
+
+              return (
+                price(a) -
+                price(b)
+              );
+            }
+          );
+
+      roleCandidates.set(
+        role,
+        candidates
+      );
+    }
+
+    /*
+     * Als een rol helemaal geen producten heeft,
+     * kunnen we geen compleet pakket samenstellen.
+     */
+    for (
+      const role of requiredRoles
+    ) {
+      if (
+        !roleCandidates.get(
+          role
+        )?.length
+      ) {
+        return {
+          ok: false,
+          reason:
+            `Er zijn momenteel onvoldoende geschikte producten om een compleet ${goal} pakket binnen dit budget samen te stellen.`,
+        };
+      }
+    }
+
+    /*
+     * We zoeken een geldige combinatie binnen budget.
+     *
+     * Geen budgetoptimalisatie.
+     *
+     * Het doel is:
+     * één passende rol per vereiste rol,
+     * zonder dubbel product.
+     */
+    const selected = [];
+    const usedIds =
+      new Set();
+
+    function findCombination(
+      roleIndex,
+      remainingBudget
+    ) {
+      if (
+        roleIndex >=
+        requiredRoles.length
+      ) {
+        return true;
+      }
+
+      const role =
+        requiredRoles[
+          roleIndex
+        ];
+
+      const candidates =
+        roleCandidates.get(
+          role
+        ) || [];
+
+      for (
+        const candidate of candidates
+      ) {
+        const key =
+          plannerProductKey(
+            candidate
+          );
+
+        if (
+          !key ||
+          usedIds.has(key)
+        ) {
+          continue;
+        }
+
+        const candidatePrice =
+          price(candidate);
+
+        if (
+          candidatePrice >
+          remainingBudget +
+            0.001
+        ) {
+          continue;
+        }
+
+        usedIds.add(key);
+        selected.push(
+          candidate
+        );
+
+        const success =
+          findCombination(
+            roleIndex + 1,
+            remainingBudget -
+              candidatePrice
+          );
+
+        if (success) {
+          return true;
+        }
+
+        selected.pop();
+        usedIds.delete(key);
+      }
+
+      return false;
+    }
+
+    const success =
+      findCombination(
+        0,
+        budget
+      );
+
+    if (!success) {
+      return {
+        ok: false,
+        reason:
+          `Ik kan met de huidige producten geen compleet ${goal} pakket binnen €${budget
+            .toFixed(2)
+            .replace(".", ",")} samenstellen.`,
+      };
+    }
+
+    const total =
+      selected.reduce(
+        (
+          sum,
+          product
+        ) =>
+          sum +
+          price(product),
+        0
+      );
+
+    if (
+      total >
+      budget + 0.001
+    ) {
+      return {
+        ok: false,
+        reason:
+          "Er is geen geldig pakket binnen het opgegeven budget gevonden.",
+      };
+    }
+
+    return {
+      ok: true,
+      goal,
+      budget,
+      products:
+        selected,
+      total,
+    };
+  }
+
+  function renderExactPackage(
+    packageData
+  ) {
+    const {
+      goal,
+      budget,
+      products,
+      total,
+    } =
+      packageData;
+
+    const remaining =
+      budget - total;
+
+    const goalLabel =
+      goal === "bulk"
+        ? "Bulk"
+        : goal === "lean-bulk"
+          ? "Lean Bulk"
+          : "Cut";
+
+    const items =
+      products
         .map(
-          candidate => {
-            const product =
-              candidate.product;
-
-            const name =
-              escapeHtml(
-                productName(
-                  product
-                )
-              );
-
-            const merchant =
-              escapeHtml(
-                productMerchant(
-                  product
-                )
-              );
-
-            const productUrlValue =
-              productUrl(
-                product
-              );
-
+          (product) => {
             const productPrice =
               price(product);
+
+            const image =
+              product.image_url
+                ? `
+                  <img
+                    src="${escapeHtml(
+                      product.image_url
+                    )}"
+                    alt="${escapeHtml(
+                      product.name
+                    )}"
+                    loading="lazy"
+                    width="65"
+                    height="65"
+                    onerror="this.style.display='none'"
+                  >
+                `
+                : `
+                  <div
+                    class="product-image-placeholder"
+                  >
+                    FitDealFinder
+                  </div>
+                `;
+
+            const dealUrl =
+              `/go/${encodeURIComponent(
+                String(
+                  product.id
+                )
+              )}`;
 
             const reason =
               plannerProductReason(
                 product,
-                selectedGoal
+                goal
               );
 
             return `
-              <article class="planner-product">
+              <div
+                class="ai-package-item"
+              >
 
-                <div class="planner-product__info">
-                  <strong>
-                    ${name}
-                  </strong>
+                <a
+                  href="${dealUrl}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="ai-package-product-image"
+                >
+                  ${image}
+                </a>
 
-                  ${
-                    merchant
-                      ? `
-                        <span>
-                          ${merchant}
-                        </span>
-                      `
-                      : ""
-                  }
+                <div
+                  class="ai-package-product-info"
+                >
+
+                  <a
+                    href="${dealUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ai-package-product-link"
+                  >
+                    <strong>
+                      ${escapeHtml(
+                        product.name
+                      )}
+                    </strong>
+                  </a>
+
+                  <small>
+                    ${escapeHtml(
+                      product.merchant_name ||
+                      "Winkel onbekend"
+                    )}
+                  </small>
 
                   ${
                     reason
@@ -2245,519 +4240,186 @@ function createPlanner() {
                       `
                       : ""
                   }
+
+                  <strong
+                    class="ai-package-price"
+                  >
+                    ${escapeHtml(
+                      money(
+                        productPrice,
+                        product.currency
+                      )
+                    )}
+                  </strong>
+
+                  <a
+                    href="${dealUrl}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="ai-package-deal-button"
+                  >
+                    Bekijk deal →
+                  </a>
+
                 </div>
 
-                <div class="planner-product__price">
-                  ${money(
-                    productPrice
-                  )}
-                </div>
-
-                ${
-                  productUrlValue
-                    ? `
-                      <a
-                        href="${escapeHtml(
-                          productUrlValue
-                        )}"
-                        target="_blank"
-                        rel="noopener noreferrer nofollow"
-                      >
-                        Bekijk
-                      </a>
-                    `
-                    : ""
-                }
-
-              </article>
+              </div>
             `;
           }
         )
         .join("");
 
-    result.innerHTML = `
-      <div class="planner-summary">
+    responseBox.innerHTML = `
+      <div class="ai-package">
 
-        <strong>
+        <h3>
+          ${goalLabel} pakket
+        </h3>
+
+        <p>
+          Ik heb het pakket samengesteld
+          uit echte FitDealFinder-producten.
+        </p>
+
+        <div class="ai-package-list">
+          ${items}
+        </div>
+
+        <div class="ai-package-total">
+          <span>
+            Totaal
+          </span>
+
+          <strong>
+            ${escapeHtml(
+              money(total)
+            )}
+          </strong>
+        </div>
+
+        <div class="ai-package-budget">
+          Budget:
           ${escapeHtml(
-            selectedGoal
+            money(budget)
           )}
-        </strong>
-
-        <span>
-          ${money(
-            shortlistTotal
+          · over:
+          ${escapeHtml(
+            money(remaining)
           )}
-          van
-          ${money(
-            maxBudget
-          )}
-        </span>
+        </div>
 
-      </div>
+        <p class="ai-package-note">
+          De selectie blijft binnen je opgegeven budget.
+        </p>
 
-      <div class="planner-products">
-        ${cards}
       </div>
     `;
-  };
+  }
 
-  if (submit) {
-    submit.addEventListener(
-      "click",
-      event => {
-        if (
-          form.tagName ===
-          "FORM"
-        ) {
-          return;
+  function injectAIPackageStyles() {
+    if (
+      $("#ai-package-styles")
+    ) {
+      return;
+    }
+
+    const style =
+      document.createElement(
+        "style"
+      );
+
+    style.id =
+      "ai-package-styles";
+
+    style.textContent = `
+      .ai-package-product-image {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 65px;
+        height: 65px;
+        min-width: 65px;
+        border-radius: 10px;
+        overflow: hidden;
+        text-decoration: none;
+      }
+
+      .ai-package-product-image img {
+        display: block;
+        width: 65px !important;
+        height: 65px !important;
+        min-width: 65px !important;
+        min-height: 65px !important;
+        max-width: 65px !important;
+        max-height: 65px !important;
+        object-fit: contain !important;
+      }
+
+      .ai-package-product-link {
+        display: block;
+        color: #fff;
+        text-decoration: none;
+      }
+
+      .ai-package-product-link:hover {
+        color: #67e5a2;
+      }
+
+      .ai-package-deal-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        margin-top: 10px;
+        padding: 0 16px;
+        border-radius: 10px;
+        background: #00a83b;
+        color: #fff !important;
+        font-weight: 900;
+        text-decoration: none;
+      }
+
+      .ai-package-deal-button:hover {
+        background: #00bd43;
+      }
+
+      .ai-package-explanation {
+        margin-top: 20px;
+        padding: 18px;
+        border-radius: 16px;
+        background: rgba(255,255,255,.04);
+        border: 1px solid rgba(255,255,255,.08);
+        line-height: 1.7;
+      }
+
+      .ai-package-explanation > strong {
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .ai-package-explanation p {
+        margin: 0;
+      }
+
+      @media (max-width: 700px) {
+        .ai-package-deal-button {
+          width: 100%;
         }
-
-        event.preventDefault();
-        run();
       }
-    );
-  }
-
-  if (
-    form.tagName ===
-    "FORM"
-  ) {
-    form.addEventListener(
-      "submit",
-      event => {
-        event.preventDefault();
-        run();
-      }
-    );
-  }
-}
-
-/* =========================================================
-   AI HELPERS
-   ========================================================= */
-
-function renderAIText(
-  value
-) {
-  const text =
-    String(value ?? "");
-
-  return escapeHtml(text)
-    .replace(
-      /\*\*(.+?)\*\*/g,
-      "<strong>$1</strong>"
-    )
-    .replace(
-      /\n/g,
-      "<br>"
-    );
-}
-
-function detectProductType(
-  query
-) {
-  const text =
-    normalize(query);
-
-  if (
-    hasAny(
-      text,
-      [
-        "pre workout",
-        "pre-workout",
-        "preworkout",
-      ]
-    )
-  ) {
-    return "pre-workout";
-  }
-
-  if (
-    hasAny(
-      text,
-      [
-        "creatine",
-        "creatine monohydraat",
-        "creatine monohydrate",
-      ]
-    )
-  ) {
-    return "creatine";
-  }
-
-  if (
-    hasAny(
-      text,
-      [
-        "whey",
-        "protein",
-        "proteine",
-        "casein",
-        "caseine",
-        "isolate",
-        "isolaat",
-      ]
-    )
-  ) {
-    return "proteine";
-  }
-
-  if (
-    hasAny(
-      text,
-      [
-        "vitamine",
-        "vitamin",
-        "magnesium",
-        "zink",
-        "zinc",
-        "omega",
-        "electrolytes",
-        "electrolyten",
-        "carnitine",
-        "caffeine",
-        "cafeine",
-        "collagen",
-        "collageen",
-      ]
-    )
-  ) {
-    return "supplementen";
-  }
-
-  return "";
-}
-
-function findAIProducts(
-  query,
-  limit = 8
-) {
-  const text =
-    normalize(query);
-
-  if (!text) {
-    return [];
-  }
-
-  const productType =
-    detectProductType(
-      text
-    );
-
-  const words =
-    text
-      .split(/\s+/)
-      .filter(
-        word =>
-          word.length >= 3
-      );
-
-  const scored =
-    [];
-
-  for (
-    const product of state.products
-  ) {
-    if (
-      !isUsableProduct(
-        product
-      )
-    ) {
-      continue;
-    }
-
-    const searchable =
-      productSearchText(
-        product
-      );
-
-    const category =
-      getProductCategory(
-        product
-      );
-
-    let score = 0;
-
-    /*
-     * Als de gebruiker expliciet om een
-     * producttype vraagt, krijgt exact die
-     * categorie voorrang.
-     */
-
-    if (
-      productType &&
-      category ===
-        productType
-    ) {
-      score += 100;
-    }
-
-    /*
-     * Exacte zoekterm krijgt extra punten.
-     */
-
-    if (
-      searchable.includes(
-        text
-      )
-    ) {
-      score += 50;
-    }
-
-    for (
-      const word of words
-    ) {
-      if (
-        searchable.includes(
-          word
-        )
-      ) {
-        score += 10;
-      }
-    }
-
-    if (
-      score > 0
-    ) {
-      scored.push({
-        product,
-        score,
-      });
-    }
-  }
-
-  return scored
-    .sort(
-      (a, b) => {
-        if (
-          b.score !==
-          a.score
-        ) {
-          return (
-            b.score -
-            a.score
-          );
-        }
-
-        return (
-          price(a.product) -
-          price(b.product)
-        );
-      }
-    )
-    .slice(
-      0,
-      limit
-    )
-    .map(
-      item =>
-        item.product
-    );
-}
-
-function renderAIProductResults(
-  products,
-  container
-) {
-  if (!container) {
-    return;
-  }
-
-  if (
-    !products.length
-  ) {
-    container.innerHTML = `
-      <div class="ai-message">
-        Geen passende producten gevonden.
-      </div>
     `;
 
-    return;
-  }
-
-  container.innerHTML =
-    products
-      .map(
-        product => {
-          const name =
-            escapeHtml(
-              productName(
-                product
-              )
-            );
-
-          const merchant =
-            escapeHtml(
-              productMerchant(
-                product
-              )
-            );
-
-          const url =
-            productUrl(
-              product
-            );
-
-          const productPrice =
-            price(product);
-
-          return `
-            <article class="ai-product">
-
-              <div>
-                <strong>
-                  ${name}
-                </strong>
-
-                ${
-                  merchant
-                    ? `
-                      <small>
-                        ${merchant}
-                      </small>
-                    `
-                    : ""
-                }
-              </div>
-
-              <strong>
-                ${money(
-                  productPrice
-                )}
-              </strong>
-
-              ${
-                url
-                  ? `
-                    <a
-                      href="${escapeHtml(
-                        url
-                      )}"
-                      target="_blank"
-                      rel="noopener noreferrer nofollow"
-                    >
-                      Bekijk
-                    </a>
-                  `
-                  : ""
-              }
-
-            </article>
-          `;
-        }
-      )
-      .join("");
-}
-
-/* =========================================================
-   AI REQUEST
-   ========================================================= */
-
-async function askAI(
-  message
-) {
-  const response =
-    await fetch(
-      API_AI,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/json",
-          Accept:
-            "application/json",
-        },
-        credentials:
-          "same-origin",
-        body:
-          JSON.stringify({
-            message:
-              String(
-                message || ""
-              ).slice(
-                0,
-                4000
-              ),
-          }),
-      }
-    );
-
-  const data =
-    await response
-      .json()
-      .catch(
-        () => ({})
-      );
-
-  if (
-    !response.ok
-  ) {
-    throw new Error(
-      data?.error ||
-        `AI request failed: ${response.status}`
+    document.head.appendChild(
+      style
     );
   }
 
-  return (
-    data?.answer ||
-    data?.message ||
-    data?.text ||
-    ""
-  );
-}
+  injectAIPackageStyles();
 
-/* =========================================================
-   AI SETUP
-   ========================================================= */
+  form.addEventListener(
+    "submit",
+    async (event) => {
+      event.preventDefault();
 
-function setupAI() {
-  const form =
-    first(
-      "#ai-form",
-      "[data-ai-form]"
-    );
-
-  const input =
-    first(
-      "#ai-input",
-      "#ai-message",
-      "[data-ai-input]",
-      "textarea"
-    );
-
-  const output =
-    first(
-      "#ai-output",
-      "[data-ai-output]"
-    );
-
-  const productResults =
-    first(
-      "#ai-product-results",
-      "[data-ai-product-results]"
-    );
-
-  if (!input) {
-    return;
-  }
-
-  const submit =
-    first(
-      "#ai-submit",
-      "[data-ai-submit]"
-    ) ||
-    (
-      form
-        ? $(
-            "button[type='submit']",
-            form
-          )
-        : null
-    );
-
-  const run =
-    async () => {
       const message =
         input.value.trim();
 
@@ -2766,672 +4428,472 @@ function setupAI() {
       }
 
       /*
-       * Eerst zoeken in de eigen catalogus.
+       * =====================================================
+       * 1. ECHTE PRODUCTZOEKOPDRACHT
+       * =====================================================
        */
 
-      const localProducts =
+      const productSearch =
         findAIProducts(
-          message,
-          8
+          message
         );
 
       if (
-        localProducts.length &&
-        productResults
+        productSearch
       ) {
-        renderAIProductResults(
-          localProducts,
-          productResults
-        );
-      }
+        const rendered =
+          renderAIProductResults(
+            productSearch
+          );
 
-      if (output) {
-        output.innerHTML = `
-          <div class="ai-loading">
-            Even zoeken...
+        if (rendered) {
+          return;
+        }
+
+        responseBox.innerHTML = `
+          <div
+            class="ai-response-content"
+          >
+            <p>
+              Ik heb de actuele producten
+              van FitDealFinder gecontroleerd,
+              maar geen passende producten
+              gevonden.
+            </p>
           </div>
         `;
+
+        return;
       }
 
-      if (submit) {
-        submit.disabled =
-          true;
-      }
+      /*
+       * =====================================================
+       * 2. PAKKET
+       * =====================================================
+       */
 
-      try {
-        const normalized =
-          normalize(message);
+      const isPackageRequest =
+        /pakket|pakketje|samenstellen|bundel|combinatie|set/i.test(
+          message
+        );
 
-        const detectedGoal =
-          normalizeGoal(
-            normalized
-          );
+      if (
+        isPackageRequest
+      ) {
+        responseBox.innerHTML = `
+          <p>
+            Ik stel je pakket samen met
+            echte FitDealFinder-producten...
+          </p>
+        `;
 
-        const budgetMatch =
-          normalized.match(
-            /(?:€|eur|euro)\s*(\d+(?:[.,]\d+)?)/
-          );
-
-        const budget =
-          budgetMatch
-            ? Number(
-                budgetMatch[1]
-                  .replace(
-                    ",",
-                    "."
-                  )
-              )
-            : 0;
-
-        /*
-         * Exacte boodschappenlijst-aanvragen
-         * worden lokaal afgehandeld.
-         */
-
-        if (
-          detectedGoal &&
-          budget > 0 &&
-          hasAny(
-            normalized,
-            [
-              "boodschappenlijst",
-              "shopping list",
-              "lijst",
-              "pakket",
-              "pakketje",
-              "producten voor",
-              "producten onder",
-              "budget",
-            ]
-          )
-        ) {
-          const packageItems =
-            buildGoalPackage(
-              detectedGoal,
-              budget
+        try {
+          const packageData =
+            buildExactPackage(
+              message
             );
 
           if (
-            packageItems.length &&
-            output
+            !packageData.ok
           ) {
-            renderGoalPackage(
-              packageItems,
-              detectedGoal,
-              budget,
-              output
-            );
+            responseBox.innerHTML = `
+              <p>
+                ${escapeHtml(
+                  packageData.reason
+                )}
+              </p>
+            `;
 
             return;
           }
-        }
 
-        const answer =
-          await askAI(
-            message
+          renderExactPackage(
+            packageData
           );
 
-        if (output) {
-          output.innerHTML =
-            renderAIText(
-              answer
+          /*
+           * Optionele korte AI-uitleg.
+           *
+           * De gekozen producten en prijzen
+           * mogen hierbij niet veranderen.
+           */
+          try {
+            const productLines =
+              packageData.products
+                .map(
+                  (product) =>
+                    `- ${product.name} | ${money(
+                      price(product),
+                      product.currency
+                    )} | ${
+                      product.merchant_name ||
+                      "onbekende winkel"
+                    }`
+                )
+                .join("\n");
+
+            const explanationRequest = `
+Leg kort uit waarom dit exacte FitDealFinder-pakket logisch is voor ${packageData.goal}.
+
+Gebruik uitsluitend deze al gekozen producten:
+
+${productLines}
+
+Budget: ${money(packageData.budget)}
+Exact totaal: ${money(packageData.total)}
+
+BELANGRIJK:
+
+- verander geen productnamen;
+- verander geen prijzen;
+- voeg geen producten toe;
+- verwijder geen producten;
+- verander het totaal niet;
+- geef alleen een korte uitleg.
+            `.trim();
+
+            const response =
+              await fetch(
+                API_AI,
+                {
+                  method:
+                    "POST",
+                  headers: {
+                    "Content-Type":
+                      "application/json",
+                    Accept:
+                      "application/json",
+                  },
+                  body:
+                    JSON.stringify({
+                      message:
+                        explanationRequest,
+                    }),
+                }
+              );
+
+            if (
+              response.ok
+            ) {
+              const data =
+                await response.json();
+
+              const answer =
+                data.answer ||
+                data.response ||
+                data.message ||
+                "";
+
+              if (answer) {
+                responseBox.innerHTML += `
+                  <div
+                    class="ai-package-explanation"
+                  >
+
+                    <strong>
+                      Waarom dit pakket?
+                    </strong>
+
+                    <p>
+                      ${renderAIText(
+                        answer
+                      )}
+                    </p>
+
+                  </div>
+                `;
+              }
+            }
+          } catch (
+            aiError
+          ) {
+            console.warn(
+              "AI uitleg niet beschikbaar:",
+              aiError
             );
+          }
+
+          return;
+        } catch (
+          error
+        ) {
+          console.error(
+            "FitDealFinder pakket error:",
+            error
+          );
+
+          responseBox.innerHTML = `
+            <p>
+              Het pakket kon momenteel niet
+              worden samengesteld.
+              Probeer het opnieuw.
+            </p>
+          `;
+
+          return;
         }
+      }
+
+      /*
+       * =====================================================
+       * 3. GEWONE AI-VRAAG
+       * =====================================================
+       */
+
+      responseBox.innerHTML = `
+        <p>
+          Even nadenken...
+        </p>
+      `;
+
+      try {
+        const response =
+          await fetch(
+            API_AI,
+            {
+              method:
+                "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+                Accept:
+                  "application/json",
+              },
+              body:
+                JSON.stringify({
+                  message,
+                }),
+            }
+          );
+
+        if (
+          !response.ok
+        ) {
+          throw new Error(
+            `AI API gaf status ${response.status}`
+          );
+        }
+
+        const data =
+          await response.json();
+
+        const answer =
+          data.answer ||
+          data.response ||
+          data.message ||
+          "Ik kon hier nu geen antwoord op geven.";
+
+        responseBox.innerHTML = `
+          <div
+            class="ai-response-content"
+          >
+            ${renderAIText(
+              answer
+            )}
+          </div>
+        `;
       } catch (
         error
       ) {
         console.error(
-          "AI request failed:",
+          "FitDealFinder AI error:",
           error
         );
 
-        if (output) {
-          output.innerHTML = `
-            <div class="ai-error">
-              Er ging iets mis.
-              Probeer het opnieuw.
-            </div>
-          `;
-        }
-      } finally {
-        if (submit) {
-          submit.disabled =
-            false;
-        }
-      }
-    };
-
-  if (form) {
-    form.addEventListener(
-      "submit",
-      event => {
-        event.preventDefault();
-        run();
-      }
-    );
-  } else if (submit) {
-    submit.addEventListener(
-      "click",
-      event => {
-        event.preventDefault();
-        run();
-      }
-    );
-  }
-}
-
-/* =========================================================
-   AI GOAL PACKAGE
-   ========================================================= */
-
-function buildGoalPackage(
-  goal,
-  budget
-) {
-  const selectedGoal =
-    normalizeGoal(
-      goal
-    );
-
-  if (
-    !selectedGoal ||
-    !Number.isFinite(
-      budget
-    ) ||
-    budget <= 0
-  ) {
-    return [];
-  }
-
-  /*
-   * Alleen kandidaten met een rol binnen
-   * het gekozen doel.
-   */
-
-  const candidates =
-    state.products
-      .filter(
-        isUsableProduct
-      )
-      .map(
-        product => ({
-          product,
-          role:
-            packageRole(
-              product,
-              selectedGoal
-            ),
-          score:
-            plannerProductScore(
-              product,
-              selectedGoal
-            ),
-        })
-      )
-      .filter(
-        item =>
-          item.role &&
-          item.score > 0
-      )
-      .sort(
-        (a, b) => {
-          if (
-            b.score !==
-            a.score
-          ) {
-            return (
-              b.score -
-              a.score
-            );
-          }
-
-          return (
-            price(a.product) -
-            price(b.product)
-          );
-        }
-      );
-
-  /*
-   * Rollen per doel.
-   */
-
-  const roleOrder =
-    selectedGoal ===
-    "cut"
-      ? [
-          "protein",
-          "cut-support",
-          "creatine",
-        ]
-      : selectedGoal ===
-        "bulk"
-      ? [
-          "protein",
-          "carb",
-          "creatine",
-        ]
-      : [
-          "protein",
-          "creatine",
-          "carb",
-        ];
-
-  const selected =
-    [];
-
-  const used =
-    new Set();
-
-  let total = 0;
-
-  /*
-   * Eerst proberen we één product
-   * per relevante rol te pakken.
-   */
-
-  for (
-    const role of roleOrder
-  ) {
-    const candidate =
-      candidates.find(
-        item => {
-          if (
-            item.role !==
-            role
-          ) {
-            return false;
-          }
-
-          const key =
-            plannerProductKey(
-              item.product
-            );
-
-          if (
-            !key ||
-            used.has(key)
-          ) {
-            return false;
-          }
-
-          return (
-            total +
-              price(
-                item.product
-              ) <=
-            budget +
-              0.001
-          );
-        }
-      );
-
-    if (
-      !candidate
-    ) {
-      continue;
-    }
-
-    const key =
-      plannerProductKey(
-        candidate.product
-      );
-
-    if (!key) {
-      continue;
-    }
-
-    used.add(key);
-
-    total +=
-      price(
-        candidate.product
-      );
-
-    selected.push(
-      candidate
-    );
-
-    if (
-      selected.length >=
-      3
-    ) {
-      break;
-    }
-  }
-
-  /*
-   * Daarna eventueel extra producten.
-   *
-   * Nog steeds uitsluitend uit het
-   * geselecteerde doel.
-   */
-
-  if (
-    selected.length < 5
-  ) {
-    for (
-      const candidate of candidates
-    ) {
-      const key =
-        plannerProductKey(
-          candidate.product
-        );
-
-      if (
-        !key ||
-        used.has(key)
-      ) {
-        continue;
-      }
-
-      const p =
-        price(
-          candidate.product
-        );
-
-      if (
-        total + p >
-        budget +
-          0.001
-      ) {
-        continue;
-      }
-
-      used.add(key);
-
-      total += p;
-
-      selected.push(
-        candidate
-      );
-
-      if (
-        selected.length >=
-        5
-      ) {
-        break;
+        responseBox.innerHTML = `
+          <p>
+            De Supplement Coach is
+            momenteel niet beschikbaar.
+            Probeer het later opnieuw.
+          </p>
+        `;
       }
     }
-  }
-
-  return selected;
-}
-
-function renderGoalPackage(
-  items,
-  goal,
-  budget,
-  output
-) {
-  let total = 0;
-
-  const html =
-    items
-      .map(
-        item => {
-          const product =
-            item.product;
-
-          const p =
-            price(product);
-
-          total += p;
-
-          const name =
-            escapeHtml(
-              productName(
-                product
-              )
-            );
-
-          const merchant =
-            escapeHtml(
-              productMerchant(
-                product
-              )
-            );
-
-          const reason =
-            escapeHtml(
-              plannerProductReason(
-                product,
-                goal
-              )
-            );
-
-          const url =
-            productUrl(
-              product
-            );
-
-          return `
-            <article class="ai-product">
-
-              <div>
-                <strong>
-                  ${name}
-                </strong>
-
-                ${
-                  merchant
-                    ? `
-                      <small>
-                        ${merchant}
-                      </small>
-                    `
-                    : ""
-                }
-
-                ${
-                  reason
-                    ? `
-                      <small>
-                        ${reason}
-                      </small>
-                    `
-                    : ""
-                }
-              </div>
-
-              <strong>
-                ${money(p)}
-              </strong>
-
-              ${
-                url
-                  ? `
-                    <a
-                      href="${escapeHtml(
-                        url
-                      )}"
-                      target="_blank"
-                      rel="noopener noreferrer nofollow"
-                    >
-                      Bekijk
-                    </a>
-                  `
-                  : ""
-              }
-
-            </article>
-          `;
-        }
-      )
-      .join("");
-
-  output.innerHTML = `
-    <div class="ai-package">
-
-      <div class="ai-package__summary">
-
-        <strong>
-          ${escapeHtml(
-            goal
-          )}
-        </strong>
-
-        <span>
-          ${money(total)}
-          van
-          ${money(budget)}
-        </span>
-
-      </div>
-
-      <div class="ai-package__products">
-        ${html}
-      </div>
-
-    </div>
-  `;
+  );
 }
 
 /* =========================================================
    DEAL TRACKING
-   ========================================================= */
+========================================================= */
 
 function setupDealTracking() {
+  /*
+   * /go/:id wordt server-side afgehandeld.
+   *
+   * We blokkeren de navigatie NIET.
+   */
   document.addEventListener(
     "click",
-    event => {
+    (event) => {
+      const target =
+        event.target;
+
+      if (
+        !target ||
+        !target.closest
+      ) {
+        return;
+      }
+
       const link =
-        event.target.closest(
-          "a[href]"
+        target.closest(
+          'a[href^="/go/"]'
         );
 
       if (!link) {
         return;
       }
 
-      const href =
-        link.getAttribute(
-          "href"
-        );
-
-      if (!href) {
-        return;
-      }
-
       /*
-       * Client-side event.
-       * Er wordt hier niets naar de server geschreven.
+       * Bewust niets blokkeren.
        */
-
-      if (
-        link.closest(
-          ".product-card, .planner-product, .ai-product"
-        )
-      ) {
-        try {
-          window.dispatchEvent(
-            new CustomEvent(
-              "fitdealfinder:deal-click",
-              {
-                detail: {
-                  url: href,
-                },
-              }
-            )
-          );
-        } catch {
-          /* no-op */
-        }
-      }
     }
   );
 }
 
 /* =========================================================
    KEYBOARD
-   ========================================================= */
+========================================================= */
 
 function setupKeyboard() {
   document.addEventListener(
     "keydown",
-    event => {
+    (event) => {
       if (
-        event.key !== "/" ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey
+        event.key === "/" &&
+        document.activeElement?.tagName !==
+          "INPUT" &&
+        document.activeElement?.tagName !==
+          "TEXTAREA" &&
+        document.activeElement?.tagName !==
+          "SELECT"
       ) {
-        return;
+        event.preventDefault();
+
+        const input =
+          $("#search-input");
+
+        if (input) {
+          input.focus();
+        }
       }
-
-      const target =
-        event.target;
-
-      if (
-        target &&
-        (
-          target.matches?.(
-            "input, textarea, select"
-          ) ||
-          target.isContentEditable
-        )
-      ) {
-        return;
-      }
-
-      const input =
-        first(
-          "#search",
-          "#search-input",
-          "[data-search-input]",
-          'input[type="search"]'
-        );
-
-      if (!input) {
-        return;
-      }
-
-      event.preventDefault();
-      input.focus();
     }
   );
+
+  const loadMore =
+    $("#load-more");
+
+  if (
+    loadMore
+  ) {
+    loadMore.addEventListener(
+      "click",
+      () => {
+        if (
+          state.category
+        ) {
+          return;
+        }
+
+        state.visibleCount +=
+          PRODUCTS_PER_VIEW;
+
+        renderProducts();
+      }
+    );
+  }
 }
 
 /* =========================================================
-   LOAD MORE SETUP
-   ========================================================= */
+   DEBUG / CATEGORY CHECK
+========================================================= */
 
-function setupLoadMore() {
-  const button =
-    first(
-      "#load-more",
-      "[data-load-more]",
-      ".load-more"
-    );
-
-  if (!button) {
+/*
+ * Deze functie verandert niets aan de website.
+ *
+ * Hij maakt alleen in de browserconsole inzichtelijk
+ * hoeveel producten volgens de definitieve classificatie
+ * in iedere categorie vallen.
+ *
+ * Dit is expres toegevoegd zodat we na deployment
+ * heel snel kunnen controleren of de categorieën
+ * elkaar niet meer overlappen.
+ */
+function debugProductCategories() {
+  if (
+    !state.products.length
+  ) {
     return;
   }
 
-  button.addEventListener(
-    "click",
-    event => {
-      event.preventDefault();
-      loadMoreProducts();
+  const counts = {
+    "pre-workout": 0,
+    creatine: 0,
+    proteine: 0,
+    supplementen: 0,
+    overig: 0,
+  };
+
+  for (
+    const product of state.products
+  ) {
+    if (
+      !isUsableProduct(product)
+    ) {
+      continue;
     }
+
+    const category =
+      getProductCategory(
+        product
+      );
+
+    if (
+      Object.prototype.hasOwnProperty.call(
+        counts,
+        category
+      )
+    ) {
+      counts[category]++;
+    }
+  }
+
+  console.table(
+    counts
   );
 }
 
 /* =========================================================
-   INITIALIZATION
-   ========================================================= */
+   INIT
+========================================================= */
 
 function init() {
   setupSearch();
-  setupCategories();
+
+  /*
+   * Homepage-doelen zijn verwijderd.
+   * Deze setup is alleen nog compatibiliteit.
+   */
   setupGoals();
-  setupLoadMore();
-  setupAI();
-  setupDealTracking();
-  setupKeyboard();
+
+  setupCategories();
+
   createPlanner();
 
-  loadProducts();
+  setupAI();
+
+  setupDealTracking();
+
+  setupKeyboard();
+
+  loadProducts().then(
+    () => {
+      /*
+       * Alleen debug-output in de console.
+       */
+      debugProductCategories();
+    }
+  );
 }
 
 if (
@@ -3440,9 +4902,8 @@ if (
 ) {
   document.addEventListener(
     "DOMContentLoaded",
-    init,
-    { once: true }
+    init
   );
 } else {
   init();
-         }
+}
