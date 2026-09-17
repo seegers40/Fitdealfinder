@@ -1,4 +1,3 @@
-
 "use strict";
 
 /*
@@ -462,6 +461,15 @@ function hasAny(text, words) {
  *
  * Bulk / Cut / Lean Bulk worden uitsluitend
  * door matchesGoal() bepaald.
+ *
+ * VOOR CATEGORIEËN ZOEKEN WE IN:
+ *
+ * - product.name
+ * - product.brand
+ * - product.category
+ * - product.description
+ *
+ * product.goals wordt hier NOOIT gebruikt.
  */
 function matchesCategory(
   product,
@@ -475,18 +483,22 @@ function matchesCategory(
     normalize(category);
 
   /*
-   * Voor categorieën gebruiken we alleen:
+   * AANGEPAST:
    *
-   * - product.name
-   * - product.brand
-   * - product.category
+   * Voor categorieën gebruiken we nu ook
+   * product.description.
    *
-   * Dus NIET:
-   * - product.goals
-   * - description
+   * product.goals blijft bewust buiten deze
+   * tekst, zodat goals niet kunnen bepalen
+   * of een product bij een categorie hoort.
    */
   const text =
-    productIdentityText(product);
+    normalize([
+      product?.name,
+      product?.brand,
+      product?.category,
+      product?.description
+    ].join(" "));
 
   /*
    * PROTEÏNE
@@ -541,7 +553,8 @@ function matchesCategory(
    */
   if (
     normalizedCategory === "supplementen" ||
-    normalizedCategory === "supplement"
+    normalizedCategory === "supplement" ||
+    normalizedCategory === "supplements"
   ) {
     return hasAny(
       text,
@@ -551,16 +564,23 @@ function matchesCategory(
 
   /*
    * Als de backend zelf een category-waarde
-   * heeft die exact overeenkomt met de gekozen
+   * heeft die overeenkomt met de gekozen
    * categorie, accepteren we die ook.
+   *
+   * Ook hier wordt product.goals NIET gebruikt.
    */
   const productCategory =
     normalize(product?.category);
 
   if (
     productCategory &&
-    productCategory ===
-      normalizedCategory
+    (
+      productCategory ===
+        normalizedCategory ||
+      productCategory.includes(
+        normalizedCategory
+      )
+    )
   ) {
     return true;
   }
@@ -3835,7 +3855,8 @@ BELANGRIJK:
                   message
                 })
               }
-            );
+            }
+          );
 
         if (
           !response.ok
@@ -4005,4 +4026,4 @@ if (
   );
 } else {
   init();
-}
+  }
