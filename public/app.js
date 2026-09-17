@@ -707,101 +707,106 @@ async function loadProducts() {
 
   state.loading = true;
 
-  const grid =
-    $("#products-grid");
+  const grid = $("#products-grid");
 
-  if (
-    grid &&
-    !state.products.length
-  ) {
+  if (grid) {
     grid.innerHTML = `
       <div class="empty-state">
         <h3>Deals laden...</h3>
-        <p>
-          We halen de actuele productgegevens op.
-        </p>
+        <p>We halen de actuele productgegevens op.</p>
       </div>
     `;
   }
 
+  const controller = new AbortController();
+
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 15000);
+
   try {
-    /*
-     * AANGEPAST:
-     *
-     * We doen hier één API-request.
-     *
-     * De vorige versie bleef meerdere
-     * offset-requests achter elkaar uitvoeren:
-     *
-     *   offset=0
-     *   offset=200
-     *   offset=400
-     *   enz.
-     *
-     * Daardoor kon de pagina lang op
-     * "Deals laden..." blijven staan.
-     */
-    const url =
-      `${API_PRODUCTS}?limit=${PAGE_SIZE}`;
+    console.log(
+      "FitDealFinder: producten ophalen via",
+      `${API_PRODUCTS}?limit=${PAGE_SIZE}`
+    );
 
-    const response =
-      await fetch(
-        url,
-        {
-          headers: {
-            Accept:
-              "application/json"
-          },
-          cache: "no-store"
-        }
-      );
+    const response = await fetch(
+      `${API_PRODUCTS}?limit=${PAGE_SIZE}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json"
+        },
+        cache: "no-store",
+        signal: controller.signal
+      }
+    );
 
-    /*
-     * Een fetch() geeft ook bij bijvoorbeeld
-     * 404/500 een Response terug.
-     * Daarom controleren we expliciet response.ok.
-     */
+    console.log(
+      "FitDealFinder: API response",
+      response.status,
+      response.statusText
+    );
+
     if (!response.ok) {
       throw new Error(
-        `Product API gaf status ${response.status}`
+        `Product API gaf HTTP ${response.status}`
       );
     }
 
-    const data =
-      await response.json();
+    const contentType =
+      response.headers.get("content-type") || "";
 
-    /*
-     * Ondersteun zowel:
-     *
-     * [...]
-     *
-     * als:
-     *
-     * { products: [...] }
-     *
-     * als:
-     *
-     * { data: [...] }
-     */
+    console.log(
+      "FitDealFinder: content-type",
+      contentType
+    );
+
+    const rawText = await response.text();
+
+    console.log(
+      "FitDealFinder: response lengte",
+      rawText.length
+    );
+
+    if (!rawText.trim()) {
+      throw new Error(
+        "Product API gaf een lege response terug."
+      );
+    }
+
+    let data;
+
+    try {
+      data = JSON.parse(rawText);
+    } catch (jsonError) {
+      console.error(
+        "FitDealFinder: ongeldige JSON:",
+        rawText.slice(0, 500)
+      );
+
+      throw new Error(
+        "Product API gaf geen geldige JSON terug."
+      );
+    }
+
     const products =
       Array.isArray(data)
         ? data
-        : Array.isArray(
-            data?.products
-          )
+        : Array.isArray(data?.products)
           ? data.products
-          : Array.isArray(
-              data?.data
-            )
+          : Array.isArray(data?.data)
             ? data.data
             : [];
 
-    const unique =
-      new Map();
+    console.log(
+      "FitDealFinder: producten ontvangen",
+      products.length
+    );
 
-    for (
-      const product of products
-    ) {
+    const unique = new Map();
+
+    for (const product of products) {
       if (!product?.id) {
         continue;
       }
@@ -812,12 +817,14 @@ async function loadProducts() {
       );
     }
 
-    state.products =
-      [...unique.values()]
-        .slice(
-          0,
-          MAX_PRODUCTS
-        );
+    state.products = [
+      ...unique.values()
+    ].slice(0, MAX_PRODUCTS);
+
+    console.log(
+      "FitDealFinder: bruikbare records in state",
+      state.products.length
+    );
 
     applyFilters();
 
@@ -827,19 +834,36 @@ async function loadProducts() {
       error
     );
 
+    let message =
+      "Er ging iets mis met het ophalen van de producten.";
+
+    if (error?.name === "AbortError") {
+      message =
+        "De product-API reageert niet binnen 15 seconden.";
+    } else if (error?.message) {
+      message = error.message;
+    }
+
     if (grid) {
       grid.innerHTML = `
         <div class="empty-state">
-          <h3>
-            Deals konden niet worden geladen
-          </h3>
+          <h3>Deals konden niet worden geladen</h3>
 
           <p>
-            Er ging iets mis met het
-            ophalen van de producten.
-            Probeer de pagina opnieuw
-            te laden.
+            ${escapeHtml(message)}
           </p>
+
+          <p style="margin-top: 12px;">
+            Open de browserconsole (F12) voor meer informatie.
+          </p>
+
+          <button
+            type="button"
+            onclick="window.location.reload()"
+            style="margin-top: 16px;"
+          >
+            Opnieuw proberen
+          </button>
         </div>
       `;
     }
@@ -847,6 +871,7 @@ async function loadProducts() {
     updateProductCount(0);
 
   } finally {
+    clearTimeout(timeout);
     state.loading = false;
   }
 }
