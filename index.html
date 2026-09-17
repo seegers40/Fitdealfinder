@@ -1,15 +1,25 @@
 <!doctype html>
 <html lang="nl">
 <head>
+
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
 
-<title>FitDealFinder.nl — Slim besparen op fitness</title>
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1"
+>
 
-<meta name="description"
-content="Vergelijk fitnessproducten op prijs, doel en budget. Bouw een slimme boodschappenlijst voor Cut, Bulk en Lean Bulk.">
+<title>
+  FitDealFinder.nl — Slim besparen op fitness
+</title>
+
+<meta
+  name="description"
+  content="Vergelijk fitnessproducten op prijs, doel en budget. Bouw een slimme boodschappenlijst voor Cut, Bulk en Lean Bulk."
+>
 
 <style>
+
 :root{
   --dark:#0b1020;
   --dark2:#15213a;
@@ -35,7 +45,13 @@ body{
   margin:0;
   background:var(--bg);
   color:var(--text);
-  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
 }
 
 a{
@@ -54,7 +70,10 @@ select{
   margin:auto;
 }
 
-/* HEADER */
+
+/* =========================================================
+   HEADER
+========================================================= */
 
 header{
   background:var(--dark);
@@ -88,10 +107,18 @@ header{
   color:white;
 }
 
-/* HERO */
+
+/* =========================================================
+   HERO
+========================================================= */
 
 .hero{
-  background:linear-gradient(135deg,var(--dark),#1c2d50);
+  background:
+    linear-gradient(
+      135deg,
+      var(--dark),
+      #1c2d50
+    );
   color:white;
   padding:66px 0 88px;
 }
@@ -133,6 +160,15 @@ header{
   padding:11px 18px;
   font-weight:800;
   cursor:pointer;
+  transition:
+    background .2s ease,
+    color .2s ease,
+    border-color .2s ease,
+    transform .2s ease;
+}
+
+.goalbtn:hover{
+  transform:translateY(-1px);
 }
 
 .goalbtn.active{
@@ -141,7 +177,10 @@ header{
   border-color:var(--green);
 }
 
-/* PLANNER */
+
+/* =========================================================
+   PLANNER
+========================================================= */
 
 .planner{
   background:white;
@@ -235,7 +274,10 @@ h2{
   margin-bottom:0;
 }
 
-/* PRODUCTS */
+
+/* =========================================================
+   PRODUCTS
+========================================================= */
 
 .section{
   padding:48px 0;
@@ -340,7 +382,10 @@ h2{
   color:var(--muted);
 }
 
-/* INFO */
+
+/* =========================================================
+   INFO
+========================================================= */
 
 .info{
   background:var(--dark);
@@ -355,7 +400,10 @@ h2{
   line-height:1.6;
 }
 
-/* FOOTER */
+
+/* =========================================================
+   FOOTER
+========================================================= */
 
 footer{
   background:var(--dark);
@@ -365,7 +413,10 @@ footer{
   line-height:1.6;
 }
 
-/* MOBILE */
+
+/* =========================================================
+   MOBILE
+========================================================= */
 
 @media(max-width:850px){
 
@@ -393,6 +444,22 @@ footer{
     padding:48px 0 65px;
   }
 
+  .hero h1{
+    font-size:42px;
+  }
+
+  .hero p{
+    font-size:16px;
+  }
+
+  .goalrow{
+    gap:8px;
+  }
+
+  .goalbtn{
+    padding:11px 17px;
+  }
+
   .formgrid,
   .cards{
     grid-template-columns:1fr;
@@ -400,6 +467,7 @@ footer{
 
   .planner{
     margin-top:-18px;
+    padding:20px;
   }
 
   .section{
@@ -407,68 +475,115 @@ footer{
   }
 
 }
+
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media(max-width:380px){
+
+  .goalbtn{
+    width:100%;
+  }
+
+  .hero h1{
+    font-size:36px;
+  }
+
+}
+
 </style>
+
 </head>
+
 
 <body>
 
-<!-- HEADER -->
+
+<!-- =======================================================
+     HEADER
+======================================================= -->
 
 <header>
 
-<div class="wrap nav">
+  <div class="wrap nav">
 
-<div class="logo">
-FitDealFinder.nl
-</div>
+    <div class="logo">
+      FitDealFinder.nl
+    </div>
 
-<nav class="navlinks">
-<a href="#deals">Deals</a>
-<a href="#planner">Jouw doel</a>
-<a href="#uitleg">Hoe werkt het?</a>
-</nav>
+    <nav class="navlinks">
 
-</div>
+      <a href="#deals">
+        Deals
+      </a>
+
+      <a href="#planner">
+        Jouw doel
+      </a>
+
+      <a href="#uitleg">
+        Hoe werkt het?
+      </a>
+
+    </nav>
+
+  </div>
 
 </header>
 
 
-<!-- HERO -->
+<!-- =======================================================
+     HERO
+======================================================= -->
 
 <section class="hero">
 
-<div class="wrap">
+  <div class="wrap">
 
-<div class="eyebrow">
-Fitness • Voeding • Slim besparen
-</div>
+    <div class="eyebrow">
+      Fitness • Voeding • Slim besparen
+    </div>
 
-<h1>
-Vind de beste fitnessdeal voor jouw doel.
-</h1>
+    <h1>
+      Vind de beste fitnessdeal voor jouw doel.
+    </h1>
 
-<p>
-Vergelijk fitnessproducten op prijs, winkel en doel.
-Bouw daarna een boodschappenlijst voor Cut, Bulk of Lean Bulk.
-</p>
+    <p>
+      Vergelijk fitnessproducten op prijs, winkel en doel.
+      Bouw daarna een boodschappenlijst voor Cut, Bulk of Lean Bulk.
+    </p>
 
-<div class="goalrow">
+    <div class="goalrow">
 
-<button class="goalbtn active" data-goal="cut">
-Cut
-</button>
+      <button
+        class="goalbtn active"
+        data-goal="cut"
+        type="button"
+      >
+        Cut
+      </button>
 
-<button class="goalbtn" data-goal="bulk">
-Bulk
-</button>
+      <button
+        class="goalbtn"
+        data-goal="bulk"
+        type="button"
+      >
+        Bulk
+      </button>
 
-<button class="goalbtn" data-goal="lean-bulk">
-Lean Bulk
-</button>
+      <button
+        class="goalbtn"
+        data-goal="lean-bulk"
+        type="button"
+      >
+        Lean Bulk
+      </button>
 
-</div>
+    </div>
 
-</div>
+  </div>
 
 </section>
 
@@ -476,267 +591,293 @@ Lean Bulk
 <main class="wrap">
 
 
-<!-- PLANNER -->
-
-<section class="planner" id="planner">
-
-<h2>
-Jouw boodschappenplanner
-</h2>
-
-<p class="sub">
-Stel je doel en budget in. Het budget is een harde bovengrens.
-</p>
-
-<div class="formgrid">
-
-<div class="field">
-
-<label>
-Doel
-</label>
-
-<select id="goal">
-
-<option value="cut">
-Cut
-</option>
-
-<option value="bulk">
-Bulk
-</option>
-
-<option value="lean-bulk">
-Lean Bulk
-</option>
-
-</select>
-
-</div>
-
-
-<div class="field">
-
-<label>
-Budget
-</label>
-
-<input
-id="budget"
-type="number"
-min="1"
-step="0.01"
-value="60"
->
-
-</div>
-
-
-<div class="field">
-
-<label>
-Budgetperiode
-</label>
-
-<select id="period">
-
-<option value="week">
-Per week
-</option>
-
-<option value="month">
-Per maand
-</option>
-
-</select>
-
-</div>
-
-
-<div class="field">
-
-<label>
-Min. eiwit per dag
-</label>
-
-<input
-id="protein"
-type="number"
-min="0"
-step="5"
-value="160"
->
-
-</div>
-
-</div>
-
-
-<div style="margin-top:14px">
-
-<button
-class="btn green"
-id="makePlan"
->
-Maak mijn boodschappenlijst
-</button>
-
-</div>
-
-
-<div class="note">
-
-Prijzen zijn momentopnames en kunnen veranderen.
-Sommige winkels tonen vanaf-prijzen. Controleer altijd de winkelprijs voordat je bestelt.
-
-</div>
-
-
-<div id="planResult"></div>
-
-</section>
-
-
-
-<!-- PRODUCTEN -->
-
-<section class="section" id="deals">
-
-<h2>
-Echte producten
-</h2>
-
-<p class="sub">
-Fitnessproducten van Nederlandse sportvoedingswinkels.
-</p>
-
-
-<div class="toolbar">
-
-<input
-id="search"
-placeholder="Zoek whey, creatine, bar, maaltijd…"
->
-
-<select id="category">
-
-<option value="all">
-Alle categorieën
-</option>
-
-<option value="whey">
-Whey
-</option>
-
-<option value="creatine">
-Creatine
-</option>
-
-<option value="snacks">
-Snacks
-</option>
-
-<option value="meals">
-Maaltijden
-</option>
-
-<option value="preworkout">
-Pre-workout
-</option>
-
-<option value="vitamins">
-Vitamines
-</option>
-
-<option value="gainer">
-Gainer
-</option>
-
-</select>
-
-</div>
-
-
-<div
-class="cards"
-id="cards"
-></div>
-
-</section>
-
-
-
-<!-- UITLEG -->
+<!-- =======================================================
+     PLANNER
+======================================================= -->
 
 <section
-class="section"
-id="uitleg"
+  class="planner"
+  id="planner"
 >
 
-<div class="info">
+  <h2>
+    Jouw boodschappenplanner
+  </h2>
 
-<h2>
-Hoe FitDealFinder werkt
-</h2>
+  <p class="sub">
+    Stel je doel en budget in. Het budget is een harde bovengrens.
+  </p>
 
-<ul>
 
-<li>
-<strong>1. Kies je doel:</strong>
-Cut, Bulk of Lean Bulk.
-</li>
+  <div class="formgrid">
 
-<li>
-<strong>2. Stel je budget in:</strong>
-per week of per maand.
-</li>
 
-<li>
-<strong>3. Vergelijk:</strong>
-producten en winkels.
-</li>
+    <div class="field">
 
-<li>
-<strong>4. Bouw je lijst:</strong>
-de planner blijft onder je budget.
-</li>
+      <label for="goal">
+        Doel
+      </label>
 
-<li>
-<strong>5. Volgende stap:</strong>
-Awin-links, automatische productfeeds, prijsverloop en echte AI.
-</li>
+      <select id="goal">
 
-</ul>
+        <option value="cut">
+          Cut
+        </option>
 
-<p>
+        <option value="bulk">
+          Bulk
+        </option>
 
-De AI-assistent wordt later gekoppeld aan dezelfde productdatabase.
-Hij mag dan alleen producten voorstellen die daadwerkelijk in FitDealFinder staan
-en mag nooit het ingestelde budget overschrijden.
+        <option value="lean-bulk">
+          Lean Bulk
+        </option>
 
-</p>
+      </select>
 
-</div>
+    </div>
+
+
+    <div class="field">
+
+      <label for="budget">
+        Budget
+      </label>
+
+      <input
+        id="budget"
+        type="number"
+        min="1"
+        step="0.01"
+        value="60"
+      >
+
+    </div>
+
+
+    <div class="field">
+
+      <label for="period">
+        Budgetperiode
+      </label>
+
+      <select id="period">
+
+        <option value="week">
+          Per week
+        </option>
+
+        <option value="month">
+          Per maand
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <div class="field">
+
+      <label for="protein">
+        Min. eiwit per dag
+      </label>
+
+      <input
+        id="protein"
+        type="number"
+        min="0"
+        step="5"
+        value="160"
+      >
+
+    </div>
+
+  </div>
+
+
+  <div style="margin-top:14px">
+
+    <button
+      class="btn green"
+      id="makePlan"
+      type="button"
+    >
+      Maak mijn boodschappenlijst
+    </button>
+
+  </div>
+
+
+  <div class="note">
+
+    Prijzen zijn momentopnames en kunnen veranderen.
+    Sommige winkels tonen vanaf-prijzen.
+    Controleer altijd de winkelprijs voordat je bestelt.
+
+  </div>
+
+
+  <div id="planResult"></div>
 
 </section>
+
+
+
+<!-- =======================================================
+     PRODUCTEN
+======================================================= -->
+
+<section
+  class="section"
+  id="deals"
+>
+
+  <h2>
+    Echte producten
+  </h2>
+
+  <p class="sub">
+    Fitnessproducten van Nederlandse sportvoedingswinkels.
+  </p>
+
+
+  <div class="toolbar">
+
+    <input
+      id="search"
+      placeholder="Zoek whey, creatine, bar, maaltijd…"
+      aria-label="Zoek producten"
+    >
+
+
+    <select
+      id="category"
+      aria-label="Kies categorie"
+    >
+
+      <option value="all">
+        Alle categorieën
+      </option>
+
+      <option value="whey">
+        Whey
+      </option>
+
+      <option value="creatine">
+        Creatine
+      </option>
+
+      <option value="snacks">
+        Snacks
+      </option>
+
+      <option value="meals">
+        Maaltijden
+      </option>
+
+      <option value="preworkout">
+        Pre-workout
+      </option>
+
+      <option value="vitamins">
+        Vitamines
+      </option>
+
+      <option value="gainer">
+        Gainer
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div
+    class="cards"
+    id="cards"
+  ></div>
+
+</section>
+
+
+
+<!-- =======================================================
+     UITLEG
+======================================================= -->
+
+<section
+  class="section"
+  id="uitleg"
+>
+
+  <div class="info">
+
+    <h2>
+      Hoe FitDealFinder werkt
+    </h2>
+
+    <ul>
+
+      <li>
+        <strong>1. Kies je doel:</strong>
+        Cut, Bulk of Lean Bulk.
+      </li>
+
+      <li>
+        <strong>2. Stel je budget in:</strong>
+        per week of per maand.
+      </li>
+
+      <li>
+        <strong>3. Vergelijk:</strong>
+        producten en winkels.
+      </li>
+
+      <li>
+        <strong>4. Bouw je lijst:</strong>
+        de planner blijft onder je budget.
+      </li>
+
+      <li>
+        <strong>5. Volgende stap:</strong>
+        Awin-links, automatische productfeeds,
+        prijsverloop en echte AI.
+      </li>
+
+    </ul>
+
+    <p>
+
+      De AI-assistent wordt later gekoppeld aan dezelfde productdatabase.
+      Hij mag dan alleen producten voorstellen die daadwerkelijk in FitDealFinder staan
+      en mag nooit het ingestelde budget overschrijden.
+
+    </p>
+
+  </div>
+
+</section>
+
 
 </main>
 
 
-<!-- FOOTER -->
+
+<!-- =======================================================
+     FOOTER
+======================================================= -->
 
 <footer>
 
-<div class="wrap">
+  <div class="wrap">
 
-© 2026 FitDealFinder.nl
+    © 2026 FitDealFinder.nl
 
-<br>
+    <br>
 
-Prijzen kunnen wijzigen.
-Controleer de uiteindelijke winkelprijs voordat je bestelt.
+    Prijzen kunnen wijzigen.
+    Controleer de uiteindelijke winkelprijs voordat je bestelt.
 
-</div>
+  </div>
 
 </footer>
 
@@ -749,13 +890,24 @@ Controleer de uiteindelijke winkelprijs voordat je bestelt.
 FITDEALFINDER PRODUCTDATABASE
 ==========================================================
 
-Deze producten zijn gebaseerd op actuele winkelpagina's.
+Doelen zijn leidend voor de doelknoppen.
 
-Belangrijk:
-- "from:true" betekent dat de winkel een vanaf-prijs toont.
-- Voedingswaarden worden niet verzonnen.
-- Affiliate-links worden later vervangen door echte Awin-deeplinks.
-- De database kan later automatisch via een feed worden gevuld.
+Voorbeeld:
+
+goals:["cut"]
+=> alleen zichtbaar bij Cut
+
+goals:["bulk"]
+=> alleen zichtbaar bij Bulk
+
+goals:["lean-bulk"]
+=> alleen zichtbaar bij Lean Bulk
+
+goals:["cut","lean-bulk"]
+=> zichtbaar bij Cut én Lean Bulk
+
+De productnaam, categorie of beschrijving bepaalt
+NIET bij welk doel een product hoort.
 
 ==========================================================
 */
@@ -768,242 +920,225 @@ const products = [
    XXL NUTRITION
 ========================= */
 
-
 {
-id:1,
-name:"Whey Delicious",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"whey",
-goals:["cut","bulk","lean-bulk"],
-price:19.99,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/whey-delicious"
+  id:1,
+  name:"Whey Delicious",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"whey",
+  goals:["cut","bulk","lean-bulk"],
+  price:19.99,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/whey-delicious"
 },
 
-
 {
-id:2,
-name:"Perfect Whey Protein",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"whey",
-goals:["cut","bulk","lean-bulk"],
-price:25.99,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/alle-producten"
+  id:2,
+  name:"Perfect Whey Protein",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"whey",
+  goals:["cut","bulk","lean-bulk"],
+  price:25.99,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/alle-producten"
 },
 
-
 {
-id:3,
-name:"Whey Isolaat",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"whey",
-goals:["cut","lean-bulk"],
-price:25.99,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/alle-producten"
+  id:3,
+  name:"Whey Isolaat",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"whey",
+  goals:["cut","lean-bulk"],
+  price:25.99,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/alle-producten"
 },
 
-
 {
-id:4,
-name:"Clear Whey Isolate",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"whey",
-goals:["cut","lean-bulk"],
-price:29.99,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/alle-producten"
+  id:4,
+  name:"Clear Whey Isolate",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"whey",
+  goals:["cut","lean-bulk"],
+  price:29.99,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/alle-producten"
 },
 
-
 {
-id:5,
-name:"Whey Isolate Zero",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"whey",
-goals:["cut","lean-bulk"],
-price:28.99,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/alle-producten"
+  id:5,
+  name:"Whey Isolate Zero",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"whey",
+  goals:["cut","lean-bulk"],
+  price:28.99,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/alle-producten"
 },
 
-
 {
-id:6,
-name:"Green Protein",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"whey",
-goals:["cut","lean-bulk"],
-price:18.99,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/alle-producten"
+  id:6,
+  name:"Green Protein",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"whey",
+  goals:["cut","lean-bulk"],
+  price:18.99,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/alle-producten"
 },
 
-
 {
-id:7,
-name:"Perfect Milk Protein",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"whey",
-goals:["cut","bulk","lean-bulk"],
-price:9.99,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/alle-producten"
+  id:7,
+  name:"Perfect Milk Protein",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"whey",
+  goals:["cut","bulk","lean-bulk"],
+  price:9.99,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/alle-producten"
 },
 
-
 {
-id:8,
-name:"Creatine Monohydraat",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"creatine",
-goals:["cut","bulk","lean-bulk"],
-price:8.99,
-from:true,
-protein:0,
-url:"https://xxlnutrition.com/nl/alle-producten"
+  id:8,
+  name:"Creatine Monohydraat",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"creatine",
+  goals:["cut","bulk","lean-bulk"],
+  price:8.99,
+  from:true,
+  protein:0,
+  url:"https://xxlnutrition.com/nl/alle-producten"
 },
 
-
 {
-id:9,
-name:"Muscle Grow",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"gainer",
-goals:["bulk","lean-bulk"],
-price:28.99,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/alle-producten"
+  id:9,
+  name:"Muscle Grow",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"gainer",
+  goals:["bulk","lean-bulk"],
+  price:28.99,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/alle-producten"
 },
 
-
 {
-id:10,
-name:"Protein Lemonade",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"whey",
-goals:["cut","lean-bulk"],
-price:2.25,
-from:true,
-protein:10,
-url:"https://xxlnutrition.com/nl/alle-producten"
+  id:10,
+  name:"Protein Lemonade",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"whey",
+  goals:["cut","lean-bulk"],
+  price:2.25,
+  from:true,
+  protein:10,
+  url:"https://xxlnutrition.com/nl/alle-producten"
 },
 
-
 {
-id:11,
-name:"Diet Shake",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"meals",
-goals:["cut"],
-price:15.99,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/alle-producten"
+  id:11,
+  name:"Diet Shake",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"meals",
+  goals:["cut"],
+  price:15.99,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/alle-producten"
 },
 
-
 {
-id:12,
-name:"Protein Drink Zero",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"whey",
-goals:["cut","lean-bulk"],
-price:8.49,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/alle-producten"
+  id:12,
+  name:"Protein Drink Zero",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"whey",
+  goals:["cut","lean-bulk"],
+  price:8.49,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/alle-producten"
 },
 
-
 {
-id:13,
-name:"High Protein Bar",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"snacks",
-goals:["cut","bulk","lean-bulk"],
-price:2.59,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/sporten"
+  id:13,
+  name:"High Protein Bar",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"snacks",
+  goals:["cut","bulk","lean-bulk"],
+  price:2.59,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/sporten"
 },
 
-
 {
-id:14,
-name:"Blast! Pre-Workout",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"preworkout",
-goals:["cut","bulk","lean-bulk"],
-price:27.99,
-from:true,
-protein:null,
-url:"https://xxlnutrition.com/nl/sporten"
+  id:14,
+  name:"Blast! Pre-Workout",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"preworkout",
+  goals:["cut","bulk","lean-bulk"],
+  price:27.99,
+  from:true,
+  protein:null,
+  url:"https://xxlnutrition.com/nl/sporten"
 },
 
-
 {
-id:15,
-name:"Multivit - 120 tabletten",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"vitamins",
-goals:["cut","bulk","lean-bulk"],
-price:17.99,
-from:false,
-protein:0,
-url:"https://xxlnutrition.com/nl/sporten"
+  id:15,
+  name:"Multivit - 120 tabletten",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"vitamins",
+  goals:["cut","bulk","lean-bulk"],
+  price:17.99,
+  from:false,
+  protein:0,
+  url:"https://xxlnutrition.com/nl/sporten"
 },
 
-
 {
-id:16,
-name:"Omega 3 Ultra Pure",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"vitamins",
-goals:["cut","bulk","lean-bulk"],
-price:13.99,
-from:true,
-protein:0,
-url:"https://xxlnutrition.com/nl/sporten"
+  id:16,
+  name:"Omega 3 Ultra Pure",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"vitamins",
+  goals:["cut","bulk","lean-bulk"],
+  price:13.99,
+  from:true,
+  protein:0,
+  url:"https://xxlnutrition.com/nl/sporten"
 },
 
-
 {
-id:17,
-name:"Hydrate - 20 bruistabletten",
-brand:"XXL Nutrition",
-store:"XXL Nutrition",
-category:"vitamins",
-goals:["cut","bulk","lean-bulk"],
-price:4.99,
-from:true,
-protein:0,
-url:"https://xxlnutrition.com/nl/sporten"
+  id:17,
+  name:"Hydrate - 20 bruistabletten",
+  brand:"XXL Nutrition",
+  store:"XXL Nutrition",
+  category:"vitamins",
+  goals:["cut","bulk","lean-bulk"],
+  price:4.99,
+  from:true,
+  protein:0,
+  url:"https://xxlnutrition.com/nl/sporten"
 },
 
 
@@ -1011,298 +1146,277 @@ url:"https://xxlnutrition.com/nl/sporten"
    BODY & FIT
 ========================= */
 
-
 {
-id:18,
-name:"Perfection Whey",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"whey",
-goals:["cut","bulk","lean-bulk"],
-price:34.99,
-from:true,
-protein:null,
-url:"https://www.bodyandfit.com/collections/protein"
+  id:18,
+  name:"Perfection Whey",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"whey",
+  goals:["cut","bulk","lean-bulk"],
+  price:34.99,
+  from:true,
+  protein:null,
+  url:"https://www.bodyandfit.com/collections/protein"
 },
 
-
 {
-id:19,
-name:"GOLD STANDARD 100% Whey Protein",
-brand:"Optimum Nutrition",
-store:"Body & Fit",
-category:"whey",
-goals:["cut","bulk","lean-bulk"],
-price:22.99,
-from:true,
-protein:null,
-url:"https://www.bodyandfit.com/collections/protein"
+  id:19,
+  name:"GOLD STANDARD 100% Whey Protein",
+  brand:"Optimum Nutrition",
+  store:"Body & Fit",
+  category:"whey",
+  goals:["cut","bulk","lean-bulk"],
+  price:22.99,
+  from:true,
+  protein:null,
+  url:"https://www.bodyandfit.com/collections/protein"
 },
 
-
 {
-id:20,
-name:"Creatine Monohydrate",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"creatine",
-goals:["cut","bulk","lean-bulk"],
-price:6.99,
-from:true,
-protein:0,
-url:"https://www.bodyandfit.com/"
+  id:20,
+  name:"Creatine Monohydrate",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"creatine",
+  goals:["cut","bulk","lean-bulk"],
+  price:6.99,
+  from:true,
+  protein:0,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:21,
-name:"Creatine Creapure",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"creatine",
-goals:["cut","bulk","lean-bulk"],
-price:29.99,
-from:false,
-protein:0,
-url:"https://www.bodyandfit.com/"
+  id:21,
+  name:"Creatine Creapure",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"creatine",
+  goals:["cut","bulk","lean-bulk"],
+  price:29.99,
+  from:false,
+  protein:0,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:22,
-name:"Mass Perfection Weight Gainer",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"gainer",
-goals:["bulk"],
-price:72.99,
-from:false,
-protein:null,
-url:"https://www.bodyandfit.com/collections/protein"
+  id:22,
+  name:"Mass Perfection Weight Gainer",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"gainer",
+  goals:["bulk"],
+  price:72.99,
+  from:false,
+  protein:null,
+  url:"https://www.bodyandfit.com/collections/protein"
 },
 
-
 {
-id:23,
-name:"Massive Gainer",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"gainer",
-goals:["bulk"],
-price:56.99,
-from:false,
-protein:null,
-url:"https://www.bodyandfit.com/collections/protein"
+  id:23,
+  name:"Massive Gainer",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"gainer",
+  goals:["bulk"],
+  price:56.99,
+  from:false,
+  protein:null,
+  url:"https://www.bodyandfit.com/collections/protein"
 },
 
-
 {
-id:24,
-name:"Micellar Casein Perfection",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"whey",
-goals:["cut","bulk","lean-bulk"],
-price:29.99,
-from:false,
-protein:null,
-url:"https://www.bodyandfit.com/collections/protein"
+  id:24,
+  name:"Micellar Casein Perfection",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"whey",
+  goals:["cut","bulk","lean-bulk"],
+  price:29.99,
+  from:false,
+  protein:null,
+  url:"https://www.bodyandfit.com/collections/protein"
 },
 
-
 {
-id:25,
-name:"Perfection Pre-Workout",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"preworkout",
-goals:["cut","bulk","lean-bulk"],
-price:27.99,
-from:false,
-protein:null,
-url:"https://www.bodyandfit.com/"
+  id:25,
+  name:"Perfection Pre-Workout",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"preworkout",
+  goals:["cut","bulk","lean-bulk"],
+  price:27.99,
+  from:false,
+  protein:null,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:26,
-name:"BF10 Pre-workout",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"preworkout",
-goals:["cut","bulk","lean-bulk"],
-price:14.99,
-from:true,
-protein:null,
-url:"https://www.bodyandfit.com/"
+  id:26,
+  name:"BF10 Pre-workout",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"preworkout",
+  goals:["cut","bulk","lean-bulk"],
+  price:14.99,
+  from:true,
+  protein:null,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:27,
-name:"High Fibre Protein Bar",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"snacks",
-goals:["cut","bulk","lean-bulk"],
-price:24.99,
-from:false,
-protein:null,
-url:"https://www.bodyandfit.com/"
+  id:27,
+  name:"High Fibre Protein Bar",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"snacks",
+  goals:["cut","bulk","lean-bulk"],
+  price:24.99,
+  from:false,
+  protein:null,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:28,
-name:"Perfection Protein Bar",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"snacks",
-goals:["cut","bulk","lean-bulk"],
-price:24.99,
-from:false,
-protein:null,
-url:"https://www.bodyandfit.com/"
+  id:28,
+  name:"Perfection Protein Bar",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"snacks",
+  goals:["cut","bulk","lean-bulk"],
+  price:24.99,
+  from:false,
+  protein:null,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:29,
-name:"Protein Cookies",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"snacks",
-goals:["cut","bulk","lean-bulk"],
-price:16.19,
-from:true,
-protein:null,
-url:"https://www.bodyandfit.com/"
+  id:29,
+  name:"Protein Cookies",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"snacks",
+  goals:["cut","bulk","lean-bulk"],
+  price:16.19,
+  from:true,
+  protein:null,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:30,
-name:"Smart Chips",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"snacks",
-goals:["cut","lean-bulk"],
-price:0.99,
-from:true,
-protein:null,
-url:"https://www.bodyandfit.com/"
+  id:30,
+  name:"Smart Chips",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"snacks",
+  goals:["cut","lean-bulk"],
+  price:0.99,
+  from:true,
+  protein:null,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:31,
-name:"Smart Pasta",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"meals",
-goals:["cut","bulk","lean-bulk"],
-price:2.79,
-from:false,
-protein:null,
-url:"https://www.bodyandfit.com/"
+  id:31,
+  name:"Smart Pasta",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"meals",
+  goals:["cut","bulk","lean-bulk"],
+  price:2.79,
+  from:false,
+  protein:null,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:32,
-name:"Smart Crunchy Wafels",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"snacks",
-goals:["cut","bulk","lean-bulk"],
-price:18.99,
-from:false,
-protein:null,
-url:"https://www.bodyandfit.com/"
+  id:32,
+  name:"Smart Crunchy Wafels",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"snacks",
+  goals:["cut","bulk","lean-bulk"],
+  price:18.99,
+  from:false,
+  protein:null,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:33,
-name:"All In One",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"meals",
-goals:["bulk","lean-bulk"],
-price:32.99,
-from:false,
-protein:null,
-url:"https://www.bodyandfit.com/"
+  id:33,
+  name:"All In One",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"meals",
+  goals:["bulk","lean-bulk"],
+  price:32.99,
+  from:false,
+  protein:null,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:34,
-name:"Low Calorie Meal Replacement",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"meals",
-goals:["cut"],
-price:20.99,
-from:true,
-protein:null,
-url:"https://www.bodyandfit.com/"
+  id:34,
+  name:"Low Calorie Meal Replacement",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"meals",
+  goals:["cut"],
+  price:20.99,
+  from:true,
+  protein:null,
+  url:"https://www.bodyandfit.com/"
 },
 
-
 {
-id:35,
-name:"Perfection Whey Lemonade",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"whey",
-goals:["cut","lean-bulk"],
-price:26.99,
-from:false,
-protein:null,
-url:"https://www.bodyandfit.com/collections/protein"
+  id:35,
+  name:"Perfection Whey Lemonade",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"whey",
+  goals:["cut","lean-bulk"],
+  price:26.99,
+  from:false,
+  protein:null,
+  url:"https://www.bodyandfit.com/collections/protein"
 },
 
-
 {
-id:36,
-name:"Whey Isolate XP",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"whey",
-goals:["cut","lean-bulk"],
-price:41.99,
-from:true,
-protein:null,
-url:"https://www.bodyandfit.com/collections/protein"
+  id:36,
+  name:"Whey Isolate XP",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"whey",
+  goals:["cut","lean-bulk"],
+  price:41.99,
+  from:true,
+  protein:null,
+  url:"https://www.bodyandfit.com/collections/protein"
 },
 
-
 {
-id:37,
-name:"Isolate Perfection",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"whey",
-goals:["cut","lean-bulk"],
-price:39.99,
-from:true,
-protein:null,
-url:"https://www.bodyandfit.com/collections/protein"
+  id:37,
+  name:"Isolate Perfection",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"whey",
+  goals:["cut","lean-bulk"],
+  price:39.99,
+  from:true,
+  protein:null,
+  url:"https://www.bodyandfit.com/collections/protein"
 },
 
-
 {
-id:38,
-name:"Smart Protein",
-brand:"Body & Fit",
-store:"Body & Fit",
-category:"whey",
-goals:["cut","bulk","lean-bulk"],
-price:35.99,
-from:false,
-protein:null,
-url:"https://www.bodyandfit.com/collections/protein"
+  id:38,
+  name:"Smart Protein",
+  brand:"Body & Fit",
+  store:"Body & Fit",
+  category:"whey",
+  goals:["cut","bulk","lean-bulk"],
+  price:35.99,
+  from:false,
+  protein:null,
+  url:"https://www.bodyandfit.com/collections/protein"
 }
 
 ];
@@ -1312,147 +1426,354 @@ url:"https://www.bodyandfit.com/collections/protein"
    APP
 ========================================================= */
 
-const categoryNames={
+const categoryNames = {
+
   whey:"Whey",
+
   creatine:"Creatine",
+
   snacks:"Snacks",
+
   meals:"Maaltijd",
+
   preworkout:"Pre-workout",
+
   vitamins:"Vitamines",
+
   gainer:"Gainer"
+
 };
 
 
 const money = value =>
-new Intl.NumberFormat(
-"nl-NL",
-{
-style:"currency",
-currency:"EUR"
+  new Intl.NumberFormat(
+    "nl-NL",
+    {
+      style:"currency",
+      currency:"EUR"
+    }
+  ).format(value);
+
+
+/* =========================================================
+   STRICT GOAL FILTER
+========================================================= */
+
+/*
+ * Alleen product.goals bepaalt of een product
+ * bij een doel hoort.
+ *
+ * De naam, categorie, winkel of prijs wordt
+ * hiervoor NIET gebruikt.
+ */
+
+function matchesGoal(product, goal){
+
+  if(!goal){
+    return true;
+  }
+
+  const normalizedGoal =
+    String(goal)
+      .toLowerCase()
+      .trim();
+
+  const productGoals =
+    Array.isArray(product?.goals)
+      ? product.goals
+          .map(goal =>
+            String(goal)
+              .toLowerCase()
+              .trim()
+          )
+          .filter(Boolean)
+      : String(product?.goals || "")
+          .split(/[|,;]/)
+          .map(goal =>
+            String(goal)
+              .toLowerCase()
+              .trim()
+          )
+          .filter(Boolean);
+
+  return productGoals.includes(
+    normalizedGoal
+  );
+
 }
-).format(value);
 
 
-/* PRODUCTEN TONEN */
+/* =========================================================
+   PRODUCTEN TONEN
+========================================================= */
 
 function renderProducts(){
 
-const query=
-document
-.getElementById("search")
-.value
-.trim()
-.toLowerCase();
+  const searchInput =
+    document.getElementById(
+      "search"
+    );
 
-const category=
-document
-.getElementById("category")
-.value;
+  const categoryInput =
+    document.getElementById(
+      "category"
+    );
 
+  const goalInput =
+    document.getElementById(
+      "goal"
+    );
 
-const list=
-products.filter(product=>{
-
-const text=
-(
-product.name+
-" "+
-product.brand+
-" "+
-product.store
-)
-.toLowerCase();
-
-return(
-text.includes(query)
-&&
-(
-category==="all"
-||
-product.category===category
-)
-);
-
-});
+  const cards =
+    document.getElementById(
+      "cards"
+    );
 
 
-const cards=
-document.getElementById("cards");
+  const query =
+    searchInput
+      .value
+      .trim()
+      .toLowerCase();
 
 
-if(!list.length){
+  const category =
+    categoryInput.value;
 
-cards.innerHTML=
-`
-<div class="empty">
-Geen producten gevonden.
-</div>
-`;
 
-return;
+  /*
+   * Het doel komt rechtstreeks uit
+   * de planner-select.
+   *
+   * De goal-filter is strikt:
+   * product.goals moet het geselecteerde
+   * doel daadwerkelijk bevatten.
+   */
+
+  const goal =
+    goalInput.value;
+
+
+  const list =
+    products.filter(product => {
+
+      /*
+       * 1. DOEL
+       *
+       * Alleen product.goals bepaalt
+       * of het product bij het doel hoort.
+       */
+
+      if(
+        !matchesGoal(
+          product,
+          goal
+        )
+      ){
+        return false;
+      }
+
+
+      /*
+       * 2. ZOEKOPDRACHT
+       */
+
+      const text =
+        (
+          product.name+
+          " "+
+          product.brand+
+          " "+
+          product.store
+        )
+        .toLowerCase();
+
+
+      if(
+        !text.includes(query)
+      ){
+        return false;
+      }
+
+
+      /*
+       * 3. CATEGORIE
+       */
+
+      if(
+        category !== "all" &&
+        product.category !== category
+      ){
+        return false;
+      }
+
+
+      return true;
+
+    });
+
+
+  /*
+   * Goedkopere producten eerst.
+   * Dit verandert niet welke producten
+   * bij een doel horen.
+   */
+
+  list.sort(
+    (a,b) =>
+      a.price - b.price
+  );
+
+
+  if(!list.length){
+
+    cards.innerHTML =
+    `
+      <div class="empty">
+
+        <strong>
+          Geen producten gevonden.
+        </strong>
+
+        <br><br>
+
+        Er zijn momenteel geen producten
+        die aan dit doel, deze zoekopdracht
+        en deze categorie voldoen.
+
+      </div>
+    `;
+
+    return;
+
+  }
+
+
+  cards.innerHTML =
+    list.map(product => `
+
+      <article class="card">
+
+        <div class="badge">
+          ${
+            categoryNames[
+              product.category
+            ] ||
+            product.category
+          }
+        </div>
+
+
+        <h3>
+          ${escapeHtml(
+            product.name
+          )}
+        </h3>
+
+
+        <div class="store">
+          ${escapeHtml(
+            product.brand
+          )}
+          •
+          ${escapeHtml(
+            product.store
+          )}
+        </div>
+
+
+        <div class="price">
+          ${money(
+            product.price
+          )}
+        </div>
+
+
+        <div class="price-note">
+          ${
+            product.from
+              ? "Vanaf-prijs"
+              : "Winkelprijs"
+          }
+        </div>
+
+
+        <div class="chips">
+
+          ${
+            product.goals
+              .map(goal => `
+
+                <span class="chip">
+
+                  ${
+                    goal === "lean-bulk"
+                      ? "Lean Bulk"
+                      : goal.charAt(0)
+                          .toUpperCase() +
+                        goal.slice(1)
+                  }
+
+                </span>
+
+              `)
+              .join("")
+          }
+
+        </div>
+
+
+        <div class="cardactions">
+
+          <a
+            class="btn green"
+            href="${escapeHtml(
+              product.url
+            )}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Bekijk winkel
+          </a>
+
+        </div>
+
+      </article>
+
+    `).join("");
 
 }
 
 
-cards.innerHTML=
-list.map(product=>`
+/* =========================================================
+   HTML ESCAPE
+========================================================= */
 
-<article class="card">
+function escapeHtml(value){
 
-<div class="badge">
-${categoryNames[product.category] || product.category}
-</div>
-
-<h3>
-${product.name}
-</h3>
-
-<div class="store">
-${product.brand} • ${product.store}
-</div>
-
-<div class="price">
-${money(product.price)}
-</div>
-
-<div class="price-note">
-${product.from ? "Vanaf-prijs" : "Winkelprijs"}
-</div>
-
-<div class="chips">
-
-${product.goals.map(goal=>`
-
-<span class="chip">
-${
-goal==="lean-bulk"
-?
-"Lean Bulk"
-:
-goal.charAt(0).toUpperCase()+goal.slice(1)
-}
-</span>
-
-`).join("")}
-
-</div>
-
-<div class="cardactions">
-
-<a
-class="btn green"
-href="${product.url}"
-target="_blank"
-rel="noopener noreferrer"
->
-Bekijk winkel
-</a>
-
-</div>
-
-</article>
-
-`).join("");
+  return String(
+    value ?? ""
+  )
+  .replace(
+    /&/g,
+    "&amp;"
+  )
+  .replace(
+    /</g,
+    "&lt;"
+  )
+  .replace(
+    />/g,
+    "&gt;"
+  )
+  .replace(
+    /"/g,
+    "&quot;"
+  )
+  .replace(
+    /'/g,
+    "&#039;"
+  );
 
 }
 
@@ -1463,216 +1784,278 @@ Bekijk winkel
 
 function makePlan(){
 
-const budget=
-Number(
-document.getElementById("budget").value
-);
+  const budget =
+    Number(
+      document.getElementById(
+        "budget"
+      ).value
+    );
 
-const period=
-document.getElementById("period").value;
 
-const goal=
-document.getElementById("goal").value;
+  const period =
+    document.getElementById(
+      "period"
+    ).value;
 
-const minProtein=
-Number(
-document.getElementById("protein").value
-);
 
+  const goal =
+    document.getElementById(
+      "goal"
+    ).value;
 
-const result=
-document.getElementById("planResult");
 
+  const minProtein =
+    Number(
+      document.getElementById(
+        "protein"
+      ).value
+    );
 
-if(!budget || budget<=0){
 
-result.innerHTML=
-`
-<div class="result error">
+  const result =
+    document.getElementById(
+      "planResult"
+    );
 
-<strong>
-Vul een geldig budget in.
-</strong>
 
-</div>
-`;
+  if(
+    !budget ||
+    budget <= 0
+  ){
 
-return;
+    result.innerHTML =
+    `
+      <div class="result error">
 
-}
+        <strong>
+          Vul een geldig budget in.
+        </strong>
 
+      </div>
+    `;
 
-/*
------------------------------------------------------------
-HARD BUDGETREGEL
+    return;
 
-Een product mag alleen worden toegevoegd als:
+  }
 
-nieuw totaal <= budget
 
-Het programma kan dus nooit bewust boven het
-ingestelde budget uitkomen.
------------------------------------------------------------
-*/
+  /*
+   * -------------------------------------------------------
+   * HARD BUDGETREGEL
+   * -------------------------------------------------------
+   *
+   * Een product mag alleen worden toegevoegd als:
+   *
+   * nieuw totaal <= budget
+   *
+   * Daarnaast wordt het doel uitsluitend
+   * gecontroleerd via product.goals.
+   * -------------------------------------------------------
+   */
 
 
-const eligible=
-products
-.filter(product =>
-product.goals.includes(goal)
-)
-.sort(
-(a,b)=>a.price-b.price
-);
+  const eligible =
+    products
 
+      .filter(
+        product =>
+          matchesGoal(
+            product,
+            goal
+          )
+      )
 
-const selected=[];
+      .filter(
+        product =>
+          Number(product.price) > 0
+      )
 
-let total=0;
+      .sort(
+        (a,b) =>
+          a.price - b.price
+      );
 
 
-for(const product of eligible){
+  const selected = [];
 
-if(selected.length>=5){
-break;
-}
+  let total = 0;
 
 
-if(
-total + product.price
-<=
-budget
-){
+  for(
+    const product of eligible
+  ){
 
-selected.push(product);
+    if(
+      selected.length >= 5
+    ){
+      break;
+    }
 
-total += product.price;
 
-}
+    if(
+      total +
+      product.price
+      <=
+      budget
+    ){
 
-}
+      selected.push(
+        product
+      );
 
+      total +=
+        product.price;
 
-const periodText=
-period==="week"
-?
-"per week"
-:
-"per maand";
+    }
 
+  }
 
-let html=
-`
-<div class="result">
 
-<strong>
-${selected.length>=5
-?
-"Passend pakket gevonden."
-:
-"Geen volledig pakket binnen je budget."
-}
-</strong>
+  const periodText =
+    period === "week"
+      ? "per week"
+      : "per maand";
 
-<p>
 
-Doel:
-<strong>
-${
-goal==="cut"
-?
-"Cut"
-:
-goal==="bulk"
-?
-"Bulk"
-:
-"Lean Bulk"
-}
-</strong>
+  let html =
+  `
+    <div class="result">
 
-<br>
+      <strong>
 
-Budget:
-<strong>
-${money(total)}
-</strong>
-van
-${money(budget)}
-${periodText}.
+        ${
+          selected.length >= 5
+            ? "Passend pakket gevonden."
+            : "Geen volledig pakket binnen je budget."
+        }
 
-</p>
+      </strong>
 
-`;
 
+      <p>
 
-if(selected.length){
+        Doel:
 
-html+=
-`
-<ul>
+        <strong>
 
-${selected.map(product=>`
+          ${
+            goal === "cut"
+              ? "Cut"
+              : goal === "bulk"
+                ? "Bulk"
+                : "Lean Bulk"
+          }
 
-<li>
-${product.name}
-—
-${money(product.price)}
-</li>
+        </strong>
 
-`).join("")}
+        <br>
 
-</ul>
-`;
+        Budget:
 
-}
+        <strong>
+          ${money(total)}
+        </strong>
 
+        van
 
-if(selected.length<5){
+        ${money(budget)}
 
-html+=
-`
-<p>
+        ${periodText}.
 
-Met je huidige budget passen er
-<strong>
-${selected.length}
-</strong>
-producten in deze eerste selectie.
+      </p>
 
-Verhoog het budget of pas je eisen aan als je een uitgebreider pakket wilt.
+  `;
 
-</p>
-`;
 
-}
+  if(
+    selected.length
+  ){
 
+    html +=
+    `
+      <ul>
 
-html+=
-`
-<p class="note">
+        ${
+          selected
+            .map(product => `
 
-Je ingevoerde eiwitdoel:
-${minProtein} g per dag.
+              <li>
 
-Voor producten waarvoor betrouwbare voedingsdata ontbreekt,
-doet FitDealFinder bewust geen verzonnen eiwitclaim.
+                ${escapeHtml(
+                  product.name
+                )}
 
-</p>
+                —
+                ${money(
+                  product.price
+                )}
 
-<p class="note">
+              </li>
 
-Let op: dit is de eerste MVP-planner.
-De volgende versie rekent ook met werkelijk dagelijks gebruik,
-porties, productduur en een echte maandberekening.
+            `)
+            .join("")
+        }
 
-</p>
+      </ul>
+    `;
 
-</div>
-`;
+  }
 
 
-result.innerHTML=html;
+  if(
+    selected.length < 5
+  ){
+
+    html +=
+    `
+      <p>
+
+        Met je huidige budget passen er
+
+        <strong>
+          ${selected.length}
+        </strong>
+
+        producten in deze eerste selectie.
+
+        Verhoog het budget of pas je eisen
+        aan als je een uitgebreider pakket wilt.
+
+      </p>
+    `;
+
+  }
+
+
+  html +=
+  `
+      <p class="note">
+
+        Je ingevoerde eiwitdoel:
+        ${minProtein} g per dag.
+
+        Voor producten waarvoor betrouwbare
+        voedingsdata ontbreekt, doet FitDealFinder
+        bewust geen verzonnen eiwitclaim.
+
+      </p>
+
+
+      <p class="note">
+
+        Let op: dit is de eerste MVP-planner.
+        De volgende versie rekent ook met werkelijk
+        dagelijks gebruik, porties, productduur
+        en een echte maandberekening.
+
+      </p>
+
+    </div>
+  `;
+
+
+  result.innerHTML =
+    html;
 
 }
 
@@ -1682,96 +2065,158 @@ result.innerHTML=html;
 ========================================================= */
 
 document
-.querySelectorAll(".goalbtn")
-.forEach(button=>{
+  .querySelectorAll(
+    ".goalbtn"
+  )
+  .forEach(button => {
 
-button.addEventListener(
-"click",
-()=>{
+    button.addEventListener(
+      "click",
+      () => {
 
-document
-.querySelectorAll(".goalbtn")
-.forEach(btn =>
-btn.classList.remove("active")
-);
+        /*
+         * Alle knoppen eerst uit.
+         */
 
-button.classList.add("active");
-
-document
-.getElementById("goal")
-.value=
-button.dataset.goal;
-
-renderProducts();
-
-}
-);
-
-});
+        document
+          .querySelectorAll(
+            ".goalbtn"
+          )
+          .forEach(btn =>
+            btn.classList.remove(
+              "active"
+            )
+          );
 
 
-/* SELECT DOEL */
+        /*
+         * Geselecteerde knop actief.
+         */
 
-document
-.getElementById("goal")
-.addEventListener(
-"change",
-event=>{
-
-document
-.querySelectorAll(".goalbtn")
-.forEach(button=>{
-
-button.classList.toggle(
-"active",
-button.dataset.goal===
-event.target.value
-);
-
-});
-
-}
-);
+        button.classList.add(
+          "active"
+        );
 
 
-/* SEARCH */
+        /*
+         * Planner-doel synchroniseren.
+         */
 
-document
-.getElementById("search")
-.addEventListener(
-"input",
-renderProducts
-);
+        document
+          .getElementById(
+            "goal"
+          )
+          .value =
+            button.dataset.goal;
 
 
-/* CATEGORY */
+        /*
+         * Producten opnieuw filteren.
+         */
+
+        renderProducts();
+
+      }
+    );
+
+  });
+
+
+/* =========================================================
+   SELECT DOEL
+========================================================= */
 
 document
-.getElementById("category")
-.addEventListener(
-"change",
-renderProducts
-);
+  .getElementById(
+    "goal"
+  )
+  .addEventListener(
+    "change",
+    event => {
+
+      document
+        .querySelectorAll(
+          ".goalbtn"
+        )
+        .forEach(button => {
+
+          button.classList.toggle(
+            "active",
+            button.dataset.goal ===
+              event.target.value
+          );
+
+        });
 
 
-/* PLANNER */
+      /*
+       * Ook de productlijst opnieuw
+       * filteren wanneer het doel
+       * via de planner verandert.
+       */
+
+      renderProducts();
+
+    }
+  );
+
+
+/* =========================================================
+   SEARCH
+========================================================= */
 
 document
-.getElementById("makePlan")
-.addEventListener(
-"click",
-makePlan
-);
+  .getElementById(
+    "search"
+  )
+  .addEventListener(
+    "input",
+    renderProducts
+  );
 
 
-/* START */
+/* =========================================================
+   CATEGORY
+========================================================= */
+
+document
+  .getElementById(
+    "category"
+  )
+  .addEventListener(
+    "change",
+    renderProducts
+  );
+
+
+/* =========================================================
+   PLANNER
+========================================================= */
+
+document
+  .getElementById(
+    "makePlan"
+  )
+  .addEventListener(
+    "click",
+    makePlan
+  );
+
+
+/* =========================================================
+   START
+========================================================= */
+
+/*
+ * Bij het laden staat Cut geselecteerd.
+ *
+ * Daardoor worden direct alleen producten
+ * met product.goals = cut getoond.
+ */
 
 renderProducts();
 
 </script>
 
 </body>
-  </html>
-
-     
-    
+</html>
