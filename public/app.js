@@ -249,7 +249,7 @@ function productText(product) {
 
 /*
  * Voor categorieën gebruiken we bewust
- * NIET de description.
+ * NIET de description en NIET product.goals.
  */
 function productIdentityText(product) {
   return normalize([
@@ -367,7 +367,7 @@ function isUsableProduct(product) {
  *
  * worden ondersteund.
  *
- * Er wordt dus NIET meer gekeken naar
+ * Er wordt dus NIET gekeken naar
  * productnaam, categorie of omschrijving
  * om het hoofddoel te bepalen.
  */
@@ -446,6 +446,23 @@ function hasAny(text, words) {
   );
 }
 
+
+/*
+ * =========================================================
+ * CATEGORIE FILTER
+ * =========================================================
+ *
+ * BELANGRIJK:
+ *
+ * Categorieën zijn volledig onafhankelijk
+ * van product.goals.
+ *
+ * Een product zonder goals kan dus gewoon
+ * in een categorie verschijnen.
+ *
+ * Bulk / Cut / Lean Bulk worden uitsluitend
+ * door matchesGoal() bepaald.
+ */
 function matchesCategory(
   product,
   category
@@ -457,12 +474,27 @@ function matchesCategory(
   const normalizedCategory =
     normalize(category);
 
+  /*
+   * Voor categorieën gebruiken we alleen:
+   *
+   * - product.name
+   * - product.brand
+   * - product.category
+   *
+   * Dus NIET:
+   * - product.goals
+   * - description
+   */
   const text =
     productIdentityText(product);
 
+  /*
+   * PROTEÏNE
+   */
   if (
-    normalizedCategory ===
-    "proteine"
+    normalizedCategory === "proteine" ||
+    normalizedCategory === "proteinepoeder" ||
+    normalizedCategory === "protein"
   ) {
     return hasAny(text, [
       "protein",
@@ -476,9 +508,11 @@ function matchesCategory(
     ]);
   }
 
+  /*
+   * CREATINE
+   */
   if (
-    normalizedCategory ===
-    "creatine"
+    normalizedCategory === "creatine"
   ) {
     return hasAny(text, [
       "creatine",
@@ -487,9 +521,13 @@ function matchesCategory(
     ]);
   }
 
+  /*
+   * PRE-WORKOUT
+   */
   if (
-    normalizedCategory ===
-    "pre-workout"
+    normalizedCategory === "pre-workout" ||
+    normalizedCategory === "pre workout" ||
+    normalizedCategory === "preworkout"
   ) {
     return hasAny(text, [
       "pre workout",
@@ -498,14 +536,33 @@ function matchesCategory(
     ]);
   }
 
+  /*
+   * SUPPLEMENTEN
+   */
   if (
-    normalizedCategory ===
-    "supplementen"
+    normalizedCategory === "supplementen" ||
+    normalizedCategory === "supplement"
   ) {
     return hasAny(
       text,
       GENERAL_SUPPLEMENT_WORDS
     );
+  }
+
+  /*
+   * Als de backend zelf een category-waarde
+   * heeft die exact overeenkomt met de gekozen
+   * categorie, accepteren we die ook.
+   */
+  const productCategory =
+    normalize(product?.category);
+
+  if (
+    productCategory &&
+    productCategory ===
+      normalizedCategory
+  ) {
+    return true;
   }
 
   return false;
@@ -569,7 +626,7 @@ function applyFilters() {
       );
 
   /*
-   * Sortering gebeurt NIET meer op goalScore.
+   * Sortering gebeurt NIET op goalScore.
    *
    * Alleen deal_score, korting en prijs
    * bepalen de volgorde van de producten
@@ -1572,9 +1629,6 @@ function createPlanner() {
             item.product
           );
 
-      /*
-       * Bestaande budgetlogica behouden.
-       */
       const seen =
         new Set();
 
@@ -1797,8 +1851,6 @@ function containsSearchIntent(text) {
 
 
 /*
- * BELANGRIJKE FIX:
- *
  * "Wat is whey?"
  * => gewone AI-uitleg.
  *
@@ -1807,10 +1859,6 @@ function containsSearchIntent(text) {
  *
  * "Wat is de goedkoopste creatine?"
  * => productzoekopdracht.
- *
- * Een informatieve zin wordt dus alleen
- * als informatievraag gezien wanneer er
- * GEEN commerciële/product-intentie in zit.
  */
 function isAIInformationQuestion(text) {
   const isInformation =
@@ -1825,13 +1873,6 @@ function isAIInformationQuestion(text) {
     return false;
   }
 
-  /*
-   * Als woorden als "beste",
-   * "goedkoopste", "deal",
-   * "producten", "zoek" of
-   * "welke" aanwezig zijn, is
-   * dit een productvraag.
-   */
   if (
     containsSearchIntent(text)
   ) {
@@ -1844,12 +1885,6 @@ function isAIInformationQuestion(text) {
 function detectProductType(message) {
   const text =
     normalize(message);
-
-  /*
-   * Eerst specifieke producttypes.
-   * Dit voorkomt dat "whey protein bar"
-   * als gewone whey wordt gezien.
-   */
 
   if (
     hasAny(text, [
@@ -1936,10 +1971,6 @@ function detectAIProductQuery(
     return null;
   }
 
-  /*
-   * Alleen echte uitlegvragen
-   * gaan naar de gewone AI.
-   */
   if (
     isAIInformationQuestion(
       text
@@ -1948,10 +1979,6 @@ function detectAIProductQuery(
     return null;
   }
 
-  /*
-   * Producttermen alleen kunnen
-   * voldoende zijn.
-   */
   const hasProductIntent =
     containsSearchIntent(text) ||
     text.includes("producten") ||
@@ -2016,15 +2043,7 @@ function matchesExactProductType(
   }
 
   /*
-   * =====================================================
    * WHEY
-   * =====================================================
-   *
-   * "Welke whey?"
-   * => alleen echte whey-producten.
-   *
-   * Een whey protein bar, reep, cookie,
-   * brownie enz. wordt bewust uitgesloten.
    */
   if (
     productType === "whey"
@@ -2050,9 +2069,7 @@ function matchesExactProductType(
   }
 
   /*
-   * =====================================================
    * PROTEIN BAR
-   * =====================================================
    */
   if (
     productType ===
@@ -2068,9 +2085,7 @@ function matchesExactProductType(
   }
 
   /*
-   * =====================================================
    * CREATINE
-   * =====================================================
    */
   if (
     productType === "creatine"
@@ -2081,9 +2096,7 @@ function matchesExactProductType(
   }
 
   /*
-   * =====================================================
    * PRE-WORKOUT
-   * =====================================================
    */
   if (
     productType ===
@@ -2097,9 +2110,7 @@ function matchesExactProductType(
   }
 
   /*
-   * =====================================================
    * GAINER
-   * =====================================================
    */
   if (
     productType === "gainer"
@@ -2112,9 +2123,7 @@ function matchesExactProductType(
   }
 
   /*
-   * =====================================================
    * CASEIN
-   * =====================================================
    */
   if (
     productType === "casein"
@@ -2126,9 +2135,7 @@ function matchesExactProductType(
   }
 
   /*
-   * =====================================================
    * ALGEMENE PROTEÏNE
-   * =====================================================
    */
   if (
     productType ===
@@ -2146,9 +2153,7 @@ function matchesExactProductType(
   }
 
   /*
-   * =====================================================
    * CUT SUPPORT
-   * =====================================================
    */
   if (
     productType ===
@@ -2346,11 +2351,7 @@ function renderAIProductResults(
   }
 
   /*
-   * =======================================================
    * ALTIJD MAAR 1 PRODUCT
-   * =======================================================
-   *
-   * Dit blijft bewust hard ingesteld.
    */
   const product =
     result.products[0];
@@ -3108,8 +3109,6 @@ function setupAI() {
     }
 
     /*
-     * BELANGRIJK:
-     *
      * Eerst uitsluitend filteren op product.goals.
      *
      * Een product moet expliciet het gekozen
@@ -3835,8 +3834,8 @@ BELANGRIJK:
                 JSON.stringify({
                   message
                 })
-            }
-          );
+              }
+            );
 
         if (
           !response.ok
@@ -4006,4 +4005,4 @@ if (
   );
 } else {
   init();
-                }
+}
