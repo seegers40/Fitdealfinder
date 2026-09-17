@@ -718,11 +718,13 @@ async function loadProducts() {
     `;
   }
 
-  const controller = new AbortController();
+  const controller =
+    new AbortController();
 
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, 15000);
+  const timeout =
+    setTimeout(() => {
+      controller.abort();
+    }, 15000);
 
   try {
     console.log(
@@ -730,17 +732,20 @@ async function loadProducts() {
       `${API_PRODUCTS}?limit=${PAGE_SIZE}`
     );
 
-    const response = await fetch(
-      `${API_PRODUCTS}?limit=${PAGE_SIZE}`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json"
-        },
-        cache: "no-store",
-        signal: controller.signal
-      }
-    );
+    const response =
+      await fetch(
+        `${API_PRODUCTS}?limit=${PAGE_SIZE}`,
+        {
+          method: "GET",
+          headers: {
+            Accept:
+              "application/json"
+          },
+          cache: "no-store",
+          signal:
+            controller.signal
+        }
+      );
 
     console.log(
       "FitDealFinder: API response",
@@ -755,14 +760,17 @@ async function loadProducts() {
     }
 
     const contentType =
-      response.headers.get("content-type") || "";
+      response.headers.get(
+        "content-type"
+      ) || "";
 
     console.log(
       "FitDealFinder: content-type",
       contentType
     );
 
-    const rawText = await response.text();
+    const rawText =
+      await response.text();
 
     console.log(
       "FitDealFinder: response lengte",
@@ -778,11 +786,19 @@ async function loadProducts() {
     let data;
 
     try {
-      data = JSON.parse(rawText);
-    } catch (jsonError) {
+      data =
+        JSON.parse(
+          rawText
+        );
+    } catch (
+      jsonError
+    ) {
       console.error(
         "FitDealFinder: ongeldige JSON:",
-        rawText.slice(0, 500)
+        rawText.slice(
+          0,
+          500
+        )
       );
 
       throw new Error(
@@ -790,12 +806,29 @@ async function loadProducts() {
       );
     }
 
+    /*
+     * Jouw API geeft:
+     *
+     * {
+     *   products: [...]
+     * }
+     *
+     * Daarnaast ondersteunen we
+     * ook rechtstreeks een array en
+     * { data: [...] }.
+     */
     const products =
-      Array.isArray(data)
+      Array.isArray(
+        data
+      )
         ? data
-        : Array.isArray(data?.products)
+        : Array.isArray(
+            data?.products
+          )
           ? data.products
-          : Array.isArray(data?.data)
+          : Array.isArray(
+              data?.data
+            )
             ? data.data
             : [];
 
@@ -804,31 +837,48 @@ async function loadProducts() {
       products.length
     );
 
-    const unique = new Map();
+    const unique =
+      new Map();
 
-    for (const product of products) {
-      if (!product?.id) {
+    for (
+      const product of products
+    ) {
+      if (
+        !product?.id
+      ) {
         continue;
       }
 
       unique.set(
-        String(product.id),
+        String(
+          product.id
+        ),
         product
       );
     }
 
-    state.products = [
-      ...unique.values()
-    ].slice(0, MAX_PRODUCTS);
+    state.products =
+      [
+        ...unique.values()
+      ].slice(
+        0,
+        MAX_PRODUCTS
+      );
 
     console.log(
       "FitDealFinder: bruikbare records in state",
       state.products.length
     );
 
+    /*
+     * De producten zijn nu geladen.
+     * Filters mogen pas daarna draaien.
+     */
     applyFilters();
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
     console.error(
       "FitDealFinder product loading error:",
       error
@@ -837,33 +887,58 @@ async function loadProducts() {
     let message =
       "Er ging iets mis met het ophalen van de producten.";
 
-    if (error?.name === "AbortError") {
+    if (
+      error?.name ===
+      "AbortError"
+    ) {
       message =
         "De product-API reageert niet binnen 15 seconden.";
-    } else if (error?.message) {
-      message = error.message;
+    } else if (
+      error?.message
+    ) {
+      message =
+        error.message;
     }
 
     if (grid) {
       grid.innerHTML = `
         <div class="empty-state">
-          <h3>Deals konden niet worden geladen</h3>
+
+          <h3>
+            Deals konden niet worden geladen
+          </h3>
 
           <p>
-            ${escapeHtml(message)}
+            ${escapeHtml(
+              message
+            )}
           </p>
 
-          <p style="margin-top: 12px;">
-            Open de browserconsole (F12) voor meer informatie.
+          <p
+            style="
+              margin-top:12px;
+            "
+          >
+            Open de browserconsole
+            (F12) voor meer informatie.
           </p>
 
           <button
             type="button"
             onclick="window.location.reload()"
-            style="margin-top: 16px;"
+            style="
+              margin-top:16px;
+              min-height:46px;
+              padding:0 18px;
+              border:0;
+              border-radius:10px;
+              cursor:pointer;
+              font-weight:900;
+            "
           >
             Opnieuw proberen
           </button>
+
         </div>
       `;
     }
@@ -871,7 +946,10 @@ async function loadProducts() {
     updateProductCount(0);
 
   } finally {
-    clearTimeout(timeout);
+    clearTimeout(
+      timeout
+    );
+
     state.loading = false;
   }
 }
@@ -4069,4 +4147,4 @@ if (
   );
 } else {
   init();
-}
+  }
