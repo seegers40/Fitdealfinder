@@ -8,7 +8,7 @@
 
   <meta
     name="description"
-    content="Vergelijk actuele fitnessproducten, prijzen en deals voor Cut, Bulk en Lean Bulk."
+    content="Vergelijk actuele fitnessproducten, prijzen en deals."
   >
 
   <meta name="theme-color" content="#07111f">
@@ -165,6 +165,8 @@
 
     /* =====================================================
        HERO
+       
+       Poppetje en Cut/Bulk/Lean Bulk knoppen verwijderd.
     ===================================================== */
 
     .hero {
@@ -190,13 +192,9 @@
         );
     }
 
-    .hero-grid {
-      min-height: 610px;
-      display: grid;
-      grid-template-columns: 1.05fr .8fr;
-      align-items: center;
-      gap: 55px;
-      padding: 62px 0 70px;
+    .hero-content {
+      padding: 65px 0 70px;
+      max-width: 850px;
     }
 
     .eyebrow {
@@ -289,211 +287,6 @@
       border-radius: 13px;
       background: var(--green);
       color: #07140d;
-      font-weight: 950;
-    }
-
-    .goals {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 17px;
-    }
-
-    .goal {
-      padding: 11px 18px;
-      border: 1px solid rgba(255,255,255,.13);
-      border-radius: 999px;
-      background: rgba(255,255,255,.045);
-      color: #c7d0dc;
-      font-weight: 850;
-      transition: .2s ease;
-    }
-
-    .goal:hover,
-    .goal.active {
-      background: var(--green);
-      border-color: var(--green);
-      color: #07140d;
-    }
-
-
-    /* =====================================================
-       HERO VISUAL
-    ===================================================== */
-
-    .hero-visual {
-      position: relative;
-      min-height: 440px;
-      display: grid;
-      place-items: center;
-    }
-
-    .visual-card {
-      position: relative;
-      width: min(390px,100%);
-      height: 440px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,.13);
-      border-radius: 32px;
-      background:
-        radial-gradient(
-          circle at 65% 25%,
-          rgba(103,229,162,.2),
-          transparent 28%
-        ),
-        linear-gradient(
-          145deg,
-          rgba(255,255,255,.1),
-          rgba(255,255,255,.025)
-        );
-      box-shadow: 0 35px 100px rgba(0,0,0,.35);
-    }
-
-    .visual-ring {
-      position: absolute;
-      width: 330px;
-      height: 330px;
-      right: -90px;
-      top: -80px;
-      border: 1px solid rgba(103,229,162,.16);
-      border-radius: 50%;
-      box-shadow:
-        0 0 0 55px rgba(103,229,162,.025),
-        0 0 0 110px rgba(103,229,162,.015);
-    }
-
-    .person {
-      position: absolute;
-      left: 50%;
-      bottom: -25px;
-      width: 270px;
-      height: 390px;
-      transform: translateX(-50%);
-    }
-
-    .person-head {
-      position: absolute;
-      left: 50%;
-      top: 3px;
-      width: 68px;
-      height: 80px;
-      transform: translateX(-50%);
-      border-radius: 50%;
-      background: linear-gradient(145deg,#c5ced6,#687684);
-    }
-
-    .person-neck {
-      position: absolute;
-      left: 50%;
-      top: 72px;
-      width: 38px;
-      height: 45px;
-      transform: translateX(-50%);
-      background: #75828f;
-    }
-
-    .person-body {
-      position: absolute;
-      left: 50%;
-      top: 100px;
-      width: 135px;
-      height: 190px;
-      transform: translateX(-50%);
-      background: linear-gradient(
-        100deg,
-        #526170,
-        #a5b0ba 44%,
-        #586674
-      );
-      clip-path: polygon(
-        27% 0,
-        73% 0,
-        100% 23%,
-        87% 70%,
-        76% 100%,
-        24% 100%,
-        13% 70%,
-        0 23%
-      );
-    }
-
-    .person-arm {
-      position: absolute;
-      top: 106px;
-      width: 47px;
-      height: 190px;
-      border-radius: 50px;
-      background: linear-gradient(
-        145deg,
-        #a8b3bd,
-        #586573
-      );
-    }
-
-    .person-arm.left {
-      left: 33px;
-      transform: rotate(12deg);
-    }
-
-    .person-arm.right {
-      right: 33px;
-      transform: rotate(-12deg);
-    }
-
-    .person-leg {
-      position: absolute;
-      top: 270px;
-      width: 58px;
-      height: 175px;
-      border-radius: 32px;
-      background: linear-gradient(
-        145deg,
-        #687583,
-        #35414e
-      );
-    }
-
-    .person-leg.left {
-      left: 77px;
-      transform: rotate(4deg);
-    }
-
-    .person-leg.right {
-      right: 77px;
-      transform: rotate(-4deg);
-    }
-
-    .visual-bottom {
-      position: absolute;
-      left: 24px;
-      right: 24px;
-      bottom: 22px;
-      z-index: 2;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-    }
-
-    .visual-bottom strong {
-      font-size: 19px;
-    }
-
-    .visual-bottom small {
-      display: block;
-      margin-top: 5px;
-      color: #aab7c5;
-    }
-
-    .score {
-      width: 62px;
-      height: 62px;
-      display: grid;
-      place-items: center;
-      border: 1px solid rgba(103,229,162,.3);
-      border-radius: 17px;
-      background: rgba(4,13,23,.7);
-      color: var(--green);
-      font-size: 12px;
       font-weight: 950;
     }
 
@@ -723,10 +516,6 @@
       font-weight: 950;
       letter-spacing: .08em;
     }
-
-    /*
-     * Nieuwe productkaart uit app.js.
-     */
 
     .product-content {
       padding: 20px;
@@ -1095,17 +884,13 @@
 
     .planner-result-item {
       display: grid;
-      grid-template-columns:
-        65px 1fr auto;
+      grid-template-columns: 65px 1fr auto;
       align-items: center;
       gap: 16px;
       padding: 22px;
-      border:
-        1px solid
-        rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.08);
       border-radius: 20px;
-      background:
-        rgba(3,7,18,.55);
+      background: rgba(3,7,18,.55);
     }
 
     .planner-product-image {
@@ -1251,19 +1036,6 @@
 
     @media (max-width: 900px) {
 
-      .hero-grid {
-        grid-template-columns: 1fr;
-        gap: 35px;
-      }
-
-      .hero-visual {
-        min-height: 390px;
-      }
-
-      .visual-card {
-        height: 390px;
-      }
-
       .trust-grid {
         grid-template-columns: 1fr;
         gap: 12px;
@@ -1287,8 +1059,7 @@
     @media (max-width: 700px) {
 
       .planner-result-item {
-        grid-template-columns:
-          65px 1fr;
+        grid-template-columns: 65px 1fr;
       }
 
       .planner-product-image {
@@ -1338,7 +1109,7 @@
         display: none;
       }
 
-      .hero-grid {
+      .hero-content {
         padding: 45px 0 50px;
       }
 
@@ -1505,13 +1276,16 @@
 
 <!-- =====================================================
      HERO
+     
+     Geen poppetje.
+     Geen Cut / Bulk / Lean Bulk knoppen.
 ===================================================== -->
 
 <section class="hero">
 
-  <div class="container hero-grid">
+  <div class="container">
 
-    <div>
+    <div class="hero-content">
 
       <div class="eyebrow">
 
@@ -1530,7 +1304,7 @@
 
       <p class="hero-text">
         Vergelijk fitnessproducten, prijzen en aanbiedingen
-        voor jouw doel. Van Cut en Bulk tot Lean Bulk.
+        van verschillende winkels op één plek.
       </p>
 
 
@@ -1566,94 +1340,6 @@
           </button>
 
         </form>
-
-
-        <div
-          class="goals"
-          aria-label="Doelen"
-        >
-
-          <button
-            class="goal"
-            type="button"
-            data-goal="cut"
-          >
-            Cut
-          </button>
-
-
-          <button
-            class="goal"
-            type="button"
-            data-goal="bulk"
-          >
-            Bulk
-          </button>
-
-
-          <button
-            class="goal"
-            type="button"
-            data-goal="lean-bulk"
-          >
-            Lean Bulk
-          </button>
-
-        </div>
-
-      </div>
-
-    </div>
-
-
-    <!-- HERO VISUAL -->
-
-    <div class="hero-visual">
-
-      <div class="visual-card">
-
-        <div class="visual-ring"></div>
-
-
-        <div class="person">
-
-          <div class="person-head"></div>
-
-          <div class="person-neck"></div>
-
-          <div class="person-body"></div>
-
-          <div class="person-arm left"></div>
-
-          <div class="person-arm right"></div>
-
-          <div class="person-leg left"></div>
-
-          <div class="person-leg right"></div>
-
-        </div>
-
-
-        <div class="visual-bottom">
-
-          <div>
-
-            <strong>
-              Jouw doel.
-            </strong>
-
-            <small>
-              Onze deals.
-            </small>
-
-          </div>
-
-
-          <div class="score">
-            DEAL
-          </div>
-
-        </div>
 
       </div>
 
@@ -1748,10 +1434,12 @@
     <div class="categories">
 
 
+      <!-- PROTEÏNE -->
+
       <button
         class="category"
         type="button"
-        data-category="proteine"
+        data-category="whey"
       >
 
         <div class="category-icon">
@@ -1768,6 +1456,8 @@
 
       </button>
 
+
+      <!-- CREATINE -->
 
       <button
         class="category"
@@ -1790,10 +1480,12 @@
       </button>
 
 
+      <!-- PRE-WORKOUT -->
+
       <button
         class="category"
         type="button"
-        data-category="pre-workout"
+        data-category="preworkout"
       >
 
         <div class="category-icon">
@@ -1811,10 +1503,12 @@
       </button>
 
 
+      <!-- SUPPLEMENTEN -->
+
       <button
         class="category"
         type="button"
-        data-category="supplementen"
+        data-category="vitamins"
       >
 
         <div class="category-icon">
@@ -1826,7 +1520,7 @@
         </strong>
 
         <span>
-          Ontdek meer fitness- en voedingsproducten.
+          Vitamines en aanvullende fitnessproducten.
         </span>
 
       </button>
@@ -2213,7 +1907,11 @@
 
 
 <!-- =====================================================
-     APP
+     APP.JS
+     
+     Belangrijk:
+     AI, producten, filters, planner en overige functies
+     blijven via app.js werken.
 ===================================================== -->
 
 <script
@@ -2223,4 +1921,4 @@
 
 
 </body>
-            </html>
+          </html>
