@@ -462,7 +462,7 @@ function hasAny(text, words) {
  * Bulk / Cut / Lean Bulk worden uitsluitend
  * door matchesGoal() bepaald.
  *
- * VOOR CATEGORIEËN ZOEKEN WE IN:
+ * Voor categorieën zoeken we in:
  *
  * - product.name
  * - product.brand
@@ -564,7 +564,7 @@ function matchesCategory(
 
   /*
    * Als de backend zelf een category-waarde
-   * heeft die overeenkomt met de gekozen
+   * heeft die exact overeenkomt met de gekozen
    * categorie, accepteren we die ook.
    *
    * Ook hier wordt product.goals NIET gebruikt.
@@ -718,69 +718,83 @@ async function loadProducts() {
       <div class="empty-state">
         <h3>Deals laden...</h3>
         <p>
-          We halen de actuele producten op.
+          We halen de actuele productgegevens op.
         </p>
       </div>
     `;
   }
 
-  const products = [];
-
   try {
-    for (
-      let offset = 0;
-      offset < MAX_PRODUCTS;
-      offset += PAGE_SIZE
-    ) {
-      const url =
-        `${API_PRODUCTS}?limit=${PAGE_SIZE}&offset=${offset}`;
+    /*
+     * AANGEPAST:
+     *
+     * We doen hier één API-request.
+     *
+     * De vorige versie bleef meerdere
+     * offset-requests achter elkaar uitvoeren:
+     *
+     *   offset=0
+     *   offset=200
+     *   offset=400
+     *   enz.
+     *
+     * Daardoor kon de pagina lang op
+     * "Deals laden..." blijven staan.
+     */
+    const url =
+      `${API_PRODUCTS}?limit=${PAGE_SIZE}`;
 
-      const response =
-        await fetch(url, {
+    const response =
+      await fetch(
+        url,
+        {
           headers: {
             Accept:
               "application/json"
-          }
-        });
+          },
+          cache: "no-store"
+        }
+      );
 
-      if (!response.ok) {
-        throw new Error(
-          `Product API gaf status ${response.status}`
-        );
-      }
-
-      const data =
-        await response.json();
-
-      const batch =
-        Array.isArray(data)
-          ? data
-          : Array.isArray(
-              data.products
-            )
-            ? data.products
-            : Array.isArray(
-                data.data
-              )
-              ? data.data
-              : [];
-
-      products.push(...batch);
-
-      if (
-        batch.length <
-        PAGE_SIZE
-      ) {
-        break;
-      }
-
-      if (
-        products.length >=
-        MAX_PRODUCTS
-      ) {
-        break;
-      }
+    /*
+     * Een fetch() geeft ook bij bijvoorbeeld
+     * 404/500 een Response terug.
+     * Daarom controleren we expliciet response.ok.
+     */
+    if (!response.ok) {
+      throw new Error(
+        `Product API gaf status ${response.status}`
+      );
     }
+
+    const data =
+      await response.json();
+
+    /*
+     * Ondersteun zowel:
+     *
+     * [...]
+     *
+     * als:
+     *
+     * { products: [...] }
+     *
+     * als:
+     *
+     * { data: [...] }
+     */
+    const products =
+      Array.isArray(data)
+        ? data
+        : Array.isArray(
+            data?.products
+          )
+          ? data.products
+          : Array.isArray(
+              data?.data
+            )
+            ? data.data
+            : [];
 
     const unique =
       new Map();
@@ -799,7 +813,11 @@ async function loadProducts() {
     }
 
     state.products =
-      [...unique.values()];
+      [...unique.values()]
+        .slice(
+          0,
+          MAX_PRODUCTS
+        );
 
     applyFilters();
 
@@ -4026,4 +4044,4 @@ if (
   );
 } else {
   init();
-  }
+}
