@@ -443,36 +443,21 @@ function hasAny(text, words) {
   );
 }
 
-
-/*
- * AANGEPAST:
- *
- * Naast naam/merk/categorie wordt nu ook
- * product.goals meegenomen.
- *
- * De rest van de doel-logica blijft gelijk.
- */
 function goalScore(product, goal) {
   if (!isUsableProduct(product)) {
     return 0;
   }
 
-  const text = productIdentityText(product);
+  const text =
+    productIdentityText(product);
 
-  const goalText = normalize(
-    Array.isArray(product?.goals)
-      ? product.goals.join(" ")
-      : product?.goals || ""
-  );
-
-  const combinedText = `${text} ${goalText}`.trim();
-
-  const normalizedGoal = normalize(goal);
+  const normalizedGoal =
+    normalize(goal);
 
   if (normalizedGoal === "cut") {
     if (
       hasAny(
-        combinedText,
+        text,
         CUT_STRONG_WORDS
       )
     ) {
@@ -481,17 +466,11 @@ function goalScore(product, goal) {
 
     if (
       hasAny(
-        combinedText,
+        text,
         CUT_MEDIUM_WORDS
       )
     ) {
       return 80;
-    }
-
-    if (
-      goalText.includes("cut")
-    ) {
-      return 70;
     }
 
     return 0;
@@ -500,7 +479,7 @@ function goalScore(product, goal) {
   if (normalizedGoal === "bulk") {
     if (
       hasAny(
-        combinedText,
+        text,
         BULK_STRONG_WORDS
       )
     ) {
@@ -509,7 +488,7 @@ function goalScore(product, goal) {
 
     if (
       hasAny(
-        combinedText,
+        text,
         BULK_MEDIUM_WORDS
       )
     ) {
@@ -518,17 +497,11 @@ function goalScore(product, goal) {
 
     if (
       hasAny(
-        combinedText,
+        text,
         BULK_SUPPORT_WORDS
       )
     ) {
       return 40;
-    }
-
-    if (
-      goalText.includes("bulk")
-    ) {
-      return 70;
     }
 
     return 0;
@@ -540,7 +513,7 @@ function goalScore(product, goal) {
   ) {
     if (
       hasAny(
-        combinedText,
+        text,
         LEAN_BULK_STRONG_WORDS
       )
     ) {
@@ -549,19 +522,11 @@ function goalScore(product, goal) {
 
     if (
       hasAny(
-        combinedText,
+        text,
         LEAN_BULK_MEDIUM_WORDS
       )
     ) {
       return 80;
-    }
-
-    if (
-      goalText.includes("lean bulk") ||
-      goalText.includes("lean-bulk") ||
-      goalText.includes("leanbulk")
-    ) {
-      return 70;
     }
 
     return 0;
@@ -570,6 +535,32 @@ function goalScore(product, goal) {
   return 0;
 }
 
+
+/*
+ * =========================================================
+ * GOAL FILTER
+ * =========================================================
+ *
+ * De geselecteerde goal wordt uitsluitend
+ * vergeleken met product.goals.
+ *
+ * Voorbeelden:
+ *
+ * product.goals = ["bulk", "lean-bulk"]
+ * goal = "bulk"
+ * => true
+ *
+ * product.goals = "bulk|lean-bulk"
+ * goal = "lean-bulk"
+ * => true
+ *
+ * product.goals = ["cut"]
+ * goal = "bulk"
+ * => false
+ *
+ * Als er geen goal geselecteerd is,
+ * wordt ieder product toegelaten.
+ */
 function matchesGoal(
   product,
   goal
@@ -578,11 +569,23 @@ function matchesGoal(
     return true;
   }
 
-  return (
-    goalScore(
-      product,
-      goal
-    ) > 0
+  const normalizedGoal =
+    normalize(goal);
+
+  const productGoals =
+    Array.isArray(product?.goals)
+      ? product.goals
+          .map(normalize)
+          .filter(Boolean)
+      : String(
+          product?.goals || ""
+        )
+          .split(/[|,;]/)
+          .map(normalize)
+          .filter(Boolean);
+
+  return productGoals.includes(
+    normalizedGoal
   );
 }
 
@@ -753,8 +756,7 @@ function applyFilters() {
       Number(b.discount_percent) || 0;
 
     if (
-      discountA !==
-      discountB
+      discountA !== discountB
     ) {
       return discountB - discountA;
     }
@@ -4189,4 +4191,4 @@ if (
   );
 } else {
   init();
-  }
+    }
