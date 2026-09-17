@@ -163,9 +163,15 @@ function escapeHtml(value) {
 
 function safeHttpUrl(value) {
   try {
-    const url = new URL(String(value || ""), window.location.origin);
+    const url = new URL(
+      String(value || ""),
+      window.location.origin
+    );
 
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
+    if (
+      url.protocol !== "http:" &&
+      url.protocol !== "https:"
+    ) {
       return "";
     }
 
@@ -191,7 +197,10 @@ function price(product) {
         .replace(/[^\d.-]/g, "")
     );
 
-    if (Number.isFinite(number) && number >= 0) {
+    if (
+      Number.isFinite(number) &&
+      number >= 0
+    ) {
       return number;
     }
   }
@@ -258,13 +267,6 @@ function productImage(product) {
    PRODUCT TEXT
    ========================================================= */
 
-/*
- * productSearchText:
- * Used for the normal search bar.
- * This intentionally includes description, because searching
- * for "whey", "isolate", etc. should remain broad.
- */
-
 function productSearchText(product) {
   return normalize(
     [
@@ -285,16 +287,12 @@ function productSearchText(product) {
 }
 
 /*
- * productCoreText:
- * Used for category classification.
+ * Core text wordt gebruikt voor categorieën en planner.
  *
- * IMPORTANT:
- * Description is deliberately NOT included here.
- *
- * This prevents something like:
- * "Whey protein - description contains creatine"
- *
- * from suddenly becoming a creatine product.
+ * De omschrijving wordt hier bewust niet meegenomen.
+ * Zo zorgt een beschrijving waarin bijvoorbeeld "creatine"
+ * staat er niet voor dat een whey-product automatisch
+ * als creatine wordt ingedeeld.
  */
 
 function productCoreText(product) {
@@ -319,14 +317,22 @@ function hasAny(text, words) {
 
   return words.some((word) => {
     const needle = normalize(word);
-    if (!needle) return false;
+
+    if (!needle) {
+      return false;
+    }
 
     if (needle.includes(" ")) {
       return value.includes(needle);
     }
 
+    const escaped = needle.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&"
+    );
+
     return new RegExp(
-      `(^|[^a-z0-9])${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=$|[^a-z0-9])`,
+      `(^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`,
       "i"
     ).test(value);
   });
@@ -373,31 +379,50 @@ const BAD_WORDS = [
 ];
 
 function isUsableProduct(product) {
-  if (!product || typeof product !== "object") {
+  if (
+    !product ||
+    typeof product !== "object"
+  ) {
     return false;
   }
 
-  const name = productName(product);
+  const name =
+    productName(product);
 
-  if (!name || name.length < 2) {
+  if (
+    !name ||
+    name.length < 2
+  ) {
     return false;
   }
 
-  const url = productUrl(product);
+  const url =
+    productUrl(product);
 
   if (!url) {
     return false;
   }
 
-  const p = price(product);
+  const p =
+    price(product);
 
-  if (!Number.isFinite(p) || p <= 0) {
+  if (
+    !Number.isFinite(p) ||
+    p <= 0
+  ) {
     return false;
   }
 
-  const text = productSearchText(product);
+  const text =
+    productSearchText(product);
 
-  if (BAD_WORDS.some((word) => text.includes(normalize(word)))) {
+  if (
+    BAD_WORDS.some((word) =>
+      text.includes(
+        normalize(word)
+      )
+    )
+  ) {
     return false;
   }
 
@@ -434,7 +459,8 @@ const PROTEIN_WORDS = [
   "whey-protein",
   "protein powder",
   "proteine poeder",
-  "protein powder",
+  "protein",
+  "proteine",
   "casein",
   "caseine",
   "casein protein",
@@ -459,6 +485,8 @@ const PROTEIN_EXCLUSIONS = [
   "protein koek",
   "protein snack",
   "protein brownie",
+  "protein chips",
+  "protein chips",
   "mass gainer",
   "mass-gainer",
   "weight gainer",
@@ -552,7 +580,10 @@ function isPreWorkoutProduct(productOrText) {
       ? normalize(productOrText)
       : productCoreText(productOrText);
 
-  return hasAny(text, PRE_WORKOUT_WORDS);
+  return hasAny(
+    text,
+    PRE_WORKOUT_WORDS
+  );
 }
 
 function isCreatineProduct(productOrText) {
@@ -561,7 +592,10 @@ function isCreatineProduct(productOrText) {
       ? normalize(productOrText)
       : productCoreText(productOrText);
 
-  return hasAny(text, CREATINE_WORDS);
+  return hasAny(
+    text,
+    CREATINE_WORDS
+  );
 }
 
 function isProteinProduct(productOrText) {
@@ -570,106 +604,140 @@ function isProteinProduct(productOrText) {
       ? normalize(productOrText)
       : productCoreText(productOrText);
 
-  if (hasAny(text, PROTEIN_EXCLUSIONS)) {
+  if (
+    hasAny(
+      text,
+      PROTEIN_EXCLUSIONS
+    )
+  ) {
     return false;
   }
 
-  return hasAny(text, PROTEIN_WORDS);
+  return hasAny(
+    text,
+    PROTEIN_WORDS
+  );
 }
 
 function isGeneralSupplementProduct(product) {
-  const core = productCoreText(product);
+  const core =
+    productCoreText(product);
 
-  const feedCategory = normalize(
-    [
-      product?.category,
-      product?.product_category,
-      product?.product_type,
-      product?.type,
-    ]
-      .filter(Boolean)
-      .join(" ")
-  );
+  const feedCategory =
+    normalize(
+      [
+        product?.category,
+        product?.product_category,
+        product?.product_type,
+        product?.type,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
 
   if (
-    hasAny(feedCategory, [
-      "supplement",
-      "supplements",
-      "supplementen",
-      "voedingssupplement",
-      "voedingssupplementen",
-      "nutrition supplement",
-    ])
+    hasAny(
+      feedCategory,
+      [
+        "supplement",
+        "supplements",
+        "supplementen",
+        "voedingssupplement",
+        "voedingssupplementen",
+        "nutrition supplement",
+      ]
+    )
   ) {
     return true;
   }
 
-  return hasAny(core, GENERAL_SUPPLEMENT_WORDS);
+  return hasAny(
+    core,
+    GENERAL_SUPPLEMENT_WORDS
+  );
 }
 
 /*
- * CATEGORY ORDER IS IMPORTANT.
+ * BELANGRIJK:
  *
- * A product receives ONE category only.
+ * Een product krijgt exact één categorie.
  *
- * pre-workout
- *     ↓
- * creatine
- *     ↓
- * proteine
- *     ↓
- * supplementen
- *     ↓
- * overig
+ * 1. Pre-workout
+ * 2. Creatine
+ * 3. Proteïne
+ * 4. Supplementen
+ * 5. Overig
  */
 
 function getProductCategory(product) {
-  if (isPreWorkoutProduct(product)) {
+  if (
+    isPreWorkoutProduct(product)
+  ) {
     return "pre-workout";
   }
 
-  if (isCreatineProduct(product)) {
+  if (
+    isCreatineProduct(product)
+  ) {
     return "creatine";
   }
 
-  if (isProteinProduct(product)) {
+  if (
+    isProteinProduct(product)
+  ) {
     return "proteine";
   }
 
-  if (isGeneralSupplementProduct(product)) {
+  if (
+    isGeneralSupplementProduct(product)
+  ) {
     return "supplementen";
   }
 
   return "overig";
 }
 
-function matchesCategory(product, category) {
-  const wanted = normalizeCategory(category);
+function matchesCategory(
+  product,
+  category
+) {
+  const wanted =
+    normalizeCategory(category);
 
   if (!wanted) {
     return true;
   }
 
-  return getProductCategory(product) === wanted;
+  return (
+    getProductCategory(product) ===
+    wanted
+  );
 }
 
 /* =========================================================
    SEARCH
    ========================================================= */
 
-function matchesSearch(product, query) {
-  const q = normalize(query);
+function matchesSearch(
+  product,
+  query
+) {
+  const q =
+    normalize(query);
 
   if (!q) {
     return true;
   }
 
-  const text = productSearchText(product);
+  const text =
+    productSearchText(product);
 
   return q
     .split(" ")
     .filter(Boolean)
-    .every((part) => text.includes(part));
+    .every((part) =>
+      text.includes(part)
+    );
 }
 
 /* =========================================================
@@ -725,79 +793,119 @@ const LEAN_BULK_WORDS = [
   "spiermassa",
 ];
 
-function goalScore(product, goal) {
-  const normalizedGoal = normalizeGoal(goal);
+function goalScore(
+  product,
+  goal
+) {
+  const normalizedGoal =
+    normalizeGoal(goal);
 
   if (!normalizedGoal) {
     return 0;
   }
 
-  const text = productSearchText(product);
+  const text =
+    productSearchText(product);
 
-  if (normalizedGoal === "cut") {
-    if (hasAny(text, [
-      "mass gainer",
-      "mass-gainer",
-      "weight gainer",
-      "weight-gainer",
-      "gainer",
-    ])) {
-      return 0;
-    }
-
+  if (
+    normalizedGoal === "cut"
+  ) {
     if (
-      hasAny(text, [
-        "maltodextrin",
-        "dextrose",
-        "carbohydrate",
-        "carbohydrates",
-      ])
+      hasAny(
+        text,
+        [
+          "mass gainer",
+          "mass-gainer",
+          "weight gainer",
+          "weight-gainer",
+          "gainer",
+        ]
+      )
     ) {
       return 0;
     }
 
-    if (hasAny(text, CUT_WORDS)) {
+    if (
+      hasAny(
+        text,
+        [
+          "maltodextrin",
+          "dextrose",
+          "carbohydrate",
+          "carbohydrates",
+        ]
+      )
+    ) {
+      return 0;
+    }
+
+    if (
+      hasAny(
+        text,
+        CUT_WORDS
+      )
+    ) {
       return 10;
     }
 
     return 0;
   }
 
-  if (normalizedGoal === "bulk") {
+  if (
+    normalizedGoal === "bulk"
+  ) {
     if (
-      hasAny(text, [
-        "fat burner",
-        "fatburner",
-        "thermogenic",
-        "shred",
-      ])
+      hasAny(
+        text,
+        [
+          "fat burner",
+          "fatburner",
+          "thermogenic",
+          "shred",
+        ]
+      )
     ) {
       return 0;
     }
 
-    if (hasAny(text, BULK_WORDS)) {
+    if (
+      hasAny(
+        text,
+        BULK_WORDS
+      )
+    ) {
       return 10;
     }
 
     return 0;
   }
 
-  if (normalizedGoal === "lean-bulk") {
+  if (
+    normalizedGoal === "lean-bulk"
+  ) {
     if (
-      hasAny(text, [
-        "mass gainer",
-        "mass-gainer",
-        "weight gainer",
-        "weight-gainer",
-        "fat burner",
-        "fatburner",
-        "thermogenic",
-      ])
+      hasAny(
+        text,
+        [
+          "mass gainer",
+          "mass-gainer",
+          "weight gainer",
+          "weight-gainer",
+          "fat burner",
+          "fatburner",
+          "thermogenic",
+        ]
+      )
     ) {
       return 0;
     }
 
-    if (hasAny(text, LEAN_BULK_WORDS)) {
+    if (
+      hasAny(
+        text,
+        LEAN_BULK_WORDS
+      )
+    ) {
       return 10;
     }
 
@@ -864,21 +972,33 @@ function plannerCoreText(product) {
 }
 
 function isGainerProduct(product) {
-  return hasAny(plannerCoreText(product), GAINER_WORDS);
+  return hasAny(
+    plannerCoreText(product),
+    GAINER_WORDS
+  );
 }
 
 function isCarbProduct(product) {
-  const text = plannerCoreText(product);
+  const text =
+    plannerCoreText(product);
 
-  if (isGainerProduct(product)) {
+  if (
+    isGainerProduct(product)
+  ) {
     return true;
   }
 
-  return hasAny(text, CARB_WORDS);
+  return hasAny(
+    text,
+    CARB_WORDS
+  );
 }
 
 function isCutSupportProduct(product) {
-  return hasAny(plannerCoreText(product), CUT_SUPPORT_WORDS);
+  return hasAny(
+    plannerCoreText(product),
+    CUT_SUPPORT_WORDS
+  );
 }
 
 function isPlannerProtein(product) {
@@ -890,94 +1010,148 @@ function isPlannerCreatine(product) {
 }
 
 function isPlannerExcluded(product) {
-  return hasAny(plannerCoreText(product), PLANNER_EXCLUDED_WORDS);
+  return hasAny(
+    plannerCoreText(product),
+    PLANNER_EXCLUDED_WORDS
+  );
 }
 
 /*
- * Returns the role a product can have INSIDE the selected goal.
+ * Bepaalt welke rol een product binnen het
+ * geselecteerde doel mag hebben.
  *
- * This is deliberately different from the general category system.
+ * CUT:
+ *   protein
+ *   cut-support
+ *   creatine
+ *
+ * BULK:
+ *   protein
+ *   carb
+ *   creatine
+ *
+ * LEAN BULK:
+ *   protein
+ *   carb
+ *   creatine
  */
 
-function packageRole(product, goal) {
-  const normalizedGoal = normalizeGoal(goal);
+function packageRole(
+  product,
+  goal
+) {
+  const normalizedGoal =
+    normalizeGoal(goal);
 
-  if (!normalizedGoal || !product) {
+  if (
+    !normalizedGoal ||
+    !product
+  ) {
     return "";
   }
 
-  if (isPlannerExcluded(product)) {
+  if (
+    isPlannerExcluded(product)
+  ) {
     return "";
   }
 
   /*
-   * PRE-WORKOUT is never automatically used as a protein,
-   * creatine or bulk product just because its description
-   * mentions those ingredients.
+   * Pre-workout krijgt geen plannerrol.
    */
-  if (isPreWorkoutProduct(product)) {
+  if (
+    isPreWorkoutProduct(product)
+  ) {
     return "";
   }
 
   /*
-   * GAINER HAS PRIORITY over protein.
-   *
-   * This fixes:
-   * "Mass Gainer 50% Protein"
-   *
-   * from being treated as a protein product.
+   * Een gainer wordt ALTIJD als gainer
+   * behandeld, ook wanneer het woord protein
+   * in de productnaam staat.
    */
 
-  if (isGainerProduct(product)) {
-    if (normalizedGoal === "bulk") {
+  if (
+    isGainerProduct(product)
+  ) {
+    if (
+      normalizedGoal === "bulk"
+    ) {
       return "carb";
     }
 
     return "";
   }
 
-  if (normalizedGoal === "cut") {
-    if (isCutSupportProduct(product)) {
+  /* =========================
+     CUT
+     ========================= */
+
+  if (
+    normalizedGoal === "cut"
+  ) {
+    if (
+      isCutSupportProduct(product)
+    ) {
       return "cut-support";
     }
 
-    if (isPlannerProtein(product)) {
+    if (
+      isPlannerProtein(product)
+    ) {
       return "protein";
     }
 
-    if (isPlannerCreatine(product)) {
+    if (
+      isPlannerCreatine(product)
+    ) {
       return "creatine";
     }
 
     return "";
   }
 
-  if (normalizedGoal === "bulk") {
-    if (isPlannerProtein(product)) {
+  /* =========================
+     BULK
+     ========================= */
+
+  if (
+    normalizedGoal === "bulk"
+  ) {
+    if (
+      isPlannerProtein(product)
+    ) {
       return "protein";
     }
 
-    if (isCarbProduct(product)) {
+    if (
+      isCarbProduct(product)
+    ) {
       return "carb";
     }
 
-    if (isPlannerCreatine(product)) {
+    if (
+      isPlannerCreatine(product)
+    ) {
       return "creatine";
     }
 
     return "";
   }
 
-  if (normalizedGoal === "lean-bulk") {
-    if (isPlannerProtein(product)) {
+  /* =========================
+     LEAN BULK
+     ========================= */
+
+  if (
+    normalizedGoal === "lean-bulk"
+  ) {
+    if (
+      isPlannerProtein(product)
+    ) {
       return "protein";
     }
 
-    /*
-     * Lean bulk may use normal carb products, but not
-     * mass gainers because those are deliberately reserved
-     * for the regular bulk goal.
-     */
     if (
       isCarbProduct(product) &&
       !isGainerProduct(product)
@@ -985,7 +1159,9 @@ function packageRole(product, goal) {
       return "carb";
     }
 
-    if (isPlannerCreatine(product)) {
+    if (
+      isPlannerCreatine(product)
+    ) {
       return "creatine";
     }
 
@@ -996,20 +1172,30 @@ function packageRole(product, goal) {
 }
 
 /*
- * Strict planner score.
+ * Strikte planner-score.
  *
- * The selected goal is the first gate.
- * A product from another goal receives 0.
+ * Een product zonder geldige rol krijgt ALTIJD 0.
  */
 
-function plannerProductScore(product, goal) {
-  const normalizedGoal = normalizeGoal(goal);
+function plannerProductScore(
+  product,
+  goal
+) {
+  const normalizedGoal =
+    normalizeGoal(goal);
 
-  if (!normalizedGoal || !isUsableProduct(product)) {
+  if (
+    !normalizedGoal ||
+    !isUsableProduct(product)
+  ) {
     return 0;
   }
 
-  const role = packageRole(product, normalizedGoal);
+  const role =
+    packageRole(
+      product,
+      normalizedGoal
+    );
 
   if (!role) {
     return 0;
@@ -1017,48 +1203,68 @@ function plannerProductScore(product, goal) {
 
   let score = 0;
 
-  if (role === "protein") {
+  if (
+    role === "protein"
+  ) {
     score += 100;
   }
 
-  if (role === "creatine") {
+  if (
+    role === "creatine"
+  ) {
     score += 80;
   }
 
-  if (role === "carb") {
+  if (
+    role === "carb"
+  ) {
     score += 90;
   }
 
-  if (role === "cut-support") {
+  if (
+    role === "cut-support"
+  ) {
     score += 90;
   }
 
-  const p = price(product);
+  const p =
+    price(product);
 
   /*
-   * Lower-priced products get a small preference,
-   * but NOT enough to override the goal.
+   * Kleine prijsvoorkeur.
+   * Dit is GEEN budgetoptimalisatie.
    */
 
-  if (p > 0 && p <= 15) {
+  if (
+    p > 0 &&
+    p <= 15
+  ) {
     score += 8;
-  } else if (p <= 25) {
+  } else if (
+    p <= 25
+  ) {
     score += 5;
-  } else if (p <= 40) {
+  } else if (
+    p <= 40
+  ) {
     score += 2;
   }
 
   return score;
 }
 
-function plannerProductKey(product) {
+function plannerProductKey(
+  product
+) {
   const id =
     product?.id ??
     product?.product_id ??
     product?.sku ??
     "";
 
-  if (String(id).trim()) {
+  if (
+    String(id).trim()
+  ) {
     return `id:${String(id).trim()}`;
   }
 
@@ -1076,16 +1282,31 @@ function plannerProductKey(product) {
    ========================================================= */
 
 function applyFilters() {
-  const query = state.search;
+  const query =
+    state.search;
 
-  state.filtered = state.products
-    .filter(isUsableProduct)
-    .filter((product) => matchesSearch(product, query))
-    .filter((product) =>
-      matchesCategory(product, state.category)
-    );
+  state.filtered =
+    state.products
+      .filter(
+        isUsableProduct
+      )
+      .filter(
+        product =>
+          matchesSearch(
+            product,
+            query
+          )
+      )
+      .filter(
+        product =>
+          matchesCategory(
+            product,
+            state.category
+          )
+      );
 
-  state.visibleCount = PRODUCTS_PER_VIEW;
+  state.visibleCount =
+    PRODUCTS_PER_VIEW;
 
   renderProducts();
   updateProductCount();
@@ -1096,18 +1317,26 @@ function applyFilters() {
    PRODUCT LOADING
    ========================================================= */
 
-async function fetchProductPage(offset = 0) {
+async function fetchProductPage(
+  offset = 0
+) {
   const url =
     `${API_PRODUCTS}?limit=${PAGE_SIZE}` +
     `&offset=${offset}`;
 
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-    },
-    credentials: "same-origin",
-  });
+  const response =
+    await fetch(
+      url,
+      {
+        method: "GET",
+        headers: {
+          Accept:
+            "application/json",
+        },
+        credentials:
+          "same-origin",
+      }
+    );
 
   if (!response.ok) {
     throw new Error(
@@ -1115,17 +1344,28 @@ async function fetchProductPage(offset = 0) {
     );
   }
 
-  const data = await response.json();
+  const data =
+    await response.json();
 
-  if (Array.isArray(data)) {
+  if (
+    Array.isArray(data)
+  ) {
     return data;
   }
 
-  if (Array.isArray(data.products)) {
+  if (
+    Array.isArray(
+      data.products
+    )
+  ) {
     return data.products;
   }
 
-  if (Array.isArray(data.items)) {
+  if (
+    Array.isArray(
+      data.items
+    )
+  ) {
     return data.items;
   }
 
@@ -1148,18 +1388,33 @@ async function loadProducts() {
       offset < MAX_PRODUCTS;
       offset += PAGE_SIZE
     ) {
-      const page = await fetchProductPage(offset);
+      const page =
+        await fetchProductPage(
+          offset
+        );
 
-      if (!page.length) {
+      if (
+        !page.length
+      ) {
         break;
       }
 
-      for (const product of page) {
-        if (!product) continue;
+      for (
+        const product of page
+      ) {
+        if (!product) {
+          continue;
+        }
 
-        const key = plannerProductKey(product);
+        const key =
+          plannerProductKey(
+            product
+          );
 
-        if (key && seen.has(key)) {
+        if (
+          key &&
+          seen.has(key)
+        ) {
           continue;
         }
 
@@ -1167,31 +1422,41 @@ async function loadProducts() {
           seen.add(key);
         }
 
-        allProducts.push(product);
+        allProducts.push(
+          product
+        );
       }
 
-      if (page.length < PAGE_SIZE) {
+      if (
+        page.length <
+        PAGE_SIZE
+      ) {
         break;
       }
     }
 
-    state.products = allProducts;
+    state.products =
+      allProducts;
 
     applyFilters();
   } catch (error) {
-    console.error("FitDealFinder product loading failed:", error);
+    console.error(
+      "FitDealFinder product loading failed:",
+      error
+    );
 
     state.products = [];
     state.filtered = [];
 
     renderProducts();
 
-    const container = first(
-      "#products",
-      "#product-grid",
-      ".product-grid",
-      "[data-products]"
-    );
+    const container =
+      first(
+        "#products",
+        "#product-grid",
+        ".product-grid",
+        "[data-products]"
+      );
 
     if (container) {
       container.innerHTML = `
@@ -1202,7 +1467,8 @@ async function loadProducts() {
       `;
     }
   } finally {
-    state.loading = false;
+    state.loading =
+      false;
   }
 }
 
@@ -1211,14 +1477,34 @@ async function loadProducts() {
    ========================================================= */
 
 function productCard(product) {
-  const name = escapeHtml(productName(product));
-  const brand = escapeHtml(productBrand(product));
-  const merchant = escapeHtml(productMerchant(product));
-  const url = productUrl(product);
-  const image = productImage(product);
-  const productPrice = price(product);
+  const name =
+    escapeHtml(
+      productName(product)
+    );
 
-  const category = getProductCategory(product);
+  const brand =
+    escapeHtml(
+      productBrand(product)
+    );
+
+  const merchant =
+    escapeHtml(
+      productMerchant(product)
+    );
+
+  const url =
+    productUrl(product);
+
+  const image =
+    productImage(product);
+
+  const productPrice =
+    price(product);
+
+  const category =
+    getProductCategory(
+      product
+    );
 
   const categoryLabel =
     category === "proteine"
@@ -1231,48 +1517,65 @@ function productCard(product) {
       ? "Supplementen"
       : "";
 
-  const imageHtml = image
-    ? `
-      <div class="product-card__image-wrap">
-        <img
-          class="product-card__image"
-          src="${escapeHtml(image)}"
-          alt="${name}"
-          loading="lazy"
-          decoding="async"
+  const imageHtml =
+    image
+      ? `
+        <div class="product-card__image-wrap">
+          <img
+            class="product-card__image"
+            src="${escapeHtml(image)}"
+            alt="${name}"
+            loading="lazy"
+            decoding="async"
+          >
+        </div>
+      `
+      : `
+        <div class="product-card__image-wrap product-card__image-wrap--empty">
+          <span>Geen afbeelding</span>
+        </div>
+      `;
+
+  const brandHtml =
+    brand
+      ? `
+        <div class="product-card__brand">
+          ${brand}
+        </div>
+      `
+      : "";
+
+  const merchantHtml =
+    merchant
+      ? `
+        <div class="product-card__merchant">
+          ${merchant}
+        </div>
+      `
+      : "";
+
+  const categoryHtml =
+    categoryLabel
+      ? `
+        <span class="product-card__category">
+          ${categoryLabel}
+        </span>
+      `
+      : "";
+
+  const buttonHtml =
+    url
+      ? `
+        <a
+          class="product-card__button"
+          href="${escapeHtml(url)}"
+          target="_blank"
+          rel="noopener noreferrer nofollow"
         >
-      </div>
-    `
-    : `
-      <div class="product-card__image-wrap product-card__image-wrap--empty">
-        <span>Geen afbeelding</span>
-      </div>
-    `;
-
-  const brandHtml = brand
-    ? `<div class="product-card__brand">${brand}</div>`
-    : "";
-
-  const merchantHtml = merchant
-    ? `<div class="product-card__merchant">${merchant}</div>`
-    : "";
-
-  const categoryHtml = categoryLabel
-    ? `<span class="product-card__category">${categoryLabel}</span>`
-    : "";
-
-  const buttonHtml = url
-    ? `
-      <a
-        class="product-card__button"
-        href="${escapeHtml(url)}"
-        target="_blank"
-        rel="noopener noreferrer nofollow"
-      >
-        Bekijk bij winkel
-      </a>
-    `
-    : "";
+          Bekijk bij winkel
+        </a>
+      `
+      : "";
 
   return `
     <article
@@ -1310,23 +1613,27 @@ function productCard(product) {
 }
 
 function renderProducts() {
-  const container = first(
-    "#products",
-    "#product-grid",
-    ".product-grid",
-    "[data-products]"
-  );
+  const container =
+    first(
+      "#products",
+      "#product-grid",
+      ".product-grid",
+      "[data-products]"
+    );
 
   if (!container) {
     return;
   }
 
-  const products = state.filtered.slice(
-    0,
-    state.visibleCount
-  );
+  const products =
+    state.filtered.slice(
+      0,
+      state.visibleCount
+    );
 
-  if (!products.length) {
+  if (
+    !products.length
+  ) {
     container.innerHTML = `
       <div class="empty-message">
         Geen producten gevonden.
@@ -1336,36 +1643,43 @@ function renderProducts() {
     return;
   }
 
-  container.innerHTML = products
-    .map(productCard)
-    .join("");
+  container.innerHTML =
+    products
+      .map(productCard)
+      .join("");
 }
 
 function updateProductCount() {
-  const elements = $all(
-    "[data-product-count], #product-count, .product-count"
-  );
-
-  for (const element of elements) {
-    element.textContent = String(
-      state.filtered.length
+  const elements =
+    $all(
+      "[data-product-count], #product-count, .product-count"
     );
+
+  for (
+    const element of elements
+  ) {
+    element.textContent =
+      String(
+        state.filtered.length
+      );
   }
 }
 
 function updateLoadMore() {
-  const button = first(
-    "#load-more",
-    "[data-load-more]",
-    ".load-more"
-  );
+  const button =
+    first(
+      "#load-more",
+      "[data-load-more]",
+      ".load-more"
+    );
 
   if (!button) {
     return;
   }
 
   if (
-    state.visibleCount >= state.filtered.length
+    state.visibleCount >=
+    state.filtered.length
   ) {
     button.hidden = true;
     return;
@@ -1375,7 +1689,8 @@ function updateLoadMore() {
 }
 
 function loadMoreProducts() {
-  state.visibleCount += PRODUCTS_PER_VIEW;
+  state.visibleCount +=
+    PRODUCTS_PER_VIEW;
 
   renderProducts();
   updateLoadMore();
@@ -1386,41 +1701,50 @@ function loadMoreProducts() {
    ========================================================= */
 
 function setupSearch() {
-  const form = first(
-    "#search-form",
-    "[data-search-form]",
-    "form.search-form"
-  );
+  const form =
+    first(
+      "#search-form",
+      "[data-search-form]",
+      "form.search-form"
+    );
 
-  const input = first(
-    "#search",
-    "#search-input",
-    "[data-search-input]",
-    'input[type="search"]'
-  );
+  const input =
+    first(
+      "#search",
+      "#search-input",
+      "[data-search-input]",
+      'input[type="search"]'
+    );
 
   if (!input) {
     return;
   }
 
   const runSearch = () => {
-    state.search = input.value.trim();
+    state.search =
+      input.value.trim();
 
     /*
-     * Search is independent from category.
-     *
-     * If the user explicitly searches something,
-     * remove the category filter so the search can
-     * find the product across the catalog.
+     * Een zoekopdracht zoekt altijd
+     * door de volledige catalogus.
      */
+
     state.category = "";
 
     $all(
       "[data-category]"
-    ).forEach((button) => {
-      button.classList.remove("active");
-      button.setAttribute("aria-pressed", "false");
-    });
+    ).forEach(
+      button => {
+        button.classList.remove(
+          "active"
+        );
+
+        button.setAttribute(
+          "aria-pressed",
+          "false"
+        );
+      }
+    );
 
     applyFilters();
 
@@ -1428,41 +1752,57 @@ function setupSearch() {
   };
 
   if (form) {
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
-      runSearch();
-    });
+    form.addEventListener(
+      "submit",
+      event => {
+        event.preventDefault();
+        runSearch();
+      }
+    );
   }
 
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      runSearch();
+  input.addEventListener(
+    "keydown",
+    event => {
+      if (
+        event.key === "Enter"
+      ) {
+        event.preventDefault();
+        runSearch();
+      }
     }
-  });
+  );
 
-  input.addEventListener("input", () => {
-    /*
-     * Live search.
-     */
-    state.search = input.value.trim();
+  input.addEventListener(
+    "input",
+    () => {
+      state.search =
+        input.value.trim();
 
-    if (state.search) {
-      state.category = "";
+      if (
+        state.search
+      ) {
+        state.category = "";
 
-      $all("[data-category]").forEach(
-        (button) => {
-          button.classList.remove("active");
-          button.setAttribute(
-            "aria-pressed",
-            "false"
-          );
-        }
-      );
+        $all(
+          "[data-category]"
+        ).forEach(
+          button => {
+            button.classList.remove(
+              "active"
+            );
+
+            button.setAttribute(
+              "aria-pressed",
+              "false"
+            );
+          }
+        );
+      }
+
+      applyFilters();
     }
-
-    applyFilters();
-  });
+  );
 }
 
 /* =========================================================
@@ -1470,49 +1810,64 @@ function setupSearch() {
    ========================================================= */
 
 function setupCategories() {
-  const buttons = $all("[data-category]");
+  const buttons =
+    $all(
+      "[data-category]"
+    );
 
-  for (const button of buttons) {
-    button.addEventListener("click", () => {
-      const category = normalizeCategory(
-        button.dataset.category
-      );
-
-      state.search = "";
-      state.category = category;
-
-      const input = first(
-        "#search",
-        "#search-input",
-        "[data-search-input]",
-        'input[type="search"]'
-      );
-
-      if (input) {
-        input.value = "";
-      }
-
-      buttons.forEach((item) => {
-        const active =
+  for (
+    const button of buttons
+  ) {
+    button.addEventListener(
+      "click",
+      () => {
+        const category =
           normalizeCategory(
-            item.dataset.category
-          ) === category;
+            button.dataset.category
+          );
 
-        item.classList.toggle(
-          "active",
-          active
+        state.search = "";
+        state.category =
+          category;
+
+        const input =
+          first(
+            "#search",
+            "#search-input",
+            "[data-search-input]",
+            'input[type="search"]'
+          );
+
+        if (input) {
+          input.value = "";
+        }
+
+        buttons.forEach(
+          item => {
+            const active =
+              normalizeCategory(
+                item.dataset.category
+              ) === category;
+
+            item.classList.toggle(
+              "active",
+              active
+            );
+
+            item.setAttribute(
+              "aria-pressed",
+              active
+                ? "true"
+                : "false"
+            );
+          }
         );
 
-        item.setAttribute(
-          "aria-pressed",
-          active ? "true" : "false"
-        );
-      });
+        applyFilters();
 
-      applyFilters();
-
-      scrollToDeals();
-    });
+        scrollToDeals();
+      }
+    );
   }
 }
 
@@ -1520,50 +1875,56 @@ function setupCategories() {
    GOAL BUTTONS
    ========================================================= */
 
-/*
- * Goal buttons are kept separate from product categories.
- *
- * This is important:
- *
- * CUT/BULK/LEAN BULK do NOT change the normal
- * product category list.
- */
-
 function setupGoals() {
-  const buttons = $all("[data-goal]");
+  const buttons =
+    $all(
+      "[data-goal]"
+    );
 
-  for (const button of buttons) {
-    button.addEventListener("click", () => {
-      const goal = normalizeGoal(
-        button.dataset.goal
-      );
-
-      state.goal = goal;
-
-      buttons.forEach((item) => {
-        const active =
+  for (
+    const button of buttons
+  ) {
+    button.addEventListener(
+      "click",
+      () => {
+        const goal =
           normalizeGoal(
-            item.dataset.goal
-          ) === goal;
+            button.dataset.goal
+          );
 
-        item.classList.toggle(
-          "active",
-          active
+        state.goal =
+          goal;
+
+        buttons.forEach(
+          item => {
+            const active =
+              normalizeGoal(
+                item.dataset.goal
+              ) === goal;
+
+            item.classList.toggle(
+              "active",
+              active
+            );
+
+            item.setAttribute(
+              "aria-pressed",
+              active
+                ? "true"
+                : "false"
+            );
+          }
         );
 
-        item.setAttribute(
-          "aria-pressed",
-          active ? "true" : "false"
-        );
-      });
-
-      /*
-       * Goal selection does NOT filter the
-       * regular product catalog.
-       *
-       * It is only consumed by the planner.
-       */
-    });
+        /*
+         * Doel verandert NIET de normale
+         * productcategorieën.
+         *
+         * Het doel wordt alleen gebruikt
+         * door de planner.
+         */
+      }
+    );
   }
 }
 
@@ -1572,13 +1933,14 @@ function setupGoals() {
    ========================================================= */
 
 function scrollToDeals() {
-  const target = first(
-    "#deals",
-    "#products",
-    "#product-grid",
-    ".products",
-    "[data-products]"
-  );
+  const target =
+    first(
+      "#deals",
+      "#products",
+      "#product-grid",
+      ".products",
+      "[data-products]"
+    );
 
   if (!target) {
     return;
@@ -1594,57 +1956,39 @@ function scrollToDeals() {
    SHOPPING PLANNER
    ========================================================= */
 
-function plannerProductReason(product, goal) {
-  const role = packageRole(product, goal);
-
-  if (role === "protein") {
-    return "Proteïne";
-  }
-
-  if (role === "creatine") {
-    return "Creatine";
-  }
-
-  if (role === "carb") {
-    return "Koolhydraten / energie";
-  }
-
-  if (role === "cut-support") {
-    return "Cut-support";
-  }
-
-  return "";
-}
-
 function createPlanner() {
-  const form = first(
-    "#shopping-planner",
-    "#planner",
-    "[data-shopping-planner]",
-    "[data-planner]"
-  );
+  const form =
+    first(
+      "#shopping-planner",
+      "#planner",
+      "[data-shopping-planner]",
+      "[data-planner]"
+    );
 
   if (!form) {
     return;
   }
 
-  const goalInput = first(
-    "#planner-goal",
-    "[name='goal']",
-    "[data-planner-goal]",
-    "select"
-  );
+  const goalInput =
+    first(
+      "#planner-goal",
+      "[name='goal']",
+      "[data-planner-goal]",
+      "select"
+    );
 
-  const budgetInput = first(
-    "#planner-budget",
-    "[name='budget']",
-    "[data-planner-budget]"
-  );
+  const budgetInput =
+    first(
+      "#planner-budget",
+      "[name='budget']",
+      "[data-planner-budget]"
+    );
 
-  const result = first(
-    "#planner-results",
-    "[data-planner-results]"
-  );
+  const result =
+    first(
+      "#planner-results",
+      "[data-planner-results]"
+    );
 
   if (!result) {
     return;
@@ -1655,24 +1999,34 @@ function createPlanner() {
       "#planner-submit",
       "[data-planner-submit]"
     ) ||
-    (form.tagName === "FORM"
-      ? $("button[type='submit']", form)
-      : null);
+    (
+      form.tagName === "FORM"
+        ? $(
+            "button[type='submit']",
+            form
+          )
+        : null
+    );
 
   const run = () => {
-    const selectedGoal = normalizeGoal(
-      goalInput?.value ||
-        state.goal ||
-        ""
-    );
+    const selectedGoal =
+      normalizeGoal(
+        goalInput?.value ||
+          state.goal ||
+          ""
+      );
 
-    const maxBudget = Number(
-      String(
-        budgetInput?.value ?? ""
-      ).replace(",", ".")
-    );
+    const maxBudget =
+      Number(
+        String(
+          budgetInput?.value ??
+            ""
+        ).replace(",", ".")
+      );
 
-    if (!selectedGoal) {
+    if (
+      !selectedGoal
+    ) {
       result.innerHTML = `
         <div class="planner-message">
           Kies eerst een doel.
@@ -1682,7 +2036,9 @@ function createPlanner() {
     }
 
     if (
-      !Number.isFinite(maxBudget) ||
+      !Number.isFinite(
+        maxBudget
+      ) ||
       maxBudget <= 0
     ) {
       result.innerHTML = `
@@ -1694,65 +2050,89 @@ function createPlanner() {
     }
 
     /*
-     * STRICT GOAL FILTER.
+     * Alleen producten met een rol voor
+     * het gekozen doel worden kandidaten.
      *
-     * Products from another goal never enter
-     * the candidate list.
+     * Dit is de belangrijkste bescherming
+     * tegen bulkproducten in een Cut-lijst.
      */
 
-    const candidates = state.products
-      .filter(isUsableProduct)
-      .map((product) => ({
-        product,
-        role: packageRole(
-          product,
-          selectedGoal
-        ),
-        score: plannerProductScore(
-          product,
-          selectedGoal
-        ),
-      }))
-      .filter(
-        (item) =>
-          item.role &&
-          item.score > 0
-      )
-      .sort((a, b) => {
-        if (b.score !== a.score) {
-          return b.score - a.score;
-        }
+    const candidates =
+      state.products
+        .filter(
+          isUsableProduct
+        )
+        .map(
+          product => ({
+            product,
+            role:
+              packageRole(
+                product,
+                selectedGoal
+              ),
+            score:
+              plannerProductScore(
+                product,
+                selectedGoal
+              ),
+          })
+        )
+        .filter(
+          item =>
+            item.role &&
+            item.score > 0
+        )
+        .sort(
+          (a, b) => {
+            if (
+              b.score !==
+              a.score
+            ) {
+              return (
+                b.score -
+                a.score
+              );
+            }
 
-        return (
-          price(a.product) -
-          price(b.product)
+            return (
+              price(a.product) -
+              price(b.product)
+            );
+          }
         );
-      });
 
     /*
-     * IMPORTANT:
+     * Geen knapzak-/combinatie-optimalisatie.
      *
-     * Do not optimize the budget.
-     * Do not search for a combination that gets
-     * as close as possible to the budget.
-     *
-     * Simply walk through the ranked products and
-     * take products that fit.
+     * We nemen gewoon de hoogst scorende
+     * passende producten die nog binnen
+     * het budget passen.
      */
 
-    const seen = new Set();
-    let shortlistTotal = 0;
+    const seen =
+      new Set();
 
-    const shortlist = [];
+    let shortlistTotal =
+      0;
 
-    for (const candidate of candidates) {
+    const shortlist =
+      [];
+
+    for (
+      const candidate of candidates
+    ) {
       const product =
         candidate.product;
 
       const key =
-        plannerProductKey(product);
+        plannerProductKey(
+          product
+        );
 
-      if (!key || seen.has(key)) {
+      if (
+        !key ||
+        seen.has(key)
+      ) {
         continue;
       }
 
@@ -1762,23 +2142,32 @@ function createPlanner() {
       if (
         shortlistTotal +
           productPrice >
-        maxBudget + 0.001
+        maxBudget +
+          0.001
       ) {
         continue;
       }
 
       seen.add(key);
 
-      shortlistTotal += productPrice;
+      shortlistTotal +=
+        productPrice;
 
-      shortlist.push(candidate);
+      shortlist.push(
+        candidate
+      );
 
-      if (shortlist.length >= 5) {
+      if (
+        shortlist.length >=
+        5
+      ) {
         break;
       }
     }
 
-    if (!shortlist.length) {
+    if (
+      !shortlist.length
+    ) {
       result.innerHTML = `
         <div class="planner-message">
           Geen passende producten gevonden
@@ -1792,81 +2181,103 @@ function createPlanner() {
       return;
     }
 
-    const cards = shortlist
-      .map((candidate) => {
-        const product =
-          candidate.product;
+    const cards =
+      shortlist
+        .map(
+          candidate => {
+            const product =
+              candidate.product;
 
-        const name =
-          escapeHtml(
-            productName(product)
-          );
+            const name =
+              escapeHtml(
+                productName(
+                  product
+                )
+              );
 
-        const merchant =
-          escapeHtml(
-            productMerchant(product)
-          );
+            const merchant =
+              escapeHtml(
+                productMerchant(
+                  product
+                )
+              );
 
-        const productUrlValue =
-          productUrl(product);
+            const productUrlValue =
+              productUrl(
+                product
+              );
 
-        const productPrice =
-          price(product);
+            const productPrice =
+              price(product);
 
-        const reason =
-          plannerProductReason(
-            product,
-            selectedGoal
-          );
+            const reason =
+              plannerProductReason(
+                product,
+                selectedGoal
+              );
 
-        return `
-          <article class="planner-product">
-            <div class="planner-product__info">
-              <strong>
-                ${name}
-              </strong>
+            return `
+              <article class="planner-product">
 
-              ${
-                merchant
-                  ? `<span>${merchant}</span>`
-                  : ""
-              }
+                <div class="planner-product__info">
+                  <strong>
+                    ${name}
+                  </strong>
 
-              ${
-                reason
-                  ? `<small>${escapeHtml(
-                      reason
-                    )}</small>`
-                  : ""
-              }
-            </div>
+                  ${
+                    merchant
+                      ? `
+                        <span>
+                          ${merchant}
+                        </span>
+                      `
+                      : ""
+                  }
 
-            <div class="planner-product__price">
-              ${money(productPrice)}
-            </div>
+                  ${
+                    reason
+                      ? `
+                        <small>
+                          ${escapeHtml(
+                            reason
+                          )}
+                        </small>
+                      `
+                      : ""
+                  }
+                </div>
 
-            ${
-              productUrlValue
-                ? `
-                  <a
-                    href="${escapeHtml(
-                      productUrlValue
-                    )}"
-                    target="_blank"
-                    rel="noopener noreferrer nofollow"
-                  >
-                    Bekijk
-                  </a>
-                `
-                : ""
-            }
-          </article>
-        `;
-      })
-      .join("");
+                <div class="planner-product__price">
+                  ${money(
+                    productPrice
+                  )}
+                </div>
+
+                ${
+                  productUrlValue
+                    ? `
+                      <a
+                        href="${escapeHtml(
+                          productUrlValue
+                        )}"
+                        target="_blank"
+                        rel="noopener noreferrer nofollow"
+                      >
+                        Bekijk
+                      </a>
+                    `
+                    : ""
+                }
+
+              </article>
+            `;
+          }
+        )
+        .join("");
 
     result.innerHTML = `
       <div class="planner-summary">
+
         <strong>
           ${escapeHtml(
             selectedGoal
@@ -1877,10 +2288,12 @@ function createPlanner() {
           ${money(
             shortlistTotal
           )}
-          van ${money(
+          van
+          ${money(
             maxBudget
           )}
         </span>
+
       </div>
 
       <div class="planner-products">
@@ -1892,9 +2305,10 @@ function createPlanner() {
   if (submit) {
     submit.addEventListener(
       "click",
-      (event) => {
+      event => {
         if (
-          form.tagName === "FORM"
+          form.tagName ===
+          "FORM"
         ) {
           return;
         }
@@ -1905,10 +2319,13 @@ function createPlanner() {
     );
   }
 
-  if (form.tagName === "FORM") {
+  if (
+    form.tagName ===
+    "FORM"
+  ) {
     form.addEventListener(
       "submit",
-      (event) => {
+      event => {
         event.preventDefault();
         run();
       }
@@ -1920,13 +2337,11 @@ function createPlanner() {
    AI HELPERS
    ========================================================= */
 
-function renderAIText(value) {
-  const text = String(value ?? "");
-
-  /*
-   * Lightweight formatting.
-   * No innerHTML is ever fed raw AI output.
-   */
+function renderAIText(
+  value
+) {
+  const text =
+    String(value ?? "");
 
   return escapeHtml(text)
     .replace(
@@ -1939,59 +2354,74 @@ function renderAIText(value) {
     );
 }
 
-function detectProductType(query) {
-  const text = normalize(query);
+function detectProductType(
+  query
+) {
+  const text =
+    normalize(query);
 
   if (
-    hasAny(text, [
-      "pre workout",
-      "pre-workout",
-      "preworkout",
-    ])
+    hasAny(
+      text,
+      [
+        "pre workout",
+        "pre-workout",
+        "preworkout",
+      ]
+    )
   ) {
     return "pre-workout";
   }
 
   if (
-    hasAny(text, [
-      "creatine",
-      "creatine monohydraat",
-      "creatine monohydrate",
-    ])
+    hasAny(
+      text,
+      [
+        "creatine",
+        "creatine monohydraat",
+        "creatine monohydrate",
+      ]
+    )
   ) {
     return "creatine";
   }
 
   if (
-    hasAny(text, [
-      "whey",
-      "protein",
-      "proteine",
-      "casein",
-      "caseine",
-      "isolate",
-      "isolaat",
-    ])
+    hasAny(
+      text,
+      [
+        "whey",
+        "protein",
+        "proteine",
+        "casein",
+        "caseine",
+        "isolate",
+        "isolaat",
+      ]
+    )
   ) {
     return "proteine";
   }
 
   if (
-    hasAny(text, [
-      "vitamine",
-      "vitamin",
-      "magnesium",
-      "zink",
-      "zinc",
-      "omega",
-      "electrolytes",
-      "electrolyten",
-      "carnitine",
-      "caffeine",
-      "cafeine",
-      "collagen",
-      "collageen",
-    ])
+    hasAny(
+      text,
+      [
+        "vitamine",
+        "vitamin",
+        "magnesium",
+        "zink",
+        "zinc",
+        "omega",
+        "electrolytes",
+        "electrolyten",
+        "carnitine",
+        "caffeine",
+        "cafeine",
+        "collagen",
+        "collageen",
+      ]
+    )
   ) {
     return "supplementen";
   }
@@ -1999,60 +2429,97 @@ function detectProductType(query) {
   return "";
 }
 
-function findAIProducts(query, limit = 8) {
-  const text = normalize(query);
+function findAIProducts(
+  query,
+  limit = 8
+) {
+  const text =
+    normalize(query);
 
   if (!text) {
     return [];
   }
 
   const productType =
-    detectProductType(text);
-
-  const words = text
-    .split(/\s+/)
-    .filter(
-      (word) =>
-        word.length >= 3
+    detectProductType(
+      text
     );
 
-  const scored = [];
+  const words =
+    text
+      .split(/\s+/)
+      .filter(
+        word =>
+          word.length >= 3
+      );
 
-  for (const product of state.products) {
-    if (!isUsableProduct(product)) {
+  const scored =
+    [];
+
+  for (
+    const product of state.products
+  ) {
+    if (
+      !isUsableProduct(
+        product
+      )
+    ) {
       continue;
     }
 
     const searchable =
-      productSearchText(product);
+      productSearchText(
+        product
+      );
 
     const category =
-      getProductCategory(product);
+      getProductCategory(
+        product
+      );
 
     let score = 0;
 
+    /*
+     * Als de gebruiker expliciet om een
+     * producttype vraagt, krijgt exact die
+     * categorie voorrang.
+     */
+
     if (
       productType &&
-      category === productType
+      category ===
+        productType
     ) {
       score += 100;
     }
 
-    for (const word of words) {
+    /*
+     * Exacte zoekterm krijgt extra punten.
+     */
+
+    if (
+      searchable.includes(
+        text
+      )
+    ) {
+      score += 50;
+    }
+
+    for (
+      const word of words
+    ) {
       if (
-        searchable.includes(word)
+        searchable.includes(
+          word
+        )
       ) {
         score += 10;
       }
     }
 
     if (
-      searchable.includes(text)
+      score > 0
     ) {
-      score += 50;
-    }
-
-    if (score > 0) {
       scored.push({
         product,
         score,
@@ -2061,18 +2528,32 @@ function findAIProducts(query, limit = 8) {
   }
 
   return scored
-    .sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
+    .sort(
+      (a, b) => {
+        if (
+          b.score !==
+          a.score
+        ) {
+          return (
+            b.score -
+            a.score
+          );
+        }
 
-      return (
-        price(a.product) -
-        price(b.product)
-      );
-    })
-    .slice(0, limit)
-    .map((item) => item.product);
+        return (
+          price(a.product) -
+          price(b.product)
+        );
+      }
+    )
+    .slice(
+      0,
+      limit
+    )
+    .map(
+      item =>
+        item.product
+    );
 }
 
 function renderAIProductResults(
@@ -2083,7 +2564,9 @@ function renderAIProductResults(
     return;
   }
 
-  if (!products.length) {
+  if (
+    !products.length
+  ) {
     container.innerHTML = `
       <div class="ai-message">
         Geen passende producten gevonden.
@@ -2093,93 +2576,123 @@ function renderAIProductResults(
     return;
   }
 
-  container.innerHTML = products
-    .map((product) => {
-      const name =
-        escapeHtml(
-          productName(product)
-        );
+  container.innerHTML =
+    products
+      .map(
+        product => {
+          const name =
+            escapeHtml(
+              productName(
+                product
+              )
+            );
 
-      const merchant =
-        escapeHtml(
-          productMerchant(product)
-        );
+          const merchant =
+            escapeHtml(
+              productMerchant(
+                product
+              )
+            );
 
-      const url =
-        productUrl(product);
+          const url =
+            productUrl(
+              product
+            );
 
-      const productPrice =
-        price(product);
+          const productPrice =
+            price(product);
 
-      return `
-        <article class="ai-product">
-          <div>
-            <strong>
-              ${name}
-            </strong>
+          return `
+            <article class="ai-product">
 
-            ${
-              merchant
-                ? `<small>${merchant}</small>`
-                : ""
-            }
-          </div>
+              <div>
+                <strong>
+                  ${name}
+                </strong>
 
-          <strong>
-            ${money(productPrice)}
-          </strong>
+                ${
+                  merchant
+                    ? `
+                      <small>
+                        ${merchant}
+                      </small>
+                    `
+                    : ""
+                }
+              </div>
 
-          ${
-            url
-              ? `
-                <a
-                  href="${escapeHtml(
-                    url
-                  )}"
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                >
-                  Bekijk
-                </a>
-              `
-              : ""
-          }
-        </article>
-      `;
-    })
-    .join("");
+              <strong>
+                ${money(
+                  productPrice
+                )}
+              </strong>
+
+              ${
+                url
+                  ? `
+                    <a
+                      href="${escapeHtml(
+                        url
+                      )}"
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                    >
+                      Bekijk
+                    </a>
+                  `
+                  : ""
+              }
+
+            </article>
+          `;
+        }
+      )
+      .join("");
 }
 
 /* =========================================================
    AI REQUEST
    ========================================================= */
 
-async function askAI(message) {
-  const response = await fetch(
-    API_AI,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type":
-          "application/json",
-        Accept:
-          "application/json",
-      },
-      credentials:
-        "same-origin",
-      body: JSON.stringify({
-        message: String(
-          message || ""
-        ).slice(0, 4000),
-      }),
-    }
-  );
+async function askAI(
+  message
+) {
+  const response =
+    await fetch(
+      API_AI,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":
+            "application/json",
+          Accept:
+            "application/json",
+        },
+        credentials:
+          "same-origin",
+        body:
+          JSON.stringify({
+            message:
+              String(
+                message || ""
+              ).slice(
+                0,
+                4000
+              ),
+          }),
+      }
+    );
 
   const data =
-    await response.json()
-      .catch(() => ({}));
+    await response
+      .json()
+      .catch(
+        () => ({})
+      );
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
     throw new Error(
       data?.error ||
         `AI request failed: ${response.status}`
@@ -2199,27 +2712,31 @@ async function askAI(message) {
    ========================================================= */
 
 function setupAI() {
-  const form = first(
-    "#ai-form",
-    "[data-ai-form]"
-  );
+  const form =
+    first(
+      "#ai-form",
+      "[data-ai-form]"
+    );
 
-  const input = first(
-    "#ai-input",
-    "#ai-message",
-    "[data-ai-input]",
-    "textarea"
-  );
+  const input =
+    first(
+      "#ai-input",
+      "#ai-message",
+      "[data-ai-input]",
+      "textarea"
+    );
 
-  const output = first(
-    "#ai-output",
-    "[data-ai-output]"
-  );
+  const output =
+    first(
+      "#ai-output",
+      "[data-ai-output]"
+    );
 
-  const productResults = first(
-    "#ai-product-results",
-    "[data-ai-product-results]"
-  );
+  const productResults =
+    first(
+      "#ai-product-results",
+      "[data-ai-product-results]"
+    );
 
   if (!input) {
     return;
@@ -2230,151 +2747,164 @@ function setupAI() {
       "#ai-submit",
       "[data-ai-submit]"
     ) ||
-    (form
-      ? $("button[type='submit']", form)
-      : null);
+    (
+      form
+        ? $(
+            "button[type='submit']",
+            form
+          )
+        : null
+    );
 
-  const run = async () => {
-    const message =
-      input.value.trim();
+  const run =
+    async () => {
+      const message =
+        input.value.trim();
 
-    if (!message) {
-      return;
-    }
+      if (!message) {
+        return;
+      }
 
-    /*
-     * First try the local product catalog.
-     *
-     * This means questions like:
-     * "zoek whey"
-     * can return actual products immediately.
-     */
-
-    const localProducts =
-      findAIProducts(
-        message,
-        8
-      );
-
-    if (
-      localProducts.length &&
-      productResults
-    ) {
-      renderAIProductResults(
-        localProducts,
-        productResults
-      );
-    }
-
-    if (output) {
-      output.innerHTML = `
-        <div class="ai-loading">
-          Even zoeken...
-        </div>
-      `;
-    }
-
-    if (submit) {
-      submit.disabled = true;
-    }
-
-    try {
       /*
-       * Exact planner requests get a deterministic
-       * product package first.
+       * Eerst zoeken in de eigen catalogus.
        */
 
-      const normalized =
-        normalize(message);
-
-      const detectedGoal =
-        normalizeGoal(
-          normalized
+      const localProducts =
+        findAIProducts(
+          message,
+          8
         );
-
-      const budgetMatch =
-        normalized.match(
-          /(?:€|eur|euro)\s*(\d+(?:[.,]\d+)?)/
-        );
-
-      const budget =
-        budgetMatch
-          ? Number(
-              budgetMatch[1].replace(
-                ",",
-                "."
-              )
-            )
-          : 0;
 
       if (
-        detectedGoal &&
-        budget > 0 &&
-        hasAny(normalized, [
-          "boodschappenlijst",
-          "shopping list",
-          "lijst",
-          "pakket",
-          "pakketje",
-          "producten voor",
-          "producten onder",
-          "budget",
-        ])
+        localProducts.length &&
+        productResults
       ) {
-        const packageItems =
-          buildGoalPackage(
-            detectedGoal,
-            budget
-          );
-
-        if (
-          packageItems.length &&
-          output
-        ) {
-          renderGoalPackage(
-            packageItems,
-            detectedGoal,
-            budget,
-            output
-          );
-
-          return;
-        }
+        renderAIProductResults(
+          localProducts,
+          productResults
+        );
       }
-
-      const answer =
-        await askAI(message);
-
-      if (output) {
-        output.innerHTML =
-          renderAIText(
-            answer
-          );
-      }
-    } catch (error) {
-      console.error(
-        "AI request failed:",
-        error
-      );
 
       if (output) {
         output.innerHTML = `
-          <div class="ai-error">
-            Er ging iets mis. Probeer het opnieuw.
+          <div class="ai-loading">
+            Even zoeken...
           </div>
         `;
       }
-    } finally {
+
       if (submit) {
-        submit.disabled = false;
+        submit.disabled =
+          true;
       }
-    }
-  };
+
+      try {
+        const normalized =
+          normalize(message);
+
+        const detectedGoal =
+          normalizeGoal(
+            normalized
+          );
+
+        const budgetMatch =
+          normalized.match(
+            /(?:€|eur|euro)\s*(\d+(?:[.,]\d+)?)/
+          );
+
+        const budget =
+          budgetMatch
+            ? Number(
+                budgetMatch[1]
+                  .replace(
+                    ",",
+                    "."
+                  )
+              )
+            : 0;
+
+        /*
+         * Exacte boodschappenlijst-aanvragen
+         * worden lokaal afgehandeld.
+         */
+
+        if (
+          detectedGoal &&
+          budget > 0 &&
+          hasAny(
+            normalized,
+            [
+              "boodschappenlijst",
+              "shopping list",
+              "lijst",
+              "pakket",
+              "pakketje",
+              "producten voor",
+              "producten onder",
+              "budget",
+            ]
+          )
+        ) {
+          const packageItems =
+            buildGoalPackage(
+              detectedGoal,
+              budget
+            );
+
+          if (
+            packageItems.length &&
+            output
+          ) {
+            renderGoalPackage(
+              packageItems,
+              detectedGoal,
+              budget,
+              output
+            );
+
+            return;
+          }
+        }
+
+        const answer =
+          await askAI(
+            message
+          );
+
+        if (output) {
+          output.innerHTML =
+            renderAIText(
+              answer
+            );
+        }
+      } catch (
+        error
+      ) {
+        console.error(
+          "AI request failed:",
+          error
+        );
+
+        if (output) {
+          output.innerHTML = `
+            <div class="ai-error">
+              Er ging iets mis.
+              Probeer het opnieuw.
+            </div>
+          `;
+        }
+      } finally {
+        if (submit) {
+          submit.disabled =
+            false;
+        }
+      }
+    };
 
   if (form) {
     form.addEventListener(
       "submit",
-      (event) => {
+      event => {
         event.preventDefault();
         run();
       }
@@ -2382,7 +2912,7 @@ function setupAI() {
   } else if (submit) {
     submit.addEventListener(
       "click",
-      (event) => {
+      event => {
         event.preventDefault();
         run();
       }
@@ -2399,58 +2929,83 @@ function buildGoalPackage(
   budget
 ) {
   const selectedGoal =
-    normalizeGoal(goal);
+    normalizeGoal(
+      goal
+    );
 
   if (
     !selectedGoal ||
-    !Number.isFinite(budget) ||
+    !Number.isFinite(
+      budget
+    ) ||
     budget <= 0
   ) {
     return [];
   }
 
   /*
-   * Strict candidate pool.
+   * Alleen kandidaten met een rol binnen
+   * het gekozen doel.
    */
+
   const candidates =
     state.products
-      .filter(isUsableProduct)
-      .map((product) => ({
-        product,
-        role: packageRole(
-          product,
-          selectedGoal
-        ),
-        score:
-          plannerProductScore(
-            product,
-            selectedGoal
-          ),
-      }))
       .filter(
-        (item) =>
+        isUsableProduct
+      )
+      .map(
+        product => ({
+          product,
+          role:
+            packageRole(
+              product,
+              selectedGoal
+            ),
+          score:
+            plannerProductScore(
+              product,
+              selectedGoal
+            ),
+        })
+      )
+      .filter(
+        item =>
           item.role &&
           item.score > 0
       )
-      .sort((a, b) => {
-        if (b.score !== a.score) {
-          return b.score - a.score;
-        }
+      .sort(
+        (a, b) => {
+          if (
+            b.score !==
+            a.score
+          ) {
+            return (
+              b.score -
+              a.score
+            );
+          }
 
-        return (
-          price(a.product) -
-          price(b.product)
-        );
-      });
+          return (
+            price(a.product) -
+            price(b.product)
+          );
+        }
+      );
+
+  /*
+   * Rollen per doel.
+   */
 
   const roleOrder =
-    selectedGoal === "cut"
+    selectedGoal ===
+    "cut"
       ? [
           "protein",
           "cut-support",
           "creatine",
         ]
-      : selectedGoal === "bulk"
+      : selectedGoal ===
+        "bulk"
       ? [
           "protein",
           "carb",
@@ -2462,36 +3017,58 @@ function buildGoalPackage(
           "carb",
         ];
 
-  const selected = [];
-  const used = new Set();
+  const selected =
+    [];
+
+  const used =
+    new Set();
 
   let total = 0;
 
   /*
-   * Pick at most one product per role first.
-   *
-   * If a role is unavailable, we do not substitute
-   * it with a product from another goal.
+   * Eerst proberen we één product
+   * per relevante rol te pakken.
    */
 
-  for (const role of roleOrder) {
+  for (
+    const role of roleOrder
+  ) {
     const candidate =
       candidates.find(
-        (item) =>
-          item.role === role &&
-          !used.has(
+        item => {
+          if (
+            item.role !==
+            role
+          ) {
+            return false;
+          }
+
+          const key =
             plannerProductKey(
               item.product
-            )
-          ) &&
-          total +
-            price(
-              item.product
-            ) <=
-            budget + 0.001
+            );
+
+          if (
+            !key ||
+            used.has(key)
+          ) {
+            return false;
+          }
+
+          return (
+            total +
+              price(
+                item.product
+              ) <=
+            budget +
+              0.001
+          );
+        }
       );
 
-    if (!candidate) {
+    if (
+      !candidate
+    ) {
       continue;
     }
 
@@ -2507,24 +3084,35 @@ function buildGoalPackage(
     used.add(key);
 
     total +=
-      price(candidate.product);
+      price(
+        candidate.product
+      );
 
-    selected.push(candidate);
+    selected.push(
+      candidate
+    );
 
-    if (selected.length >= 3) {
+    if (
+      selected.length >=
+      3
+    ) {
       break;
     }
   }
 
   /*
-   * Add additional products only if they still
-   * belong to the same goal and fit naturally.
+   * Daarna eventueel extra producten.
    *
-   * No budget optimization.
+   * Nog steeds uitsluitend uit het
+   * geselecteerde doel.
    */
 
-  if (selected.length < 5) {
-    for (const candidate of candidates) {
+  if (
+    selected.length < 5
+  ) {
+    for (
+      const candidate of candidates
+    ) {
       const key =
         plannerProductKey(
           candidate.product
@@ -2538,21 +3126,30 @@ function buildGoalPackage(
       }
 
       const p =
-        price(candidate.product);
+        price(
+          candidate.product
+        );
 
       if (
         total + p >
-        budget + 0.001
+        budget +
+          0.001
       ) {
         continue;
       }
 
       used.add(key);
+
       total += p;
 
-      selected.push(candidate);
+      selected.push(
+        candidate
+      );
 
-      if (selected.length >= 5) {
+      if (
+        selected.length >=
+        5
+      ) {
         break;
       }
     }
@@ -2569,84 +3166,105 @@ function renderGoalPackage(
 ) {
   let total = 0;
 
-  const html = items
-    .map((item) => {
-      const product =
-        item.product;
+  const html =
+    items
+      .map(
+        item => {
+          const product =
+            item.product;
 
-      const p =
-        price(product);
+          const p =
+            price(product);
 
-      total += p;
+          total += p;
 
-      const name =
-        escapeHtml(
-          productName(product)
-        );
+          const name =
+            escapeHtml(
+              productName(
+                product
+              )
+            );
 
-      const merchant =
-        escapeHtml(
-          productMerchant(product)
-        );
+          const merchant =
+            escapeHtml(
+              productMerchant(
+                product
+              )
+            );
 
-      const reason =
-        escapeHtml(
-          plannerProductReason(
-            product,
-            goal
-          )
-        );
+          const reason =
+            escapeHtml(
+              plannerProductReason(
+                product,
+                goal
+              )
+            );
 
-      const url =
-        productUrl(product);
+          const url =
+            productUrl(
+              product
+            );
 
-      return `
-        <article class="ai-product">
-          <div>
-            <strong>
-              ${name}
-            </strong>
+          return `
+            <article class="ai-product">
 
-            ${
-              merchant
-                ? `<small>${merchant}</small>`
-                : ""
-            }
+              <div>
+                <strong>
+                  ${name}
+                </strong>
 
-            ${
-              reason
-                ? `<small>${reason}</small>`
-                : ""
-            }
-          </div>
+                ${
+                  merchant
+                    ? `
+                      <small>
+                        ${merchant}
+                      </small>
+                    `
+                    : ""
+                }
 
-          <strong>
-            ${money(p)}
-          </strong>
+                ${
+                  reason
+                    ? `
+                      <small>
+                        ${reason}
+                      </small>
+                    `
+                    : ""
+                }
+              </div>
 
-          ${
-            url
-              ? `
-                <a
-                  href="${escapeHtml(
-                    url
-                  )}"
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                >
-                  Bekijk
-                </a>
-              `
-              : ""
-          }
-        </article>
-      `;
-    })
-    .join("");
+              <strong>
+                ${money(p)}
+              </strong>
+
+              ${
+                url
+                  ? `
+                    <a
+                      href="${escapeHtml(
+                        url
+                      )}"
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                    >
+                      Bekijk
+                    </a>
+                  `
+                  : ""
+              }
+
+            </article>
+          `;
+        }
+      )
+      .join("");
 
   output.innerHTML = `
     <div class="ai-package">
+
       <div class="ai-package__summary">
+
         <strong>
           ${escapeHtml(
             goal
@@ -2655,13 +3273,16 @@ function renderGoalPackage(
 
         <span>
           ${money(total)}
-          van ${money(budget)}
+          van
+          ${money(budget)}
         </span>
+
       </div>
 
       <div class="ai-package__products">
         ${html}
       </div>
+
     </div>
   `;
 }
@@ -2673,7 +3294,7 @@ function renderGoalPackage(
 function setupDealTracking() {
   document.addEventListener(
     "click",
-    (event) => {
+    event => {
       const link =
         event.target.closest(
           "a[href]"
@@ -2693,8 +3314,8 @@ function setupDealTracking() {
       }
 
       /*
-       * Tracking remains client-side only.
-       * No visitor write is performed here.
+       * Client-side event.
+       * Er wordt hier niets naar de server geschreven.
        */
 
       if (
@@ -2728,12 +3349,7 @@ function setupDealTracking() {
 function setupKeyboard() {
   document.addEventListener(
     "keydown",
-    (event) => {
-      /*
-       * "/" focuses search unless the user is already
-       * typing in an input/textarea/select.
-       */
-
+    event => {
       if (
         event.key !== "/" ||
         event.ctrlKey ||
@@ -2758,12 +3374,13 @@ function setupKeyboard() {
         return;
       }
 
-      const input = first(
-        "#search",
-        "#search-input",
-        "[data-search-input]",
-        'input[type="search"]'
-      );
+      const input =
+        first(
+          "#search",
+          "#search-input",
+          "[data-search-input]",
+          'input[type="search"]'
+        );
 
       if (!input) {
         return;
@@ -2780,11 +3397,12 @@ function setupKeyboard() {
    ========================================================= */
 
 function setupLoadMore() {
-  const button = first(
-    "#load-more",
-    "[data-load-more]",
-    ".load-more"
-  );
+  const button =
+    first(
+      "#load-more",
+      "[data-load-more]",
+      ".load-more"
+    );
 
   if (!button) {
     return;
@@ -2792,7 +3410,7 @@ function setupLoadMore() {
 
   button.addEventListener(
     "click",
-    (event) => {
+    event => {
       event.preventDefault();
       loadMoreProducts();
     }
@@ -2827,4 +3445,4 @@ if (
   );
 } else {
   init();
-      }
+         }
