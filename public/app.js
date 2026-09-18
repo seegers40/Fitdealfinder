@@ -703,25 +703,44 @@ const BULK_SUPPORT_WORDS = [
   "creatine",
 ];
 
+/*
+ * Lean Bulk krijgt een eigen classificatie.
+ *
+ * Deze producten staan bewust hoger:
+ * - whey isolate
+ * - casein / caseine
+ * - lean mass
+ * - lean bulk
+ *
+ * Gainers worden volledig uitgesloten.
+ */
 const LEAN_BULK_STRONG_WORDS = [
   "whey isolate",
   "whey-isolate",
-  "isolate",
-  "isolaat",
+  "clear whey",
+  "clear protein",
+  "hydro whey",
+  "hydrolyzed whey",
+  "hydrolysate whey",
+  "casein protein",
+  "caseine protein",
   "casein",
   "caseine",
+  "isolate",
+  "isolaat",
 ];
 
 const LEAN_BULK_MEDIUM_WORDS = [
+  "lean bulk",
+  "lean-bulk",
+  "lean mass",
   "protein",
   "proteine",
   "whey",
   "creatine",
   "amino",
   "bcaa",
-  "lean bulk",
-  "lean-bulk",
-  "lean mass",
+  "eaa",
 ];
 
 function goalScore(
@@ -778,6 +797,21 @@ function goalScore(
     return 0;
   }
 
+  /*
+   * =======================================================
+   * BULK
+   * =======================================================
+   *
+   * Bulk richt zich primair op:
+   * 1. Mass gainers
+   * 2. Massa / carbs
+   * 3. Gewone eiwitproducten
+   * 4. Creatine
+   *
+   * Isolate/casein kan nog steeds als proteïne gebruikt
+   * worden, maar krijgt niet automatisch de Lean Bulk
+   * voorkeur.
+   */
   if (
     normalizedGoal === "bulk"
   ) {
@@ -796,7 +830,7 @@ function goalScore(
         BULK_STRONG_WORDS
       )
     ) {
-      return 120;
+      return 130;
     }
 
     if (
@@ -805,7 +839,7 @@ function goalScore(
         BULK_MEDIUM_WORDS
       )
     ) {
-      return 90;
+      return 95;
     }
 
     if (
@@ -814,12 +848,31 @@ function goalScore(
         BULK_SUPPORT_WORDS
       )
     ) {
-      return 40;
+      return 45;
     }
 
     return 0;
   }
 
+  /*
+   * =======================================================
+   * LEAN BULK
+   * =======================================================
+   *
+   * Lean Bulk is bewust anders dan Bulk.
+   *
+   * Gainers:
+   *   NOOIT
+   *
+   * Sterke voorkeur:
+   *   whey isolate
+   *   clear whey
+   *   casein
+   *   isolate
+   *
+   * Daarna:
+   *   gewone whey / protein / creatine
+   */
   if (
     normalizedGoal === "lean-bulk"
   ) {
@@ -847,7 +900,7 @@ function goalScore(
         LEAN_BULK_STRONG_WORDS
       )
     ) {
-      return 110;
+      return 125;
     }
 
     if (
@@ -1686,6 +1739,18 @@ const PLANNER_CARB_WORDS = [
   "havermout",
 ];
 
+const LEAN_BULK_CARB_WORDS = [
+  "oats",
+  "oat",
+  "havermout",
+  "rice",
+  "rijst",
+  "rice cream",
+  "cream of rice",
+  "rice flour",
+  "rijstmeel",
+];
+
 const PLANNER_CUT_WORDS = [
   "fat burner",
   "fatburner",
@@ -1715,10 +1780,6 @@ function isCarbProduct(product) {
   const text =
     plannerText(product);
 
-  /*
-   * Gainers zijn alleen een carb-rol
-   * binnen BULK.
-   */
   if (
     isGainerProduct(product)
   ) {
@@ -1728,6 +1789,21 @@ function isCarbProduct(product) {
   return hasAny(
     text,
     PLANNER_CARB_WORDS
+  );
+}
+
+function isLeanBulkCarbProduct(
+  product
+) {
+  if (
+    isGainerProduct(product)
+  ) {
+    return false;
+  }
+
+  return hasAny(
+    plannerText(product),
+    LEAN_BULK_CARB_WORDS
   );
 }
 
@@ -1747,6 +1823,32 @@ function isPlannerProtein(product) {
 
 function isPlannerCreatine(product) {
   return isCreatineProduct(product);
+}
+
+function isLeanBulkProtein(product) {
+  if (
+    !isPlannerProtein(product)
+  ) {
+    return false;
+  }
+
+  const text =
+    plannerText(product);
+
+  return hasAny(
+    text,
+    LEAN_BULK_STRONG_WORDS
+  );
+}
+
+function isBulkProtein(product) {
+  if (
+    !isPlannerProtein(product)
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 /*
@@ -1787,8 +1889,19 @@ function packageRole(
   const carb =
     isCarbProduct(product);
 
+  const leanBulkCarb =
+    isLeanBulkCarbProduct(
+      product
+    );
+
   const protein =
     isPlannerProtein(product);
+
+  const leanBulkProtein =
+    isLeanBulkProtein(product);
+
+  const bulkProtein =
+    isBulkProtein(product);
 
   const creatine =
     isPlannerCreatine(product);
@@ -1796,6 +1909,11 @@ function packageRole(
   const cutSupport =
     isCutSupportProduct(product);
 
+  /*
+   * =======================================================
+   * CUT
+   * =======================================================
+   */
   if (
     normalizedGoal === "cut"
   ) {
@@ -1818,6 +1936,16 @@ function packageRole(
     return "";
   }
 
+  /*
+   * =======================================================
+   * BULK
+   * =======================================================
+   *
+   * Bulk:
+   * protein + carb + creatine
+   *
+   * Gainers zijn hier bewust toegestaan als carb.
+   */
   if (
     normalizedGoal === "bulk"
   ) {
@@ -1832,7 +1960,7 @@ function packageRole(
       return "carb";
     }
 
-    if (protein) {
+    if (bulkProtein) {
       return "protein";
     }
 
@@ -1843,6 +1971,22 @@ function packageRole(
     return "";
   }
 
+  /*
+   * =======================================================
+   * LEAN BULK
+   * =======================================================
+   *
+   * Lean Bulk:
+   * protein + creatine + gecontroleerde carb
+   *
+   * Gainers zijn volledig verboden.
+   *
+   * Voor de carb-rol accepteren we hier alleen expliciet
+   * meer gecontroleerde bronnen zoals oats/havermout/rice.
+   *
+   * Daardoor krijgt Lean Bulk niet automatisch dezelfde
+   * mass-gainer producten als Bulk.
+   */
   if (
     normalizedGoal === "lean-bulk"
   ) {
@@ -1854,7 +1998,9 @@ function packageRole(
       return "";
     }
 
-    if (protein) {
+    if (
+      leanBulkProtein
+    ) {
       return "protein";
     }
 
@@ -1862,10 +2008,7 @@ function packageRole(
       return "creatine";
     }
 
-    if (
-      carb &&
-      !gainer
-    ) {
+    if (leanBulkCarb) {
       return "carb";
     }
 
@@ -1889,32 +2032,151 @@ function plannerProductScore(
     return 0;
   }
 
+  const text =
+    plannerText(product);
+
+  const normalizedGoal =
+    normalize(goal);
+
   let score = 0;
 
+  /*
+   * =======================================================
+   * BULK SCORING
+   * =======================================================
+   */
   if (
-    role === "protein"
+    normalizedGoal === "bulk"
   ) {
-    score += 100;
+    if (
+      role === "carb"
+    ) {
+      if (
+        isGainerProduct(product)
+      ) {
+        score += 140;
+      } else if (
+        hasAny(
+          text,
+          [
+            "carb",
+            "carbs",
+            "carbohydrate",
+            "carbohydrates",
+          ]
+        )
+      ) {
+        score += 105;
+      } else {
+        score += 90;
+      }
+    }
+
+    if (
+      role === "protein"
+    ) {
+      /*
+       * Bulk geeft gewone whey/protein een goede score.
+       * Isolate blijft bruikbaar, maar krijgt niet de
+       * speciale Lean Bulk bonus.
+       */
+      score += 90;
+
+      if (
+        hasAny(
+          text,
+          [
+            "whey",
+            "protein",
+            "proteine",
+          ]
+        )
+      ) {
+        score += 10;
+      }
+    }
+
+    if (
+      role === "creatine"
+    ) {
+      score += 80;
+    }
   }
 
+  /*
+   * =======================================================
+   * LEAN BULK SCORING
+   * =======================================================
+   */
   if (
-    role === "carb"
+    normalizedGoal === "lean-bulk"
   ) {
-    score += 90;
+    if (
+      role === "protein"
+    ) {
+      if (
+        isLeanBulkProtein(
+          product
+        )
+      ) {
+        score += 145;
+      } else {
+        score += 90;
+      }
+    }
+
+    if (
+      role === "creatine"
+    ) {
+      score += 90;
+    }
+
+    if (
+      role === "carb"
+    ) {
+      if (
+        isLeanBulkCarbProduct(
+          product
+        )
+      ) {
+        score += 105;
+      } else {
+        score += 80;
+      }
+    }
   }
 
+  /*
+   * =======================================================
+   * CUT SCORING
+   * =======================================================
+   */
   if (
-    role === "creatine"
+    normalizedGoal === "cut"
   ) {
-    score += 80;
+    if (
+      role === "cut-support"
+    ) {
+      score += 100;
+    }
+
+    if (
+      role === "protein"
+    ) {
+      score += 100;
+    }
+
+    if (
+      role === "creatine"
+    ) {
+      score += 80;
+    }
   }
 
-  if (
-    role === "cut-support"
-  ) {
-    score += 90;
-  }
-
+  /*
+   * Deal score blijft belangrijk, maar bepaalt niet meer
+   * alleen welk doelproduct gekozen wordt.
+   */
   score += Math.min(
     30,
     Number(
@@ -2129,27 +2391,84 @@ function plannerProductReason(
     );
 
   if (
-    role === "protein"
+    normalize(goal) ===
+    "bulk"
   ) {
-    return "Proteïne voor je doel.";
+    if (
+      role === "protein"
+    ) {
+      return "Proteïne voor spieropbouw en herstel tijdens een bulk.";
+    }
+
+    if (
+      role === "carb"
+    ) {
+      if (
+        isGainerProduct(product)
+      ) {
+        return "Mass gainer voor extra calorieën en koolhydraten tijdens een bulk.";
+      }
+
+      return "Koolhydraten voor extra energie en ondersteuning van spiergroei.";
+    }
+
+    if (
+      role === "creatine"
+    ) {
+      return "Creatine als ondersteuning van kracht en trainingsprestaties.";
+    }
   }
 
   if (
-    role === "creatine"
+    normalize(goal) ===
+    "lean-bulk"
   ) {
-    return "Creatine als ondersteuning.";
+    if (
+      role === "protein"
+    ) {
+      if (
+        isLeanBulkProtein(product)
+      ) {
+        return "Hoogwaardige eiwitbron die goed past bij lean bulk.";
+      }
+
+      return "Proteïne voor spieropbouw en herstel.";
+    }
+
+    if (
+      role === "creatine"
+    ) {
+      return "Creatine als ondersteuning van kracht en spieropbouw.";
+    }
+
+    if (
+      role === "carb"
+    ) {
+      return "Meer gecontroleerde koolhydraatbron die past bij lean bulk.";
+    }
   }
 
   if (
-    role === "carb"
+    normalize(goal) ===
+    "cut"
   ) {
-    return "Koolhydraten voor energie en massa.";
-  }
+    if (
+      role === "protein"
+    ) {
+      return "Proteïne voor behoud en herstel van spiermassa tijdens een cut.";
+    }
 
-  if (
-    role === "cut-support"
-  ) {
-    return "Product gericht op ondersteuning tijdens een cut.";
+    if (
+      role === "creatine"
+    ) {
+      return "Creatine als ondersteuning van kracht en training.";
+    }
+
+    if (
+      role === "cut-support"
+    ) {
+      return "Product gericht op ondersteuning tijdens een cut.";
+    }
   }
 
   return "";
@@ -2184,8 +2503,214 @@ function plannerRoleLabel(role) {
 }
 
 /* =========================================================
+   BEST PACKAGE SEARCH
+========================================================= */
+
+function findBestPlannerCombination(
+  roleCandidates,
+  requiredRoles,
+  budget,
+  goal
+) {
+  /*
+   * We gebruiken maximaal de beste 60 kandidaten per rol.
+   *
+   * Waarom:
+   * Met duizenden producten zou iedere combinatie van
+   * alle producten onnodig veel berekeningen veroorzaken.
+   *
+   * De kandidaten zijn eerst gesorteerd op doelgeschiktheid,
+   * daarna op prijs.
+   */
+  const MAX_ROLE_CANDIDATES = 60;
+
+  const limitedCandidates =
+    new Map();
+
+  for (
+    const role of requiredRoles
+  ) {
+    const products =
+      (
+        roleCandidates.get(
+          role
+        ) || []
+      )
+        .slice(
+          0,
+          MAX_ROLE_CANDIDATES
+        );
+
+    limitedCandidates.set(
+      role,
+      products
+    );
+  }
+
+  const bestSelection = [];
+
+  let bestTotal = -1;
+  let bestGoalScore = -1;
+
+  const usedKeys =
+    new Set();
+
+  /*
+   * We beoordelen een combinatie eerst op:
+   *
+   * 1. Doelgeschiktheid
+   * 2. Budgetgebruik
+   *
+   * Zo kan een willekeurige dure Bulk-combinatie
+   * niet een duidelijk betere Lean Bulk-combinatie
+   * verdringen.
+   */
+  function isBetterCombination(
+    currentTotal,
+    currentScore
+  ) {
+    if (
+      currentScore >
+      bestGoalScore
+    ) {
+      return true;
+    }
+
+    if (
+      currentScore <
+      bestGoalScore
+    ) {
+      return false;
+    }
+
+    return (
+      currentTotal >
+      bestTotal + 0.001
+    );
+  }
+
+  function search(
+    roleIndex,
+    remainingBudget,
+    currentSelection,
+    currentTotal,
+    currentScore
+  ) {
+    if (
+      roleIndex >=
+      requiredRoles.length
+    ) {
+      if (
+        isBetterCombination(
+          currentTotal,
+          currentScore
+        )
+      ) {
+        bestGoalScore =
+          currentScore;
+
+        bestTotal =
+          currentTotal;
+
+        bestSelection.length =
+          0;
+
+        bestSelection.push(
+          ...currentSelection
+        );
+      }
+
+      return;
+    }
+
+    const role =
+      requiredRoles[
+        roleIndex
+      ];
+
+    const candidates =
+      limitedCandidates.get(
+        role
+      ) || [];
+
+    for (
+      const product of candidates
+    ) {
+      const key =
+        plannerProductKey(
+          product
+        );
+
+      if (
+        !key ||
+        usedKeys.has(key)
+      ) {
+        continue;
+      }
+
+      const productPrice =
+        price(product);
+
+      if (
+        productPrice <= 0
+      ) {
+        continue;
+      }
+
+      if (
+        productPrice >
+        remainingBudget +
+          0.001
+      ) {
+        continue;
+      }
+
+      usedKeys.add(key);
+
+      currentSelection.push(
+        product
+      );
+
+      search(
+        roleIndex + 1,
+        remainingBudget -
+          productPrice,
+        currentSelection,
+        currentTotal +
+          productPrice,
+        currentScore +
+          plannerProductScore(
+            product,
+            goal
+          )
+      );
+
+      currentSelection.pop();
+
+      usedKeys.delete(key);
+    }
+  }
+
+  search(
+    0,
+    budget,
+    [],
+    0,
+    0
+  );
+
+  return {
+    products:
+      bestSelection,
+    total:
+      bestTotal,
+    score:
+      bestGoalScore,
+  };
+}
+
+/* =========================================================
    SHOPPING PLANNER
-   BUDGET OPTIMALISATIE
 ========================================================= */
 
 function createPlanner() {
@@ -2255,9 +2780,6 @@ function createPlanner() {
         return;
       }
 
-      /*
-       * Alleen echte rollen voor dit doel.
-       */
       const candidates =
         state.products
           .map((product) => ({
@@ -2315,17 +2837,11 @@ function createPlanner() {
               "cut-support",
               "creatine",
             ]
-          : selectedGoal === "bulk"
-            ? [
-                "protein",
-                "carb",
-                "creatine",
-              ]
-            : [
-                "protein",
-                "creatine",
-                "carb",
-              ];
+          : [
+              "protein",
+              "creatine",
+              "carb",
+            ];
 
       const roleCandidates =
         new Map();
@@ -2352,8 +2868,34 @@ function createPlanner() {
       }
 
       /*
-       * Iedere rol moet minimaal één product
-       * hebben dat binnen het budget past.
+       * Bij Lean Bulk moet de carb-rol daadwerkelijk
+       * bestaan uit een lean-bulk geschikte koolhydraatbron.
+       *
+       * Als er geen oats/rice/etc. beschikbaar is, nemen we
+       * niet stiekem een mass gainer.
+       */
+      if (
+        selectedGoal ===
+        "lean-bulk"
+      ) {
+        const leanCarbs =
+          (
+            roleCandidates.get(
+              "carb"
+            ) || []
+          ).filter(
+            isLeanBulkCarbProduct
+          );
+
+        roleCandidates.set(
+          "carb",
+          leanCarbs
+        );
+      }
+
+      /*
+       * Bij Bulk mag de carb-rol wel degelijk
+       * een gainer bevatten.
        */
       for (
         const role of requiredRoles
@@ -2378,193 +2920,22 @@ function createPlanner() {
         }
       }
 
-      /*
-       * =====================================================
-       * NIEUW:
-       * Zoek NIET meer de eerste geldige combinatie.
-       *
-       * We zoeken nu de combinatie met het hoogste
-       * totaalbedrag dat nog steeds <= budget is.
-       *
-       * Hierdoor kan €80 bijvoorbeeld niet meer eindigen
-       * op een willekeurige eerste combinatie van €20,59
-       * als er een betere geldige combinatie beschikbaar is.
-       *
-       * De rollen blijven volledig verplicht:
-       *
-       * Bulk:
-       *   protein + carb + creatine
-       *
-       * Lean bulk:
-       *   protein + creatine + carb
-       *
-       * Cut:
-       *   protein + cut-support + creatine
-       * =====================================================
-       */
+      const best =
+        findBestPlannerCombination(
+          roleCandidates,
+          requiredRoles,
+          maxBudget,
+          selectedGoal
+        );
 
-      const bestSelection = [];
-      let bestTotal = -1;
-      let bestScore = -1;
+      const selected =
+        best.products;
 
-      const usedKeys =
-        new Set();
+      const total =
+        best.total;
 
-      /*
-       * Producten met dezelfde genormaliseerde naam
-       * mogen niet dubbel in één pakket.
-       */
-      function searchBestCombination(
-        roleIndex,
-        remainingBudget,
-        currentSelection,
-        currentTotal,
-        currentScore
-      ) {
-        if (
-          roleIndex >=
-          requiredRoles.length
-        ) {
-          /*
-           * Eerste criterium:
-           * zo veel mogelijk van het budget gebruiken.
-           *
-           * Tweede criterium bij vrijwel gelijk totaal:
-           * hogere productkwaliteit/deal-score.
-           */
-          if (
-            currentTotal >
-            bestTotal + 0.001
-          ) {
-            bestTotal =
-              currentTotal;
-
-            bestScore =
-              currentScore;
-
-            bestSelection.length =
-              0;
-
-            bestSelection.push(
-              ...currentSelection
-            );
-
-            return;
-          }
-
-          if (
-            Math.abs(
-              currentTotal -
-                bestTotal
-            ) <= 0.001 &&
-            currentScore >
-              bestScore
-          ) {
-            bestScore =
-              currentScore;
-
-            bestSelection.length =
-              0;
-
-            bestSelection.push(
-              ...currentSelection
-            );
-          }
-
-          return;
-        }
-
-        const role =
-          requiredRoles[
-            roleIndex
-          ];
-
-        const roleProducts =
-          roleCandidates.get(
-            role
-          ) || [];
-
-        /*
-         * Producten die duurder zijn dan het
-         * resterende budget kunnen direct worden
-         * overgeslagen.
-         */
-        for (
-          const product of roleProducts
-        ) {
-          const key =
-            plannerProductKey(
-              product
-            );
-
-          if (
-            !key ||
-            usedKeys.has(key)
-          ) {
-            continue;
-          }
-
-          const productPrice =
-            price(product);
-
-          if (
-            productPrice >
-            remainingBudget +
-              0.001
-          ) {
-            continue;
-          }
-
-          /*
-           * Prijs moet positief zijn.
-           * Zo kunnen gratis/foutieve records
-           * de planner niet beïnvloeden.
-           */
-          if (
-            productPrice <= 0
-          ) {
-            continue;
-          }
-
-          usedKeys.add(key);
-
-          currentSelection.push(
-            product
-          );
-
-          searchBestCombination(
-            roleIndex + 1,
-            remainingBudget -
-              productPrice,
-            currentSelection,
-            currentTotal +
-              productPrice,
-            currentScore +
-              plannerProductScore(
-                product,
-                selectedGoal
-              )
-          );
-
-          currentSelection.pop();
-
-          usedKeys.delete(key);
-        }
-      }
-
-      searchBestCombination(
-        0,
-        maxBudget,
-        [],
-        0,
-        0
-      );
-
-      /*
-       * Geen geldige combinatie gevonden.
-       */
       if (
-        bestSelection.length !==
+        selected.length !==
         requiredRoles.length
       ) {
         result.innerHTML = `
@@ -2584,23 +2955,6 @@ function createPlanner() {
         return;
       }
 
-      /*
-       * Gebruik de gevonden optimale selectie.
-       */
-      const selected =
-        bestSelection;
-
-      const total =
-        selected.reduce(
-          (sum, product) =>
-            sum + price(product),
-          0
-        );
-
-      /*
-       * Extra veiligheidscontrole:
-       * nooit boven het budget.
-       */
       if (
         total >
         maxBudget +
@@ -2629,36 +2983,18 @@ function createPlanner() {
             ? "Lean Bulk"
             : "Cut";
 
-      /*
-       * Producten worden per planner-rol gegroepeerd.
-       */
       const roleGroups =
         requiredRoles.map(
           (role) => ({
             role,
             products:
               selected
-                .map(
-                  (
-                    product,
-                    index
-                  ) => ({
-                    product,
-                    role:
-                      packageRole(
-                        product,
-                        selectedGoal
-                      ),
-                  })
-                )
                 .filter(
-                  (item) =>
-                    item.role ===
-                    role
-                )
-                .map(
-                  (item) =>
-                    item.product
+                  (product) =>
+                    packageRole(
+                      product,
+                      selectedGoal
+                    ) === role
                 ),
           })
         );
@@ -3805,6 +4141,11 @@ function setupAI() {
     const text =
       normalize(message);
 
+    /*
+     * Lean Bulk moet vóór Bulk worden
+     * gecontroleerd omdat "lean bulk"
+     * ook het woord "bulk" bevat.
+     */
     if (
       text.includes(
         "lean bulk"
@@ -3896,23 +4237,17 @@ function setupAI() {
     }
 
     const requiredRoles =
-      goal === "bulk"
+      goal === "cut"
         ? [
             "protein",
-            "carb",
+            "cut-support",
             "creatine",
           ]
-        : goal === "lean-bulk"
-          ? [
-              "protein",
-              "creatine",
-              "carb",
-            ]
-          : [
-              "protein",
-              "cut-support",
-              "creatine",
-            ];
+        : [
+            "protein",
+            "creatine",
+            "carb",
+          ];
 
     const roleCandidates =
       new Map();
@@ -3966,6 +4301,24 @@ function setupAI() {
       );
     }
 
+    /*
+     * Lean Bulk mag NOOIT terugvallen op een gainer.
+     */
+    if (
+      goal === "lean-bulk"
+    ) {
+      roleCandidates.set(
+        "carb",
+        (
+          roleCandidates.get(
+            "carb"
+          ) || []
+        ).filter(
+          isLeanBulkCarbProduct
+        )
+      );
+    }
+
     for (
       const role of requiredRoles
     ) {
@@ -3983,148 +4336,37 @@ function setupAI() {
     }
 
     /*
-     * Ook hier gebruiken we dezelfde budgetlogica:
-     * niet de eerste geldige combinatie nemen,
-     * maar de combinatie die het budget het beste benut.
+     * Gebruik exact dezelfde plannerlogica als de
+     * Shopping Planner.
+     *
+     * Hierdoor geeft:
+     *
+     * Shopping Planner:
+     *   Lean Bulk
+     *
+     * en:
+     *
+     * AI:
+     *   maak een lean bulk pakket
+     *
+     * dezelfde soort productselectie.
      */
-    const bestSelection = [];
-    let bestTotal = -1;
-    let bestScore = -1;
+    const best =
+      findBestPlannerCombination(
+        roleCandidates,
+        requiredRoles,
+        budget,
+        goal
+      );
 
-    const usedKeys =
-      new Set();
+    const selected =
+      best.products;
 
-    function searchBestCombination(
-      roleIndex,
-      remainingBudget,
-      currentSelection,
-      currentTotal,
-      currentScore
-    ) {
-      if (
-        roleIndex >=
-        requiredRoles.length
-      ) {
-        if (
-          currentTotal >
-          bestTotal + 0.001
-        ) {
-          bestTotal =
-            currentTotal;
-
-          bestScore =
-            currentScore;
-
-          bestSelection.length =
-            0;
-
-          bestSelection.push(
-            ...currentSelection
-          );
-
-          return;
-        }
-
-        if (
-          Math.abs(
-            currentTotal -
-              bestTotal
-          ) <= 0.001 &&
-          currentScore >
-            bestScore
-        ) {
-          bestScore =
-            currentScore;
-
-          bestSelection.length =
-            0;
-
-          bestSelection.push(
-            ...currentSelection
-          );
-        }
-
-        return;
-      }
-
-      const role =
-        requiredRoles[
-          roleIndex
-        ];
-
-      const candidates =
-        roleCandidates.get(
-          role
-        ) || [];
-
-      for (
-        const candidate of candidates
-      ) {
-        const key =
-          plannerProductKey(
-            candidate
-          );
-
-        if (
-          !key ||
-          usedKeys.has(key)
-        ) {
-          continue;
-        }
-
-        const candidatePrice =
-          price(candidate);
-
-        if (
-          candidatePrice >
-          remainingBudget +
-            0.001
-        ) {
-          continue;
-        }
-
-        if (
-          candidatePrice <= 0
-        ) {
-          continue;
-        }
-
-        usedKeys.add(key);
-
-        currentSelection.push(
-          candidate
-        );
-
-        searchBestCombination(
-          roleIndex + 1,
-          remainingBudget -
-            candidatePrice,
-          currentSelection,
-          currentTotal +
-            candidatePrice,
-          currentScore +
-            plannerProductScore(
-              candidate,
-              goal
-            )
-        );
-
-        currentSelection.pop();
-
-        usedKeys.delete(key);
-      }
-    }
-
-    searchBestCombination(
-      0,
-      budget,
-      [],
-      0,
-      0
-    );
+    const total =
+      best.total;
 
     if (
-      bestSelection.length !==
+      selected.length !==
       requiredRoles.length
     ) {
       return {
@@ -4135,16 +4377,6 @@ function setupAI() {
             .replace(".", ",")} samenstellen.`,
       };
     }
-
-    const selected =
-      bestSelection;
-
-    const total =
-      selected.reduce(
-        (sum, product) =>
-          sum + price(product),
-        0
-      );
 
     if (
       total >
@@ -4191,23 +4423,17 @@ function setupAI() {
           : "Cut";
 
     const requiredRoles =
-      goal === "bulk"
+      goal === "cut"
         ? [
             "protein",
-            "carb",
+            "cut-support",
             "creatine",
           ]
-        : goal === "lean-bulk"
-          ? [
-              "protein",
-              "creatine",
-              "carb",
-            ]
-          : [
-              "protein",
-              "cut-support",
-              "creatine",
-            ];
+        : [
+            "protein",
+            "creatine",
+            "carb",
+          ];
 
     const roleGroups =
       requiredRoles.map(
@@ -4980,4 +5206,4 @@ if (
   );
 } else {
   init();
-}
+      }
