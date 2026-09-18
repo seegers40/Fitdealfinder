@@ -686,6 +686,24 @@ function getProductCategory(product) {
   return "overig";
 }
 
+/*
+ * BELANGRIJK:
+ *
+ * index.html gebruikt:
+ *   whey
+ *   creatine
+ *   preworkout
+ *   vitamins
+ *
+ * getProductCategory() gebruikt:
+ *   proteine
+ *   creatine
+ *   pre-workout
+ *   supplementen
+ *
+ * Daarom mappen we de waarden van de HTML
+ * eerst naar de interne categorieën.
+ */
 function matchesCategory(
   product,
   category
@@ -694,9 +712,32 @@ function matchesCategory(
     return true;
   }
 
+  const selected =
+    normalize(category);
+
+  const categoryMap = {
+    whey: "proteine",
+    protein: "proteine",
+    proteine: "proteine",
+
+    creatine: "creatine",
+
+    preworkout: "pre-workout",
+    "pre-workout": "pre-workout",
+
+    vitamins: "supplementen",
+    supplement: "supplementen",
+    supplements: "supplementen",
+    supplementen: "supplementen",
+  };
+
+  const normalizedCategory =
+    categoryMap[selected] ||
+    selected;
+
   return (
     getProductCategory(product) ===
-    normalize(category)
+    normalizedCategory
   );
 }
 
@@ -3223,10 +3264,12 @@ function findAIProducts(
         ) || 0;
 
       if (
-        scoreA !== scoreB
+        scoreA !==
+        scoreB
       ) {
         return (
-          scoreB - scoreA
+          scoreB -
+          scoreA
         );
       }
 
@@ -4788,4 +4831,4 @@ if (
   );
 } else {
   init();
-  }
+}
