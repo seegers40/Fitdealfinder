@@ -15,10 +15,6 @@ const PAGE_SIZE = 200;
 const MAX_PRODUCTS = 2000;
 const PRODUCTS_PER_VIEW = 8;
 
-/*
- * Maximaal aantal seconden dat één API-request mag duren.
- * Zo kan de pagina nooit eindeloos op "Deals laden..." blijven staan.
- */
 const API_TIMEOUT_MS = 15000;
 
 const state = {
@@ -1757,32 +1753,6 @@ function isPlannerCreatine(product) {
  * =========================================================
  * SHOPPING PLANNER CLASSIFICATIE
  * =========================================================
- *
- * De planner werkt uitsluitend met:
- *
- * BULK
- *   protein
- *   carb
- *   creatine
- *
- * LEAN BULK
- *   protein
- *   carb
- *   creatine
- *
- * CUT
- *   protein
- *   cut-support
- *   creatine
- *
- * Belangrijk:
- *
- * - Gainers zijn uitsluitend "carb" voor BULK.
- * - Gainers worden NOOIT gebruikt voor LEAN BULK.
- * - Gainers worden NOOIT gebruikt voor CUT.
- * - Pre-workout krijgt geen plannerrol.
- * - Cut-support komt alleen bij CUT.
- * - Een product krijgt binnen één doel maar één rol.
  */
 function packageRole(
   product,
@@ -1804,10 +1774,6 @@ function packageRole(
     return "";
   }
 
-  /*
-   * Pre-workout hoort niet in een
-   * Bulk/Cut/Lean Bulk pakketrol.
-   */
   if (
     getProductCategory(product) ===
     "pre-workout"
@@ -1830,39 +1796,21 @@ function packageRole(
   const cutSupport =
     isCutSupportProduct(product);
 
-  /*
-   * =====================================================
-   * CUT
-   * =====================================================
-   */
   if (
     normalizedGoal === "cut"
   ) {
-    /*
-     * Een gainer hoort nooit bij Cut.
-     */
     if (gainer) {
       return "";
     }
 
-    /*
-     * Cut-support heeft binnen Cut een
-     * eigen rubriek.
-     */
     if (cutSupport) {
       return "cut-support";
     }
 
-    /*
-     * Proteïne heeft een eigen rubriek.
-     */
     if (protein) {
       return "protein";
     }
 
-    /*
-     * Creatine heeft een eigen rubriek.
-     */
     if (creatine) {
       return "creatine";
     }
@@ -1870,25 +1818,13 @@ function packageRole(
     return "";
   }
 
-  /*
-   * =====================================================
-   * BULK
-   * =====================================================
-   */
   if (
     normalizedGoal === "bulk"
   ) {
-    /*
-     * Cut-producten horen niet bij Bulk.
-     */
     if (cutSupport) {
       return "";
     }
 
-    /*
-     * Gainer en normale carb-producten
-     * horen bij de koolhydraat/massa-rubriek.
-     */
     if (
       gainer ||
       carb
@@ -1896,16 +1832,10 @@ function packageRole(
       return "carb";
     }
 
-    /*
-     * Daarna Proteïne.
-     */
     if (protein) {
       return "protein";
     }
 
-    /*
-     * Daarna Creatine.
-     */
     if (creatine) {
       return "creatine";
     }
@@ -1913,45 +1843,25 @@ function packageRole(
     return "";
   }
 
-  /*
-   * =====================================================
-   * LEAN BULK
-   * =====================================================
-   */
   if (
     normalizedGoal === "lean-bulk"
   ) {
-    /*
-     * Mass gainers zijn expliciet uitgesloten.
-     */
     if (gainer) {
       return "";
     }
 
-    /*
-     * Cut-support hoort niet bij Lean Bulk.
-     */
     if (cutSupport) {
       return "";
     }
 
-    /*
-     * Proteïne.
-     */
     if (protein) {
       return "protein";
     }
 
-    /*
-     * Creatine.
-     */
     if (creatine) {
       return "creatine";
     }
 
-    /*
-     * Alleen normale koolhydraatproducten.
-     */
     if (
       carb &&
       !gainer
@@ -1965,10 +1875,6 @@ function packageRole(
   return "";
 }
 
-/*
- * Score blijft uitsluitend een voorkeur
- * binnen de juiste planner-rubriek.
- */
 function plannerProductScore(
   product,
   goal
@@ -2009,9 +1915,6 @@ function plannerProductScore(
     score += 90;
   }
 
-  /*
-   * Deal score is alleen secundaire voorkeur.
-   */
   score += Math.min(
     30,
     Number(
@@ -2252,9 +2155,6 @@ function plannerProductReason(
   return "";
 }
 
-/*
- * Geeft de zichtbare rubrieknaam terug.
- */
 function plannerRoleLabel(role) {
   if (
     role === "protein"
@@ -2282,6 +2182,11 @@ function plannerRoleLabel(role) {
 
   return "";
 }
+
+/* =========================================================
+   SHOPPING PLANNER
+   BUDGET OPTIMALISATIE
+========================================================= */
 
 function createPlanner() {
   const {
@@ -2403,13 +2308,6 @@ function createPlanner() {
             }
           );
 
-      /*
-       * Iedere doelkeuze heeft zijn eigen vaste
-       * planner-rubrieken.
-       *
-       * De volgorde bepaalt ook de volgorde
-       * waarin de rubrieken op de pagina verschijnen.
-       */
       const requiredRoles =
         selectedGoal === "cut"
           ? [
@@ -2454,8 +2352,8 @@ function createPlanner() {
       }
 
       /*
-       * Geen compleet pakket = geen verkeerd
-       * samengesteld pakket.
+       * Iedere rol moet minimaal één product
+       * hebben dat binnen het budget past.
        */
       for (
         const role of requiredRoles
@@ -2481,23 +2379,99 @@ function createPlanner() {
       }
 
       /*
-       * Backtracking zoekt een combinatie waarbij
-       * ieder product bij de juiste rol blijft.
+       * =====================================================
+       * NIEUW:
+       * Zoek NIET meer de eerste geldige combinatie.
+       *
+       * We zoeken nu de combinatie met het hoogste
+       * totaalbedrag dat nog steeds <= budget is.
+       *
+       * Hierdoor kan €80 bijvoorbeeld niet meer eindigen
+       * op een willekeurige eerste combinatie van €20,59
+       * als er een betere geldige combinatie beschikbaar is.
+       *
+       * De rollen blijven volledig verplicht:
+       *
+       * Bulk:
+       *   protein + carb + creatine
+       *
+       * Lean bulk:
+       *   protein + creatine + carb
+       *
+       * Cut:
+       *   protein + cut-support + creatine
+       * =====================================================
        */
-      const selected = [];
-      const selectedRoles = [];
+
+      const bestSelection = [];
+      let bestTotal = -1;
+      let bestScore = -1;
+
       const usedKeys =
         new Set();
 
-      function findCombination(
+      /*
+       * Producten met dezelfde genormaliseerde naam
+       * mogen niet dubbel in één pakket.
+       */
+      function searchBestCombination(
         roleIndex,
-        remainingBudget
+        remainingBudget,
+        currentSelection,
+        currentTotal,
+        currentScore
       ) {
         if (
           roleIndex >=
           requiredRoles.length
         ) {
-          return true;
+          /*
+           * Eerste criterium:
+           * zo veel mogelijk van het budget gebruiken.
+           *
+           * Tweede criterium bij vrijwel gelijk totaal:
+           * hogere productkwaliteit/deal-score.
+           */
+          if (
+            currentTotal >
+            bestTotal + 0.001
+          ) {
+            bestTotal =
+              currentTotal;
+
+            bestScore =
+              currentScore;
+
+            bestSelection.length =
+              0;
+
+            bestSelection.push(
+              ...currentSelection
+            );
+
+            return;
+          }
+
+          if (
+            Math.abs(
+              currentTotal -
+                bestTotal
+            ) <= 0.001 &&
+            currentScore >
+              bestScore
+          ) {
+            bestScore =
+              currentScore;
+
+            bestSelection.length =
+              0;
+
+            bestSelection.push(
+              ...currentSelection
+            );
+          }
+
+          return;
         }
 
         const role =
@@ -2510,6 +2484,11 @@ function createPlanner() {
             role
           ) || [];
 
+        /*
+         * Producten die duurder zijn dan het
+         * resterende budget kunnen direct worden
+         * overgeslagen.
+         */
         for (
           const product of roleProducts
         ) {
@@ -2536,35 +2515,58 @@ function createPlanner() {
             continue;
           }
 
-          usedKeys.add(key);
-          selected.push(product);
-          selectedRoles.push(role);
-
+          /*
+           * Prijs moet positief zijn.
+           * Zo kunnen gratis/foutieve records
+           * de planner niet beïnvloeden.
+           */
           if (
-            findCombination(
-              roleIndex + 1,
-              remainingBudget -
-                productPrice
-            )
+            productPrice <= 0
           ) {
-            return true;
+            continue;
           }
 
-          selected.pop();
-          selectedRoles.pop();
+          usedKeys.add(key);
+
+          currentSelection.push(
+            product
+          );
+
+          searchBestCombination(
+            roleIndex + 1,
+            remainingBudget -
+              productPrice,
+            currentSelection,
+            currentTotal +
+              productPrice,
+            currentScore +
+              plannerProductScore(
+                product,
+                selectedGoal
+              )
+          );
+
+          currentSelection.pop();
+
           usedKeys.delete(key);
         }
-
-        return false;
       }
 
-      const success =
-        findCombination(
-          0,
-          maxBudget
-        );
+      searchBestCombination(
+        0,
+        maxBudget,
+        [],
+        0,
+        0
+      );
 
-      if (!success) {
+      /*
+       * Geen geldige combinatie gevonden.
+       */
+      if (
+        bestSelection.length !==
+        requiredRoles.length
+      ) {
         result.innerHTML = `
           <p>
             Ik kan met de huidige producten
@@ -2583,8 +2585,11 @@ function createPlanner() {
       }
 
       /*
-       * Bewust GEEN budgetoptimalisatie.
+       * Gebruik de gevonden optimale selectie.
        */
+      const selected =
+        bestSelection;
+
       const total =
         selected.reduce(
           (sum, product) =>
@@ -2592,6 +2597,10 @@ function createPlanner() {
           0
         );
 
+      /*
+       * Extra veiligheidscontrole:
+       * nooit boven het budget.
+       */
       if (
         total >
         maxBudget +
@@ -2608,7 +2617,10 @@ function createPlanner() {
       }
 
       const remaining =
-        maxBudget - total;
+        Math.max(
+          0,
+          maxBudget - total
+        );
 
       const goalLabel =
         selectedGoal === "bulk"
@@ -2619,8 +2631,6 @@ function createPlanner() {
 
       /*
        * Producten worden per planner-rol gegroepeerd.
-       *
-       * Dit is uitsluitend een Shopping Planner-weergave.
        */
       const roleGroups =
         requiredRoles.map(
@@ -2635,9 +2645,10 @@ function createPlanner() {
                   ) => ({
                     product,
                     role:
-                      selectedRoles[
-                        index
-                      ],
+                      packageRole(
+                        product,
+                        selectedGoal
+                      ),
                   })
                 )
                 .filter(
@@ -3971,19 +3982,69 @@ function setupAI() {
       }
     }
 
-    const selected = [];
-    const usedIds =
+    /*
+     * Ook hier gebruiken we dezelfde budgetlogica:
+     * niet de eerste geldige combinatie nemen,
+     * maar de combinatie die het budget het beste benut.
+     */
+    const bestSelection = [];
+    let bestTotal = -1;
+    let bestScore = -1;
+
+    const usedKeys =
       new Set();
 
-    function findCombination(
+    function searchBestCombination(
       roleIndex,
-      remainingBudget
+      remainingBudget,
+      currentSelection,
+      currentTotal,
+      currentScore
     ) {
       if (
         roleIndex >=
         requiredRoles.length
       ) {
-        return true;
+        if (
+          currentTotal >
+          bestTotal + 0.001
+        ) {
+          bestTotal =
+            currentTotal;
+
+          bestScore =
+            currentScore;
+
+          bestSelection.length =
+            0;
+
+          bestSelection.push(
+            ...currentSelection
+          );
+
+          return;
+        }
+
+        if (
+          Math.abs(
+            currentTotal -
+              bestTotal
+          ) <= 0.001 &&
+          currentScore >
+            bestScore
+        ) {
+          bestScore =
+            currentScore;
+
+          bestSelection.length =
+            0;
+
+          bestSelection.push(
+            ...currentSelection
+          );
+        }
+
+        return;
       }
 
       const role =
@@ -4006,7 +4067,7 @@ function setupAI() {
 
         if (
           !key ||
-          usedIds.has(key)
+          usedKeys.has(key)
         ) {
           continue;
         }
@@ -4022,35 +4083,50 @@ function setupAI() {
           continue;
         }
 
-        usedIds.add(key);
-        selected.push(
+        if (
+          candidatePrice <= 0
+        ) {
+          continue;
+        }
+
+        usedKeys.add(key);
+
+        currentSelection.push(
           candidate
         );
 
-        if (
-          findCombination(
-            roleIndex + 1,
-            remainingBudget -
-              candidatePrice
-          )
-        ) {
-          return true;
-        }
+        searchBestCombination(
+          roleIndex + 1,
+          remainingBudget -
+            candidatePrice,
+          currentSelection,
+          currentTotal +
+            candidatePrice,
+          currentScore +
+            plannerProductScore(
+              candidate,
+              goal
+            )
+        );
 
-        selected.pop();
-        usedIds.delete(key);
+        currentSelection.pop();
+
+        usedKeys.delete(key);
       }
-
-      return false;
     }
 
-    const success =
-      findCombination(
-        0,
-        budget
-      );
+    searchBestCombination(
+      0,
+      budget,
+      [],
+      0,
+      0
+    );
 
-    if (!success) {
+    if (
+      bestSelection.length !==
+      requiredRoles.length
+    ) {
       return {
         ok: false,
         reason:
@@ -4059,6 +4135,9 @@ function setupAI() {
             .replace(".", ",")} samenstellen.`,
       };
     }
+
+    const selected =
+      bestSelection;
 
     const total =
       selected.reduce(
@@ -4099,7 +4178,10 @@ function setupAI() {
       packageData;
 
     const remaining =
-      budget - total;
+      Math.max(
+        0,
+        budget - total
+      );
 
     const goalLabel =
       goal === "bulk"
@@ -4108,10 +4190,6 @@ function setupAI() {
           ? "Lean Bulk"
           : "Cut";
 
-    /*
-     * Dezelfde planner-rubrieken als de
-     * Shopping Planner hierboven.
-     */
     const requiredRoles =
       goal === "bulk"
         ? [
@@ -4460,11 +4538,9 @@ function setupAI() {
         return;
       }
 
-      /*
-       * =====================================================
-       * 1. PRODUCT SEARCH
-       * =====================================================
-       */
+      /* =====================================================
+         1. PRODUCT SEARCH
+      ===================================================== */
 
       const productSearch =
         findAIProducts(
@@ -4497,11 +4573,9 @@ function setupAI() {
         return;
       }
 
-      /*
-       * =====================================================
-       * 2. PACKAGE
-       * =====================================================
-       */
+      /* =====================================================
+         2. PACKAGE
+      ===================================================== */
 
       const isPackageRequest =
         /pakket|pakketje|samenstellen|bundel|combinatie|set/i.test(
@@ -4658,11 +4732,9 @@ BELANGRIJK:
         }
       }
 
-      /*
-       * =====================================================
-       * 3. GEWONE AI-VRAAG
-       * =====================================================
-       */
+      /* =====================================================
+         3. GEWONE AI-VRAAG
+      ===================================================== */
 
       responseBox.innerHTML = `
         <p>
@@ -4908,4 +4980,4 @@ if (
   );
 } else {
   init();
-    }
+}
